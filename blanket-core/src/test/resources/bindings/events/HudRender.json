@@ -1,0 +1,8 @@
+{
+  "schema": 1,
+  "event": "HUD_RENDER",
+  "recipes": [
+    { "when": { "mc": "1.21..1.21.11" }, "mixin": { "hook": "gui.render", "payload": { "partialTick": { "arg": 1 }, "pose": { "this": "example.Gui#pose:Lexample/Pose;" }, "label": { "const": "hud" }, "helper": { "adapter": "modern:com.blanket.adapters.Hud#helper" } } } },
+    { "when": { "loader": "neoforge" }, "native": { "event": "example.loader.GuiEvent$Post", "bus": "game", "filter": { "stage": "after" }, "payload": { "partialTick": { "getter": "example.loader.GuiEvent#partialTick()F" } } } }
+  ]
+}

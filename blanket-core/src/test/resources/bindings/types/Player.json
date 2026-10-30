@@ -1,0 +1,32 @@
+{
+  "schema": 1,
+  "api": "com.blanket.api.Player",
+  "representation": [
+    { "when": { "mc": "..1.13.2" }, "alias": "lf:net/minecraft/class_864" },
+    { "when": {}, "alias": "net.minecraft.world.entity.player.Player" }
+  ],
+  "members": {
+    "x": [
+      { "when": { "mc": "..1.13.2" }, "lower": { "get": "lf:net/minecraft/class_864#field_3252:D" } },
+      { "when": { "mc": "..1.14.4" }, "lower": { "get": "mojang@1.14.4:net.minecraft.world.entity.Entity#x:D" } },
+      { "when": {}, "lower": { "invoke": "net.minecraft.world.entity.Entity#getX()D" } }
+    ],
+    "offHandItem": [
+      { "when": {}, "requires": "OFFHAND", "lower": { "invoke": "net.minecraft.world.entity.LivingEntity#getOffhandItem()Lnet/minecraft/world/item/ItemStack;" } }
+    ],
+    "foodLevel": [
+      { "when": { "mc": "..1.13.2" }, "lower": { "chain": [
+          { "invoke": "lf:net/minecraft/class_1016#method_3188()Lnet/minecraft/class_1001;" },
+          { "invoke": "lf:net/minecraft/class_1001#method_3238()I" } ] } },
+      { "when": {}, "lower": { "chain": [
+          { "invoke": "net.minecraft.world.entity.player.Player#getFoodData()Lnet/minecraft/world/food/FoodData;" },
+          { "invoke": "net.minecraft.world.food.FoodData#getFoodLevel()I" } ] } }
+    ],
+    "register(Ljava/lang/String;)V": [
+      { "when": { "mc": "..1.12.2" }, "lower": { "adapter": "legacy:com.blanket.adapters.Keys#register" } },
+      { "when": { "loader": ["fabric", "neoforge"] }, "lower": { "adapter": "modern:com.blanket.adapters.Keys#register" } },
+      { "when": {}, "lower": { "const": 0 } }
+    ]
+  },
+  "note": "Fixture for round-trip tests."
+}

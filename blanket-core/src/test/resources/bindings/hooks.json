@@ -1,0 +1,15 @@
+{
+  "schema": 1,
+  "hooks": {
+    "gui.render": [
+      { "when": { "mc": "1.21..1.21.11" }, "method": "example.Gui#render(Lexample/Ctx;F)V", "at": "TAIL", "note": "fixture" }
+    ],
+    "gui.before-hand": [
+      { "when": { "loader": "legacy-fabric" }, "method": "example.World#render(F)V", "at": { "invokeString": "example.Profiler#swap(Ljava/lang/String;)V", "ldc": "hand" } }
+    ],
+    "world.tail": [
+      { "when": {}, "method": "example.Renderer#frame(F)V", "at": { "invoke": "example.Renderer#draw()V", "shift": "AFTER", "ordinal": 2 } },
+      { "when": {}, "method": "example.Renderer#frame(F)V", "at": "RETURN" }
+    ]
+  }
+}

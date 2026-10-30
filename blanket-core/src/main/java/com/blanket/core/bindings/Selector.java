@@ -20,14 +20,16 @@ public final class Selector {
             Arrays.asList("fabric", "legacy-fabric", "neoforge", "forge")));
 
     /** The selector that matches every target. */
-    public static final Selector ANY = new Selector(null, null);
+    public static final Selector ANY = new Selector(null, null, null);
 
     private final Set<String> loaders;
     private final VersionMatch mc;
+    private final String mcText;
 
-    private Selector(Set<String> loaders, VersionMatch mc) {
+    private Selector(Set<String> loaders, VersionMatch mc, String mcText) {
         this.loaders = loaders;
         this.mc = mc;
+        this.mcText = mcText;
     }
 
     /**
@@ -41,6 +43,7 @@ public final class Selector {
         JsonObject o = element.getAsJsonObject();
         Set<String> loaders = null;
         VersionMatch mc = null;
+        String mcText = null;
         for (String key : o.keySet()) {
             String at = jsonPath + "." + key;
             JsonElement v = o.get(key);
@@ -51,6 +54,7 @@ public final class Selector {
                     throw new BindingException(file, at, "mc must be a string");
                 }
                 mc = VersionMatch.parse(v.getAsString(), file, at);
+                mcText = v.getAsString();
             } else {
                 throw new BindingException(file, at, "unknown key '" + key + "' (allowed: loader, mc)");
             }
@@ -58,7 +62,7 @@ public final class Selector {
         if (loaders == null && mc == null) {
             return ANY;
         }
-        return new Selector(loaders, mc);
+        return new Selector(loaders, mc, mcText);
     }
 
     /** Parses a selector from JSON text. */
@@ -113,6 +117,11 @@ public final class Selector {
     /** Loader ids this selector names, or null for any loader. */
     public Set<String> loaders() {
         return loaders;
+    }
+
+    /** The {@code mc} text as written, or null when the selector has no version part. */
+    public String mc() {
+        return mcText;
     }
 
     @Override

@@ -1,0 +1,14 @@
+{
+  "schema": 1,
+  "api": "com.blanket.runtime.glue.GlueFrame",
+  "members": {
+    "core": [
+      { "when": { "mc": "1.21.1.." }, "lower": { "const": true } },
+      { "when": {}, "lower": { "const": false } }
+    ],
+    "fbo": [
+      { "when": { "mc": "..1.8.9" }, "lower": { "const": -1 } },
+      { "when": {}, "lower": { "invoke": "example.Owner#getTarget()Lexample/Target;" } }
+    ]
+  }
+}
