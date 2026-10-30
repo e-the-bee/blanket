@@ -1,0 +1,16 @@
+# SPDX-License-Identifier: GPL-3.0-only
+[versions]
+asm = "9.7.1"
+mapping-io = "0.9.2"
+gson = "2.15.0"
+junit = "5.14.4"
+
+[libraries]
+asm = { module = "org.ow2.asm:asm", version.ref = "asm" }
+asm-tree = { module = "org.ow2.asm:asm-tree", version.ref = "asm" }
+asm-commons = { module = "org.ow2.asm:asm-commons", version.ref = "asm" }
+mapping-io = { module = "net.fabricmc:mapping-io", version.ref = "mapping-io" }
+gson = { module = "com.google.code.gson:gson", version.ref = "gson" }
+junit-bom = { module = "org.junit:junit-bom", version.ref = "junit" }
+junit-jupiter = { module = "org.junit.jupiter:junit-jupiter" }
+junit-platform-launcher = { module = "org.junit.platform:junit-platform-launcher" }

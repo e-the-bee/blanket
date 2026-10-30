@@ -1,0 +1,10 @@
+# Private module: separate repository (D-035, D-048)
+blanket-emit/
+.gradle/
+build/
+.cache/
+run/
+out/
+.idea/
+*.iml
+.kotlin/
