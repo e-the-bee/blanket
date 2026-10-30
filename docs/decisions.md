@@ -301,3 +301,11 @@ schema adds `{"invokeString", "ldc"}` and passes payload values as `Object` to `
 conversions as glue members ([binding-format.md](binding-format.md) §7). Alternative: conversion steps
 inside the event recipe (a second place for Minecraft names). **Provisional** until M1 binds the six M0
 recipes with it.
+
+**D-052 — Build dependencies for M1 and glue stubs as static members.** 2026-10-30. **Provisional** for the owner to confirm.
+M1 T1 and T2 added: the Gradle 9.8.0 wrapper; ASM 9.7.1, mapping-io 0.9.2, Gson 2.15.0 and JUnit 5.14.4 from Maven
+Central; LWJGL 3.3.3 (`org.lwjgl:lwjgl`, `lwjgl-opengl`) from Maven Central, compile-only. LWJGL 2.9.4 is not on Maven
+Central, so `blanket-runtime` declares `libraries.minecraft.net` as a repository restricted to `org.lwjgl.lwjgl`, the same
+jar the 1.8.9 game downloads (compile-only, the game provides it). The runtime's `Glue` abstract class is replaced by
+static glue stubs in `com.blanket.runtime.glue` (`GlueFrame`, `GlueWorld`, `GlueGui`), each bound per target by
+`glue/*.json` (D-051 shape). Log4j-api (listed in architecture.md section 2) is not added: no runtime code uses it.
