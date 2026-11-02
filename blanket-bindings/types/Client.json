@@ -1,0 +1,22 @@
+{
+  "schema": 1,
+  "api": "com.blanket.api.Client",
+  "representation": [
+    { "when": { "mc": "..1.13.2" }, "alias": "lf:net/minecraft/class_1600" },
+    { "when": { "mc": "26.1.." },    "alias": "official:net.minecraft.client.Minecraft" },
+    { "when": {},                    "alias": "net.minecraft.client.Minecraft" }
+  ],
+  "members": {
+    "get": [
+      { "when": { "mc": "..1.13.2" }, "lower": { "invoke": "lf:net/minecraft/class_1600#method_2965()Lnet/minecraft/class_1600;" } },
+      { "when": { "mc": "26.1.." },    "lower": { "invoke": "official:net.minecraft.client.Minecraft#getInstance()Lnet/minecraft/client/Minecraft;" } },
+      { "when": {},                    "lower": { "invoke": "net.minecraft.client.Minecraft#getInstance()Lnet/minecraft/client/Minecraft;" } }
+    ],
+    "player": [
+      { "when": { "mc": "..1.13.2" }, "lower": { "get": "lf:net/minecraft/class_1600#field_10310:Lnet/minecraft/class_518;" } },
+      { "when": { "mc": "26.1.." },    "lower": { "get": "official:net.minecraft.client.Minecraft#player:Lnet/minecraft/client/player/LocalPlayer;" } },
+      { "when": {},                    "lower": { "get": "net.minecraft.client.Minecraft#player:Lnet/minecraft/client/player/LocalPlayer;" } }
+    ]
+  },
+  "note": "M0 subset. Names are the ones Gen.java used in real games; the M1 T9 test resolves them on the six targets."
+}

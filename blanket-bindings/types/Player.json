@@ -1,0 +1,27 @@
+{
+  "schema": 1,
+  "api": "com.blanket.api.Player",
+  "representation": [
+    { "when": { "mc": "..1.13.2" }, "alias": "lf:net/minecraft/class_518" },
+    { "when": { "mc": "26.1.." },    "alias": "official:net.minecraft.client.player.LocalPlayer" },
+    { "when": {},                    "alias": "net.minecraft.client.player.LocalPlayer" }
+  ],
+  "members": {
+    "x": [
+      { "when": { "mc": "..1.13.2" }, "lower": { "get": "lf:net/minecraft/class_864#field_3252:D" } },
+      { "when": { "mc": "26.1.." },    "lower": { "invoke": "official:net.minecraft.world.entity.Entity#getX()D" } },
+      { "when": {},                    "lower": { "invoke": "net.minecraft.world.entity.Entity#getX()D" } }
+    ],
+    "y": [
+      { "when": { "mc": "..1.13.2" }, "lower": { "get": "lf:net/minecraft/class_864#field_3253:D" } },
+      { "when": { "mc": "26.1.." },    "lower": { "invoke": "official:net.minecraft.world.entity.Entity#getY()D" } },
+      { "when": {},                    "lower": { "invoke": "net.minecraft.world.entity.Entity#getY()D" } }
+    ],
+    "z": [
+      { "when": { "mc": "..1.13.2" }, "lower": { "get": "lf:net/minecraft/class_864#field_3254:D" } },
+      { "when": { "mc": "26.1.." },    "lower": { "invoke": "official:net.minecraft.world.entity.Entity#getZ()D" } },
+      { "when": {},                    "lower": { "invoke": "net.minecraft.world.entity.Entity#getZ()D" } }
+    ]
+  },
+  "note": "Gen.java lowers Player.x/y/z on the entity class. The entity owner is written on the declaring class, as binding-format.md 2.3 requires."
+}

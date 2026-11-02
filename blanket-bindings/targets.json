@@ -1,0 +1,34 @@
+{
+  "schema": 1,
+  "anchor": "1.21.1",
+  "loaders": {
+    "fabric": [
+      { "when": { "mc": "1.14..1.21.11" }, "runtime": "intermediary", "emitter": "fabric" },
+      { "when": { "mc": "26.1.." },        "runtime": "official",     "emitter": "fabric" }
+    ],
+    "legacy-fabric": [
+      { "when": { "mc": "1.8.9..1.13.2" }, "runtime": "lf", "emitter": "fabric" }
+    ],
+    "neoforge": [
+      { "when": { "mc": "1.20.1" },          "runtime": "srgmoj",   "emitter": "neoforge" },
+      { "when": { "mc": "1.20.2..1.21.11" }, "runtime": "mojang",   "emitter": "neoforge" },
+      { "when": { "mc": "26.1.." },          "runtime": "official", "emitter": "neoforge" }
+    ],
+    "forge": [
+      { "when": { "mc": "1.8.9..1.12.2" },   "runtime": "obf",      "emitter": "forge-legacy" },
+      { "when": { "mc": "1.13.2..1.16.5" },  "runtime": "srg",      "emitter": "forge-modern" },
+      { "when": { "mc": "1.17..1.20.4" },    "runtime": "srgmoj",   "emitter": "forge-modern" },
+      { "when": { "mc": "1.20.6..1.21.11" }, "runtime": "mojang",   "emitter": "forge-modern" },
+      { "when": { "mc": "26.1.." },          "runtime": "official", "emitter": "forge-modern" }
+    ]
+  },
+  "versions": {
+    "1.8.9":  { "java": 8,  "mappings": { "lf": "net.legacyfabric:intermediary:1.8.9:v2" }, "adapters": "legacy" },
+    "1.20.1": { "java": 17, "mappings": { "mojang": true, "intermediary": "net.fabricmc:intermediary:1.20.1:v2", "srg": "de.oceanlabs.mcp:mcp_config:1.20.1" }, "adapters": "modern" },
+    "1.21.1": { "java": 21, "mappings": { "mojang": true, "intermediary": "net.fabricmc:intermediary:1.21.1:v2" }, "adapters": "modern" },
+    "26.1.2": { "java": 25, "mappings": { "official": true }, "adapters": "unobf" }
+  },
+  "supported": [
+    "legacy-fabric:1.8.9", "forge:1.8.9", "fabric:1.21.1", "neoforge:1.21.1", "fabric:26.1.2", "forge:1.20.1"
+  ]
+}
