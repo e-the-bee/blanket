@@ -88,8 +88,10 @@ public final class MappingIndex {
         int ns = ns(fromNs);
         List<MemberRow> rows = members.get(key(ns, owner, name));
         if (rows == null) return null;
+        boolean method = desc.startsWith("(");
         for (MemberRow r : rows) {
-            if (desc.equals(r.descs[ns])) return r;
+            if (r.method != method) continue;   // a field and a method may share a name
+            if (r.descs[ns] == null || desc.equals(r.descs[ns])) return r;
         }
         return null;
     }
@@ -113,7 +115,12 @@ public final class MappingIndex {
         for (Map.Entry<MemberRow, String> e : srcDescs.entrySet()) {
             MemberRow row = e.getKey();
             for (int i = 0; i < namespaces.size(); i++) {
-                row.descs[i] = i == srcNs ? e.getValue() : translateDescIndexed(srcNs, e.getValue(), i);
+                // Fields without a type in the file (TSRG2) keep a null descriptor: they match on name alone.
+                if (e.getValue() == null) {
+                    row.descs[i] = null;
+                } else {
+                    row.descs[i] = i == srcNs ? e.getValue() : translateDescIndexed(srcNs, e.getValue(), i);
+                }
             }
         }
     }
