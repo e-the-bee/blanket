@@ -309,3 +309,9 @@ Central, so `blanket-runtime` declares `libraries.minecraft.net` as a repository
 jar the 1.8.9 game downloads (compile-only, the game provides it). The runtime's `Glue` abstract class is replaced by
 static glue stubs in `com.blanket.runtime.glue` (`GlueFrame`, `GlueWorld`, `GlueGui`), each bound per target by
 `glue/*.json` (D-051 shape). Log4j-api (listed in architecture.md section 2) is not added: no runtime code uses it.
+
+**D-053 — `chain` gains a `cast` step.** 2026-11-02. A `chain` step may be `{"cast": "<class>"}`, which changes the static type of the value before the next step. Needed for M0's 26.x texture hooks (`GpuTexture` to `GlTexture`, then `glId`). The cast is a checked type change in the lowering, not a conversion. **Provisional** for the owner to confirm; becomes final when the six M0 bindings pass the gate.
+
+**D-054 — Event payloads may take glue values.** 2026-11-02. A payload source may be `{"glue": "<glue member>", "args": [<source>...]}`, where each `args` entry is any existing payload source. The glue member is an `Object`-returning static in `com.blanket.runtime.glue`, so conversions and side effects (for example `GuiGraphics.flush()`, `Matrix4f` to `float[]`) live in glue, not in the hook body. Extends D-051. **Provisional** for the owner to confirm.
+
+**D-055 — `Dispatch` stays typed for M1; note against D-051.** 2026-11-02. D-051 planned `Dispatch.<event>(Object...)`. For M1, `blanket-runtime` keeps the typed `Dispatch` methods M0 used, because the six M0 hooks already call them with the right types and no hook passes an unconverted value that would need `Object`. D-051's payload-unconverted rule still holds: conversions happen in glue before the call. Revisit with the `Object...` form only if a later milestone needs it. **Provisional** for the owner to confirm.
