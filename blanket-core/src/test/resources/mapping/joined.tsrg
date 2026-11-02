@@ -1,0 +1,9 @@
+tsrg2 obf srg id
+a net/example/Client_fx 1
+	c ()V m_1_ 11
+	z ()V m_9_ 19
+	b f_2_ 12
+d net/example/Player_fx 2
+	e f_3_ 13
+	f ()D m_4_ 14
+	g (La;I)V m_5_ 15

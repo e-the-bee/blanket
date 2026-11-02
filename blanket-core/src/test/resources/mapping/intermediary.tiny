@@ -1,0 +1,8 @@
+tiny	2	0	official	intermediary	named
+c	a	class_1	NamedClient
+	m	()V	c	method_1	tick
+	m	()V	z	method_9	unused
+	f	Ld;	b	field_2	player
+c	d	class_2	NamedPlayer
+	f	D	e	field_3	x
+	m	(La;I)V	g	method_4	jump
