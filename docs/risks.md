@@ -9,7 +9,7 @@ documents maps to a spike here.
 | Id | Risk | L | I | Spike | Fallback |
 |---|---|---|---|---|---|
 | R-01 | **(retired by M0, R-EXP-02)** Type aliasing produces bytecode that verifies offline but fails with real game classes (class loading order, loader class loaders, Mixin-transformed targets) | low (E1 passed offline) | high | S-01 | Switch the failing type to `owned` with boundary conversion ([binding-format.md](binding-format.md) §4.1); measure allocation cost on hot paths |
-| R-02 | Legacy Fabric intermediary ids are not stable across 1.8.9–1.13.2 for some members, so one `lf:` rule does not cover the range | low (checked members were stable) | med | S-03 | Per-version `lf:` rules where needed; the validator (C2) finds every case |
+| R-02 | Legacy Fabric intermediary ids are not stable across 1.8.9–1.13.2 for some members, so one `lf:` rule does not cover the range | high (R-EXP-10: only 73.5% of 200 ids stable; 53 members need per-version rules) | med | S-03 | Per-version `lf:` rules where needed; the validator (C2) finds every case |
 | R-03 | **(retired by M0 for all six core eras, R-EXP-02)** A loader-era's runtime namespace is not what the data says | low (all verified, R-LDR-*) | high | S-01 | Fix the era row in `targets.json`; data, not code |
 | R-04 | A future event has no native hook on legacy Forge, which has no Mixin | med | med | S-12 | Generated coremod (D-014); if `@SortingIndex` cannot see notch names, use the event's nearest native event or mark the event unsupported on that era with a `Feature` |
 | R-05 | Raw GL next to Minecraft's renderer corrupts its cached state or draws at the wrong depth/framebuffer | med | high | S-06 | Extend the guard to the failing state; on 1.21.5+ move that target to the `gpu` backend earlier |
