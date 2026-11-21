@@ -3,7 +3,6 @@ package com.blanket.core.resolve;
 
 import com.blanket.core.fetch.ArtifactFetcher;
 import com.blanket.core.mapping.MappingDownloads;
-import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
@@ -52,8 +51,7 @@ class NameRoutesOracleTest {
             assertTrue(problems.isEmpty(), "unexpected problems: " + problems);
             return out;
         } catch (IllegalStateException e) {
-            Assumptions.assumeTrue(false, "mapping data unavailable (offline?): " + e.getMessage());
-            return null;
+            throw com.blanket.core.testsupport.RealData.skipIfOffline(e);
         }
     }
 

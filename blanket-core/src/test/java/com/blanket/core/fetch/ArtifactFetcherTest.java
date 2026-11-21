@@ -153,4 +153,43 @@ class ArtifactFetcherTest {
         assertEquals(ArtifactFetcher.Digest.SHA256, ArtifactFetcher.Digest.of("a".repeat(64)));
         assertThrows(IllegalArgumentException.class, () -> ArtifactFetcher.Digest.of("abc"));
     }
+
+    @Test
+    void offlineCorruptCacheEntryIsKeptAndFailsClearly() throws Exception {
+        String sum = hex("SHA-1", BODY);
+        Path p = new ArtifactFetcher(cache, false).fetch(uri, sum);
+        byte[] tampered = "tampered".getBytes(StandardCharsets.UTF_8);
+        Files.write(p, tampered);
+        FetchException e = assertThrows(FetchException.class, () -> new ArtifactFetcher(cache, true).fetch(uri, sum));
+        assertTrue(e.getMessage().contains("checksum mismatch"), e.getMessage());
+        assertTrue(e.getMessage().contains("expected " + sum), e.getMessage());
+        assertTrue(e.getMessage().contains(hex("SHA-1", tampered)), e.getMessage());
+        assertTrue(e.getMessage().contains(p.toString()), e.getMessage());
+        assertArrayEquals(tampered, Files.readAllBytes(p));
+        assertEquals(1, hits.get());
+    }
+
+    @Test
+    void nonHexDigestIsRejectedBeforeAnyPathIsBuilt() {
+        ArtifactFetcher f = new ArtifactFetcher(cache, false);
+        for (String bad : new String[] {"../" + "a".repeat(37), "a/" + "b".repeat(38), "g".repeat(40), "a".repeat(41), ""}) {
+            assertThrows(IllegalArgumentException.class, () -> f.fetch(uri, bad), bad);
+        }
+        assertEquals(0, hits.get());
+        assertTrue(!Files.exists(cache.resolve("downloads")));
+    }
+
+    @Test
+    void sendsUserAgentBlanket() throws Exception {
+        java.util.concurrent.atomic.AtomicReference<String> seen = new java.util.concurrent.atomic.AtomicReference<>();
+        server.createContext("/ua.jar", exchange -> {
+            seen.set(exchange.getRequestHeaders().getFirst("User-Agent"));
+            exchange.sendResponseHeaders(200, BODY.length);
+            try (OutputStream out = exchange.getResponseBody()) {
+                out.write(BODY);
+            }
+        });
+        new ArtifactFetcher(cache, false).fetch(URI.create(uri.toString().replace("artifact.jar", "ua.jar")), null);
+        assertEquals("blanket", seen.get());
+    }
 }

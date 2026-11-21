@@ -3,7 +3,6 @@ package com.blanket.core.resolve;
 
 import com.blanket.core.fetch.ArtifactFetcher;
 import com.blanket.core.mapping.MappingDownloads;
-import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
 import org.objectweb.asm.Opcodes;
 
@@ -26,8 +25,7 @@ class ClassIndexTest {
         try {
             return new MappingDownloads(new ArtifactFetcher(ArtifactFetcher.defaultCacheRoot(), false)).clientJar(mc);
         } catch (RuntimeException e) {
-            Assumptions.assumeTrue(false, "client jar " + mc + " unavailable (offline?): " + e.getMessage());
-            return null;
+            throw com.blanket.core.testsupport.RealData.skipIfOffline(e);
         }
     }
 

@@ -5,11 +5,27 @@ package com.blanket.core.fetch;
 public final class FetchException extends RuntimeException {
     private static final long serialVersionUID = 1L;
 
+    private final boolean transportFailure;
+
+    /** A non-transport failure (HTTP status error, checksum mismatch, unreadable cache file). */
     public FetchException(String message) {
-        super(message);
+        this(message, null, false);
     }
 
     public FetchException(String message, Throwable cause) {
+        this(message, cause, false);
+    }
+
+    public FetchException(String message, Throwable cause, boolean transportFailure) {
         super(message, cause);
+        this.transportFailure = transportFailure;
+    }
+
+    /**
+     * True when the data could not be reached at all: connection, DNS or timeout error, or an offline-mode
+     * cache miss. False for an HTTP status error or a checksum mismatch, which point at bad data or a bad ref.
+     */
+    public boolean transportFailure() {
+        return transportFailure;
     }
 }

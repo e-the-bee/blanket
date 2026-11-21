@@ -2,7 +2,6 @@
 package com.blanket.core.mapping;
 
 import com.blanket.core.fetch.ArtifactFetcher;
-import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
 
 import java.nio.file.Path;
@@ -25,8 +24,7 @@ class MappingRealDataTest {
         try {
             return fetch.get();
         } catch (RuntimeException e) {
-            Assumptions.assumeTrue(false, "mapping file unavailable (offline?): " + e.getMessage());
-            return null;
+            throw com.blanket.core.testsupport.RealData.skipIfOffline(e);
         }
     }
 

@@ -28,6 +28,8 @@ import java.util.Locale;
  */
 public final class ArtifactFetcher {
 
+    private static final java.util.regex.Pattern HEX = java.util.regex.Pattern.compile("[0-9a-fA-F]{40}|[0-9a-fA-F]{64}");
+
     /** The digest a download is checked against. */
     public enum Digest {
         SHA1("SHA-1", 40), SHA256("SHA-256", 64);
@@ -42,6 +44,9 @@ public final class ArtifactFetcher {
 
         /** Infers the digest from the length of a hex string. */
         public static Digest of(String hex) {
+            if (hex == null || !HEX.matcher(hex).matches()) {
+                throw new IllegalArgumentException("not a SHA-1 or SHA-256 hex digest: '" + hex + "'");
+            }
             for (Digest d : values()) {
                 if (d.hexLength == hex.length()) {
                     return d;
@@ -50,6 +55,9 @@ public final class ArtifactFetcher {
             throw new IllegalArgumentException("not a SHA-1 or SHA-256 hex digest: '" + hex + "'");
         }
     }
+
+    private static final String OLD_FORGE_MAVEN = "http://files.minecraftforge.net/maven/";
+    private static final String FORGE_MAVEN = "https://maven.minecraftforge.net/";
 
     private final Path cacheRoot;
     private final boolean offline;
@@ -81,22 +89,40 @@ public final class ArtifactFetcher {
      * Returns the local file for {@code uri}, downloading it if needed. {@code expectedHex} may be null, in which case
      * the file is cached by URL and not verified.
      */
-    public Path fetch(URI uri, String expectedHex) {
-        Digest digest = expectedHex == null ? null : Digest.of(expectedHex.toLowerCase(Locale.ROOT));
+    public Path fetch(URI requested, String expectedHex) {
+        URI uri = URI.create(requested.toString().replace(OLD_FORGE_MAVEN, FORGE_MAVEN));
+        Digest digest = expectedHex == null ? null : Digest.of(expectedHex);
         String expected = expectedHex == null ? null : expectedHex.toLowerCase(Locale.ROOT);
         Path target = cachePath(uri, digest, expected);
 
         if (Files.isRegularFile(target)) {
-            if (expected == null || expected.equals(hex(target, digest))) {
+            String actual = expected == null ? null : hex(target, digest);
+            if (expected == null || expected.equals(actual)) {
                 return target;
+            }
+            if (offline) {
+                throw new FetchException("offline mode: cached file " + target + " for '" + uri
+                        + "' has a checksum mismatch: expected " + expected + ", got " + actual
+                        + ". The file was kept; run once without offline mode to replace it.");
             }
             deleteQuietly(target); // corrupt cache entry: fall through and treat as missing
         }
         if (offline) {
             throw new FetchException("offline mode: '" + uri + "' is not in the cache at " + target
-                    + ". Run once without offline mode to download it.");
+                    + ". Run once without offline mode to download it.", null, true);
         }
         download(uri, digest, expected, target);
+        return target;
+    }
+
+    /** Downloads {@code uri} again and replaces its unverified, URL-keyed cache entry. Fails in offline mode. */
+    public Path refetch(URI requested) {
+        URI uri = URI.create(requested.toString().replace(OLD_FORGE_MAVEN, FORGE_MAVEN));
+        Path target = cachePath(uri, null, null);
+        if (offline) {
+            throw new FetchException("offline mode: cannot refetch '" + uri + "'", null, true);
+        }
+        download(uri, null, null, target);
         return target;
     }
 
@@ -109,7 +135,8 @@ public final class ArtifactFetcher {
     }
 
     private void download(URI uri, Digest digest, String expected, Path target) {
-        HttpRequest request = HttpRequest.newBuilder(uri).timeout(Duration.ofMinutes(10)).GET().build();
+        HttpRequest request = HttpRequest.newBuilder(uri).timeout(Duration.ofMinutes(10))
+                .header("User-Agent", "blanket").GET().build();
         Path tmp = null;
         try {
             Files.createDirectories(target.getParent());
@@ -136,11 +163,11 @@ public final class ArtifactFetcher {
             throw e;
         } catch (IOException e) {
             deleteQuietly(tmp);
-            throw new FetchException("download of '" + uri + "' failed: " + e.getMessage(), e);
+            throw new FetchException("download of '" + uri + "' failed: " + e.getMessage(), e, true);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             deleteQuietly(tmp);
-            throw new FetchException("download of '" + uri + "' was interrupted", e);
+            throw new FetchException("download of '" + uri + "' was interrupted", e, true);
         }
     }
 

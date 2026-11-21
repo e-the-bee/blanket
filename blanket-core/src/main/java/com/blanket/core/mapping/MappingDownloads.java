@@ -25,9 +25,16 @@ public final class MappingDownloads {
     private final ArtifactFetcher fetcher;
     private final Path extracted;
     private JsonObject manifest;
+    private final URI manifestUri;
 
     public MappingDownloads(ArtifactFetcher fetcher) {
+        this(fetcher, URI.create(Urls.MOJANG_MANIFEST));
+    }
+
+    /** For tests: reads the version manifest from {@code manifestUri} instead of Mojang. */
+    MappingDownloads(ArtifactFetcher fetcher, URI manifestUri) {
         this.fetcher = fetcher;
+        this.manifestUri = manifestUri;
         this.extracted = fetcher.cacheRoot().resolve("extracted");
     }
 
@@ -35,16 +42,29 @@ public final class MappingDownloads {
 
     private JsonObject versionJson(String mc) {
         if (manifest == null) {
-            manifest = JsonParser.parseString(read(fetcher.fetch(URI.create(Urls.MOJANG_MANIFEST), null))).getAsJsonObject();
+            manifest = JsonParser.parseString(read(fetcher.fetch(manifestUri, null))).getAsJsonObject();
         }
+        JsonObject entry = findVersion(mc);
+        if (entry == null && !fetcher.offline()) {
+            // the manifest is cached by URL forever: a newer version may be missing from it, so refetch once
+            manifest = JsonParser.parseString(read(fetcher.refetch(manifestUri))).getAsJsonObject();
+            entry = findVersion(mc);
+        }
+        if (entry == null) {
+            throw new IllegalArgumentException("Mojang has no version " + mc);
+        }
+        String sha1 = entry.get("sha1").getAsString();
+        return JsonParser.parseString(read(fetcher.fetch(URI.create(entry.get("url").getAsString()), sha1))).getAsJsonObject();
+    }
+
+    private JsonObject findVersion(String mc) {
         for (var v : manifest.getAsJsonArray("versions")) {
             JsonObject o = v.getAsJsonObject();
             if (o.get("id").getAsString().equals(mc)) {
-                String sha1 = o.get("sha1").getAsString();
-                return JsonParser.parseString(read(fetcher.fetch(URI.create(o.get("url").getAsString()), sha1))).getAsJsonObject();
+                return o;
             }
         }
-        throw new IllegalArgumentException("Mojang has no version " + mc);
+        return null;
     }
 
     /** The client jar of a version, checked against Mojang's SHA-1. */
@@ -84,17 +104,13 @@ public final class MappingDownloads {
     }
 
     private Path download(JsonObject artifact) {
-        try {
-            return fetcher.fetch(URI.create(artifact.get("url").getAsString()), artifact.get("sha1").getAsString());
-        } catch (RuntimeException e) {
-            throw e;
-        }
+        return fetcher.fetch(URI.create(artifact.get("url").getAsString()), artifact.get("sha1").getAsString());
     }
 
     /** Downloads a Maven file, verified against its {@code .sha1} sidecar. */
     public Path fetchMavenChecked(String url) {
         Path sidecar = fetcher.fetch(URI.create(url + ".sha1"), null);
-        String sha1 = read(sidecar).trim().split("\s+")[0];
+        String sha1 = read(sidecar).trim().split("\\s+")[0];
         return fetcher.fetch(URI.create(url), sha1);
     }
 

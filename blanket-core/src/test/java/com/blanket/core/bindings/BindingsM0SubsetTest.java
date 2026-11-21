@@ -6,7 +6,6 @@ import com.blanket.core.mapping.MappingDownloads;
 import com.blanket.core.resolve.Ref;
 import com.blanket.core.resolve.Resolver;
 import com.blanket.core.resolve.TargetSpec;
-import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
@@ -78,8 +77,7 @@ class BindingsM0SubsetTest {
         try {
             out = new Resolver(t, "1.21.1", files()).resolve(refs, problems);
         } catch (IllegalStateException e) {
-            Assumptions.assumeTrue(false, "mapping data unavailable (offline?): " + e.getMessage());
-            return null;
+            throw com.blanket.core.testsupport.RealData.skipIfOffline(e);
         }
         assertTrue(problems.isEmpty(), t.id() + " " + ref + ": " + problems);
         Resolver.Resolved r = out.get(ref);
