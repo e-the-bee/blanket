@@ -80,12 +80,12 @@ public final class Lookup {
 
     /** Resolves one parsed reference on one target. */
     public Row resolve(TargetSpec t, Ref ref) {
-        String route = Routes.problem(t, ref);
+        String route = Routes.problem(t, ref, targets.gameClasses());
         if (route != null) return Row.fail(t.id(), Routes.STEP, route, List.of());
         List<Resolver.Problem> problems = new ArrayList<>();
         java.util.Map<String, Resolver.Resolved> out;
         try {
-            out = new Resolver(t, targets.anchor(), files).resolve(List.of(ref), problems);
+            out = new Resolver(t, targets.anchor(), files, targets.gameClasses()).resolve(List.of(ref), problems);
         } catch (IllegalStateException e) {
             return Row.fail(t.id(), "mapping file", e.getMessage(), List.of());
         }

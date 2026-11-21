@@ -4,7 +4,6 @@ package com.blanket.core.validate;
 import com.blanket.core.bindings.Lowering;
 import com.blanket.core.resolve.ClassIndex;
 import com.blanket.core.resolve.Resolver;
-import com.google.gson.JsonPrimitive;
 import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.Type;
 
@@ -46,6 +45,13 @@ final class Shapes {
         }
     }
 
+    /** A part of the lowering the check cannot see: reported as a warning, not as a pass. */
+    private static final class Skip extends RuntimeException {
+        Skip(String message) {
+            super(message, null, false, false);
+        }
+    }
+
     private final ClassIndex index;
     private final Map<String, String> alias;
 
@@ -63,12 +69,21 @@ final class Shapes {
      * @return a description of the difference, or null when the shapes fit or the lowering is not a direct one
      */
     String check(ApiClasses.Method api, String owner, Lowering lowering, Function<String, Resolver.Resolved> resolved) {
+        return check(api, owner, lowering, resolved, reason -> { });
+    }
+
+    /** As above; {@code skipped} gets the reason when the lowering could not be checked (the caller reports a warning). */
+    String check(ApiClasses.Method api, String owner, Lowering lowering, Function<String, Resolver.Resolved> resolved,
+                 java.util.function.Consumer<String> skipped) {
         Effect want = apiEffect(api, owner);
         Effect got;
         try {
             got = lowered(lowering, resolved);
         } catch (ChainError e) {
             return "API member " + want.show() + ", " + e.getMessage();
+        } catch (Skip e) {
+            skipped.accept(e.getMessage());
+            return null;
         }
         if (got == null) return null;
         String problem = compare(want, got, !api.isStatic(), owner.startsWith(GLUE_PACKAGE));
@@ -121,7 +136,7 @@ final class Shapes {
             case GET:
             case PUT:
             case NEW:
-                return single(l, resolved);
+                return single(l, resolved, "the lowering");
             case CHAIN:
                 return chain(l, resolved);
             default:
@@ -129,37 +144,37 @@ final class Shapes {
         }
     }
 
-    private Effect single(Lowering l, Function<String, Resolver.Resolved> resolved) {
-        if (l.ref() == null) return null;
+    private Effect single(Lowering l, Function<String, Resolver.Resolved> resolved, String what) {
+        if (l.ref() == null) throw new Skip(what + " has no reference");
         Resolver.Resolved r = resolved.apply(l.ref());
-        if (r == null) return null;
+        if (r == null) throw new Skip(what + " (" + l.ref() + ") did not resolve");
         ClassIndex.Info info = index.get(r.owner()).orElse(null);
-        if (info == null) return null;
+        if (info == null) throw new Skip(what + ": class " + r.owner() + " is not in the index");
         String self = "L" + r.owner() + ";";
         List<String> params = new ArrayList<>();
         switch (l.kind()) {
             case INVOKE: {
                 Integer access = info.methods().get(r.name() + r.desc());
-                if (access == null) return null;
+                if (access == null) throw new Skip(what + ": method " + r.owner() + "." + r.name() + r.desc() + " is not in the index");
                 if ((access & Opcodes.ACC_STATIC) == 0) params.add(self);
                 for (Type a : Type.getArgumentTypes(r.desc())) params.add(a.getDescriptor());
                 return new Effect(params, Type.getReturnType(r.desc()).getDescriptor());
             }
             case GET: {
                 Integer access = info.fields().get(r.name() + ":" + r.desc());
-                if (access == null) return null;
+                if (access == null) throw new Skip(what + ": field " + r.owner() + "." + r.name() + ":" + r.desc() + " is not in the index");
                 if ((access & Opcodes.ACC_STATIC) == 0) params.add(self);
                 return new Effect(params, r.desc());
             }
             case PUT: {
                 Integer access = info.fields().get(r.name() + ":" + r.desc());
-                if (access == null) return null;
+                if (access == null) throw new Skip(what + ": field " + r.owner() + "." + r.name() + ":" + r.desc() + " is not in the index");
                 if ((access & Opcodes.ACC_STATIC) == 0) params.add(self);
                 params.add(r.desc());
                 return new Effect(params, "V");
             }
             case NEW: {
-                if (!info.methods().containsKey(r.name() + r.desc())) return null;
+                if (!info.methods().containsKey(r.name() + r.desc())) throw new Skip(what + ": constructor " + r.owner() + "." + r.name() + r.desc() + " is not in the index");
                 for (Type a : Type.getArgumentTypes(r.desc())) params.add(a.getDescriptor());
                 return new Effect(params, self);
             }
@@ -179,12 +194,11 @@ final class Shapes {
         Lowering s0 = steps.get(0);
         if (s0.kind() == Lowering.Kind.CAST) {
             Resolver.Resolved r = resolved.apply(s0.ref());
-            if (r == null) return null;
+            if (r == null) throw new Skip("chain step 1 (" + s0.ref() + ") did not resolve");
             current = "L" + r.owner() + ";";
             first = new Effect(List.of(ANY_REFERENCE), current);
         } else {
-            first = single(s0, resolved);
-            if (first == null) return null;
+            first = single(s0, resolved, "chain step 1");
             current = first.result();
         }
         List<Lowering> pushed = new ArrayList<>();
@@ -193,7 +207,7 @@ final class Shapes {
             switch (s.kind()) {
                 case CAST: {
                     Resolver.Resolved r = resolved.apply(s.ref());
-                    if (r == null) return null;
+                    if (r == null) throw new Skip("chain step " + (i + 1) + " (" + s.ref() + ") did not resolve");
                     current = "L" + r.owner() + ";";
                     break;
                 }
@@ -203,8 +217,7 @@ final class Shapes {
                     break;
                 case INVOKE:
                 case GET: {
-                    Effect e = single(s, resolved);
-                    if (e == null) return null;
+                    Effect e = single(s, resolved, "chain step " + (i + 1));
                     if (e.params().isEmpty()) {
                         throw new ChainError("chain step " + (i + 1) + " (" + s.ref() + ") must work on the previous result, but it is static");
                     }
@@ -230,7 +243,7 @@ final class Shapes {
                     break;
                 }
                 default:
-                    return null;
+                    throw new Skip("chain step " + (i + 1) + " is a " + s.kind().json() + " step, which the shape check does not model");
             }
         }
         if (!pushed.isEmpty()) {
@@ -242,12 +255,7 @@ final class Shapes {
     /** Whether a const or newarray step gives a value of the descriptor type (binding-format.md 4.3, D-056). */
     private static boolean pushedFits(Lowering step, String type) {
         if (step.kind() == Lowering.Kind.NEWARRAY) return type.equals("[" + step.ref());
-        JsonPrimitive c = step.constant();
-        if (c.isBoolean()) return type.equals("Z");
-        if (c.isString()) return type.equals("Ljava/lang/String;");
-        String text = c.getAsString();
-        boolean integral = text.indexOf('.') < 0 && text.indexOf('e') < 0 && text.indexOf('E') < 0;
-        return type.length() == 1 && (integral ? "BSCIJFD" : "FD").contains(type);
+        return Lowering.constFits(step.constant(), type);
     }
 
     // ---------------------------------------------------------------------------------------- hierarchy

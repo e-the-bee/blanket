@@ -188,7 +188,15 @@ public final class Lowering {
         if (arg.kind == Kind.NEWARRAY) {
             return type.equals("[" + arg.ref);
         }
-        JsonPrimitive c = arg.constant;
+        return constFits(arg.constant, type);
+    }
+
+    /**
+     * Whether a constant can be pushed as a value of the descriptor type: Z for a boolean, String for a string, B/S/C/I
+     * only for an integral value inside the type's range, J/F/D for any integral value, F/D for a fractional one.
+     * The one range rule, shared with the C3 shape check.
+     */
+    public static boolean constFits(JsonPrimitive c, String type) {
         if (c.isBoolean()) {
             return type.equals("Z");
         }
@@ -197,7 +205,30 @@ public final class Lowering {
         }
         String text = c.getAsString();
         boolean integral = text.indexOf('.') < 0 && text.indexOf('e') < 0 && text.indexOf('E') < 0;
-        return integral ? "BSCIJFD".contains(type) && type.length() == 1 : type.equals("F") || type.equals("D");
+        if (!integral) {
+            return type.equals("F") || type.equals("D");
+        }
+        switch (type) {
+            case "J":
+            case "F":
+            case "D":
+                return true;
+            case "B":
+                return inRange(text, -128, 127);
+            case "S":
+                return inRange(text, -32768, 32767);
+            case "C":
+                return inRange(text, 0, 65535);
+            case "I":
+                return inRange(text, Integer.MIN_VALUE, Integer.MAX_VALUE);
+            default:
+                return false;
+        }
+    }
+
+    private static boolean inRange(String integral, long min, long max) {
+        java.math.BigInteger v = new java.math.BigInteger(integral);
+        return v.compareTo(java.math.BigInteger.valueOf(min)) >= 0 && v.compareTo(java.math.BigInteger.valueOf(max)) <= 0;
     }
 
     /** Parameter descriptors of a method reference, in order. */

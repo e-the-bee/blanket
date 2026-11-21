@@ -1,6 +1,8 @@
 {
   "schema": 1,
   "anchor": "1.21.1",
+  "gamePackages": ["net/minecraft/", "com/mojang/"],
+  "obfuscatedClass": "[a-z][a-z0-9]{0,3}(\\$.*)?",
   "loaders": {
     "fabric": [ { "when": { "mc": "1.14..1.21.11" }, "runtime": "intermediary", "emitter": "fabric" } ]
   },

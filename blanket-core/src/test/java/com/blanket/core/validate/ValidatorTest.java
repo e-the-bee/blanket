@@ -340,13 +340,14 @@ class ValidatorTest {
     }
 
     @Test
-    void c7NativeEventClassIsOnlyAWarningWhenTheLoaderJarIsUnknown() throws IOException {
+    void c7NativeEventClassIsUnresolvedAtLoaderJarWhenTheLoaderJarIsUnknown() throws IOException {
         Map<String, String> f = new LinkedHashMap<>();
         f.put("events/FxNative.json", nativeEvent("net.example.NoSuchEvent"));
-        Report r = run(f);
-        assertTrue(r.ok(), r.format());
-        assertEquals(1, r.warnings().size(), r.format());
-        assertTrue(r.warnings().get(0).contains("loader jar"), r.warnings().get(0));
+        Diagnostic d = only(run(f));
+        assertEquals(ErrorCode.UNRESOLVED, d.code());
+        assertEquals("event FX_NATIVE", d.member());
+        assertEquals("loader-jar", d.namespaceStep());
+        assertTrue(d.nextStep().contains("loader-artifacts.json"), d.nextStep());
     }
 
     // ---------------------------------------------------------------------------------------- C8 mapping terms

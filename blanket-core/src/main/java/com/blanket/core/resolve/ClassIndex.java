@@ -73,7 +73,7 @@ public final class ClassIndex implements AutoCloseable {
         // The default jrt file system is shared by the JVM and cannot be closed; it is left open.
     }
 
-    /** The class with this internal name ({@code net/minecraft/class_310}), or empty. */
+    /** The class with this internal name (slashes, no {@code .class}), or empty. */
     public Optional<Info> get(String internalName) {
         return cache.computeIfAbsent(internalName, this::read);
     }

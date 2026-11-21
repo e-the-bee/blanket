@@ -2,6 +2,7 @@
 package com.blanket.core.resolve;
 
 import com.blanket.core.fetch.ArtifactFetcher;
+import com.blanket.core.lookup.LookupFixture;
 import com.blanket.core.mapping.MappingDownloads;
 import org.junit.jupiter.api.Test;
 
@@ -47,7 +48,7 @@ class NameRoutesOracleTest {
         for (String r : refs) parsed.add(Ref.parse(r, "oracle", "$"));
         List<Resolver.Problem> problems = new ArrayList<>();
         try {
-            Map<String, Resolver.Resolved> out = new Resolver(t, "1.21.1", files()).resolve(parsed, problems);
+            Map<String, Resolver.Resolved> out = new Resolver(t, "1.21.1", files(), LookupFixture.targets().gameClasses()).resolve(parsed, problems);
             assertTrue(problems.isEmpty(), "unexpected problems: " + problems);
             return out;
         } catch (IllegalStateException e) {

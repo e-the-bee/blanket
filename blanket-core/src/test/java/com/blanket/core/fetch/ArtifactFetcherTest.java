@@ -192,4 +192,12 @@ class ArtifactFetcherTest {
         new ArtifactFetcher(cache, false).fetch(URI.create(uri.toString().replace("artifact.jar", "ua.jar")), null);
         assertEquals("blanket", seen.get());
     }
+
+    @Test
+    void forgeMavenRewriteOnlyChangesALeadingPrefix() {
+        assertEquals(URI.create("https://maven.minecraftforge.net/a/b.jar"),
+                ArtifactFetcher.rewrite(URI.create("http://files.minecraftforge.net/maven/a/b.jar")));
+        URI later = URI.create("https://example.org/mirror/http://files.minecraftforge.net/maven/a/b.jar");
+        assertEquals(later, ArtifactFetcher.rewrite(later));
+    }
 }

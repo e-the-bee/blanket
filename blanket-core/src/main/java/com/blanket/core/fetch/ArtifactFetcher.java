@@ -85,12 +85,18 @@ public final class ArtifactFetcher {
         return offline;
     }
 
+    /** Moves the retired Forge maven prefix to its current host; only a URL that starts with it is changed. */
+    static URI rewrite(URI requested) {
+        String text = requested.toString();
+        return text.startsWith(OLD_FORGE_MAVEN) ? URI.create(FORGE_MAVEN + text.substring(OLD_FORGE_MAVEN.length())) : requested;
+    }
+
     /**
      * Returns the local file for {@code uri}, downloading it if needed. {@code expectedHex} may be null, in which case
      * the file is cached by URL and not verified.
      */
     public Path fetch(URI requested, String expectedHex) {
-        URI uri = URI.create(requested.toString().replace(OLD_FORGE_MAVEN, FORGE_MAVEN));
+        URI uri = rewrite(requested);
         Digest digest = expectedHex == null ? null : Digest.of(expectedHex);
         String expected = expectedHex == null ? null : expectedHex.toLowerCase(Locale.ROOT);
         Path target = cachePath(uri, digest, expected);
@@ -117,7 +123,7 @@ public final class ArtifactFetcher {
 
     /** Downloads {@code uri} again and replaces its unverified, URL-keyed cache entry. Fails in offline mode. */
     public Path refetch(URI requested) {
-        URI uri = URI.create(requested.toString().replace(OLD_FORGE_MAVEN, FORGE_MAVEN));
+        URI uri = rewrite(requested);
         Path target = cachePath(uri, null, null);
         if (offline) {
             throw new FetchException("offline mode: cannot refetch '" + uri + "'", null, true);

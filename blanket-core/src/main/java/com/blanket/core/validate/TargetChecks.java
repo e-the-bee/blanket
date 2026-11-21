@@ -8,6 +8,7 @@ import com.blanket.core.bindings.Lowering;
 import com.blanket.core.bindings.TypeBinding;
 import com.blanket.core.bindings.Version;
 import com.blanket.core.resolve.ClassIndex;
+import com.blanket.core.resolve.GameClasses;
 import com.blanket.core.resolve.Ref;
 import com.blanket.core.resolve.Resolver;
 import com.blanket.core.resolve.TargetSpec;
@@ -42,6 +43,7 @@ final class TargetChecks {
     private final List<Diagnostic> errors;
     private final List<String> warnings;
     private final List<Use> uses = new ArrayList<>();
+    private final GameClasses game;
 
     TargetChecks(BindingSet bindings, TargetData data, ApiClasses api, TargetSpec target, List<Diagnostic> errors, List<String> warnings) {
         this.bindings = bindings;
@@ -50,6 +52,7 @@ final class TargetChecks {
         this.t = target;
         this.errors = errors;
         this.warnings = warnings;
+        this.game = bindings.targets().gameClasses();
     }
 
     void run() throws IOException {
@@ -59,9 +62,9 @@ final class TargetChecks {
         collectEvents();
 
         Resolver.MappingFiles files = data.mappingFiles();
-        Resolution named = Resolution.of(t, group(uses, null), files);
+        Resolution named = Resolution.of(t, group(uses, null), files, game);
         boolean sameNames = t.runtime().equals("obf") || t.runtime().equals("official");
-        Resolution jarNames = sameNames ? named : Resolution.of(Resolution.jarNames(t), group(uses, named), files);
+        Resolution jarNames = sameNames ? named : Resolution.of(Resolution.jarNames(t), group(uses, named), files, game);
 
         List<Path> jars = new ArrayList<>(data.classpath(t));
         jars.addAll(data.libraryJars(t, libraryOwners(jarNames)));
@@ -210,14 +213,23 @@ final class TargetChecks {
             }
             boolean loader = u.ref().ns().equals("loader");
             // A loader jar is compiled against the runtime names of its era, not the client jar's names
-            Resolver.Resolved r = (loader ? named : jarNames).resolved(u.anchor(), text);
-            if (r == null) continue;
+            Resolution used = loader ? named : jarNames;
+            Resolver.Resolved r = used.resolved(u.anchor(), text);
+            if (r == null) {
+                // named had no problem for this use, so the other resolution must have one; if neither does, say so
+                Resolver.Problem unresolved = used.problem(u.anchor(), text);
+                errors.add(new Diagnostic(ErrorCode.UNRESOLVED, t.id(), u.member(), text, unresolved != null ? unresolved.step() : "resolve",
+                        u.check() + ": " + (unresolved != null ? unresolved.message() : "the reference did not resolve and no step reported why"),
+                        "run " + Rules.lookupCommand(text) + " for the failing step and candidates, then fix " + u.site()));
+                continue;
+            }
             String missing = missingFromJar(index, r);
             if (missing == null) continue;
             if (!loader && isLibraryClass(r.owner()) && !data.coversLibraries(t)) continue;   // JOML, LWJGL and friends ship beside the client jar, not in it
             if (loader && !data.hasLoaderJar(t)) {
-                warnings.add(t.id() + " " + u.member() + ": " + missing + "; the loader jar of " + t.id()
-                        + " is unknown (add it to loader-artifacts.json), so it was not checked");
+                errors.add(new Diagnostic(ErrorCode.UNRESOLVED, t.id(), u.member(), text, "loader-jar", u.check() + ": " + missing
+                        + "; " + t.id() + " has no loader jar, so the loader reference cannot be checked",
+                        "add the loader of " + t.id() + " to loader-artifacts.json (binding-format.md 7), or write " + u.site() + " without a loader reference for " + t.id()));
                 continue;
             }
             errors.add(new Diagnostic(ErrorCode.UNRESOLVED, t.id(), u.member(), text, "jar", u.check() + ": " + missing,
@@ -250,11 +262,11 @@ final class TargetChecks {
     }
 
     /**
-     * A class that is neither a Minecraft class nor an obfuscated one: a library the game ships beside its client jar
+     * A class that is neither a game class nor a JDK class: a library the game ships beside its client jar
      * (JOML, LWJGL), whose classes the client jar cannot vouch for.
      */
-    private static boolean isLibraryClass(String owner) {
-        return !(owner.startsWith("net/minecraft/") || owner.startsWith("com/mojang/") || owner.matches("[a-z][a-z0-9]{0,3}(\\$.*)?")
+    private boolean isLibraryClass(String owner) {
+        return !(game.isGame(owner)
                 || owner.startsWith("java/") || owner.startsWith("javax/") || owner.startsWith("jdk/") || owner.startsWith("sun/"));
     }
 
@@ -283,9 +295,12 @@ final class TargetChecks {
                 int i = Rules.first(rules, TypeBinding.MemberRule::when, t);
                 if (i < 0) continue;
                 Lowering l = rules.get(i).lower();
-                String problem = shapes.check(m, Rules.internal(tb.api()), l, text -> jarNames.resolved(anchor, text));
-                if (problem == null) continue;
                 String label = Rules.simple(tb.api()) + "." + key;
+                String problem = shapes.check(m, Rules.internal(tb.api()), l, text -> jarNames.resolved(anchor, text), reason -> {
+                    boolean c2Failed = errors.stream().anyMatch(d -> d.target().equals(t.id()) && label.equals(d.member()));
+                    if (!c2Failed) warnings.add(t.id() + " " + label + ": SHAPE not checked: " + reason);
+                });
+                if (problem == null) continue;
                 errors.add(new Diagnostic(ErrorCode.SHAPE, t.id(), label, l.kind() == Lowering.Kind.CHAIN ? null : l.ref(), null,
                         "C3 shape: " + problem,
                         "make the lowering's stack effect (receiver, arguments, result) equal the API member's in " + e.getKey() + " member \"" + key

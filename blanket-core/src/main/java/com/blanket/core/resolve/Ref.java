@@ -5,7 +5,7 @@ import com.blanket.core.bindings.BindingException;
 
 /**
  * A symbol reference as bindings write it (binding-format.md section 2.3): {@code [ns[@version]:]class[#member]}.
- * Class names are internal names ({@code net/minecraft/class_310}); a member is a method with a descriptor or a field
+ * Class names are internal names (slashes, as in a class file); a member is a method with a descriptor or a field
  * with its type.
  */
 public record Ref(String text, String ns, String version, String owner, String name, String desc, boolean field) {

@@ -75,7 +75,7 @@ class BindingsM0SubsetTest {
         List<Resolver.Problem> problems = new ArrayList<>();
         Map<String, Resolver.Resolved> out;
         try {
-            out = new Resolver(t, "1.21.1", files()).resolve(refs, problems);
+            out = new Resolver(t, "1.21.1", files(), BindingFiles.readTargets(BINDINGS.resolve("targets.json")).gameClasses()).resolve(refs, problems);
         } catch (IllegalStateException e) {
             throw com.blanket.core.testsupport.RealData.skipIfOffline(e);
         }

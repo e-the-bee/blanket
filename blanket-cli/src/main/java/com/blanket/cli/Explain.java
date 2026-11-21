@@ -100,7 +100,7 @@ final class Explain {
     }
 
     private void explainRef(Ref ref, String anchor, TargetSpec t, String label, List<String> lines, List<Diagnostic> diagnostics) {
-        Resolver resolver = new Resolver(t, anchor, files);
+        Resolver resolver = new Resolver(t, anchor, files, bindings.targets().gameClasses());
         List<Resolver.Problem> problems = new ArrayList<>();
         Resolver.Resolved r = resolver.resolve(List.of(ref), problems).get(ref.text());
         lines.add("  reference " + ref.text());

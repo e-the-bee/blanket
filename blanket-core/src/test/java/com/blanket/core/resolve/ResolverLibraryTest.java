@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-only
 package com.blanket.core.resolve;
 
+import com.blanket.core.lookup.LookupFixture;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.objectweb.asm.ClassWriter;
@@ -56,7 +57,7 @@ class ResolverLibraryTest {
     private Map<String, Resolver.Resolved> resolve(ClassIndex index, List<Resolver.Problem> problems, String... texts) throws IOException {
         List<Ref> refs = new ArrayList<>();
         for (String t : texts) refs.add(Ref.parse(t, "test", "$"));
-        return new Resolver(TARGET, "1.99", files(), index).resolve(refs, problems);
+        return new Resolver(TARGET, "1.99", files(), index, LookupFixture.targets().gameClasses()).resolve(refs, problems);
     }
 
     @Test

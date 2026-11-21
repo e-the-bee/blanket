@@ -132,6 +132,8 @@ at the first target).
 {
   "schema": 1,
   "anchor": "1.21.1",
+  "gamePackages": ["net/minecraft/", "com/mojang/"],
+  "obfuscatedClass": "[a-z][a-z0-9]{0,3}(\\$.*)?",
   "loaders": {
     "fabric": [
       { "when": { "mc": "1.14..1.21.11" }, "runtime": "intermediary", "emitter": "fabric" },
@@ -167,6 +169,10 @@ at the first target).
 }
 ```
 
+- `gamePackages` and `obfuscatedClass` (both required, D-059) say which class names are the game's own: a name that
+  starts with one of the `gamePackages` prefixes (each ends with `/`), or that matches the `obfuscatedClass` regex
+  in full (inner-class suffix included). A game class with no row in a mapping file is `UNRESOLVED`; only other
+  classes (JOML, LWJGL, the JDK) pass through as library classes (§2.4).
 - `loaders.<id>` is a rule list: first match gives the runtime namespace and emitter for a version.
   A version with no matching era for a loader is not a valid target for that loader.
 - `versions.<id>.java` must equal `javaVersion.majorVersion` in Mojang's version JSON; the core
@@ -394,8 +400,8 @@ field. Other forms are an error.
 `loader-artifacts.json` (D-058) lists, per Forge or NeoForge target, the loader artifact whose universal jar the
 validator indexes to check native event classes and their getter, field and filter references:
 `{"forge:1.8.9": "1.8.9-11.15.1.2318-1.8.9", "forge:1.20.1": "1.20.1-47.4.28", "neoforge:1.21.1": "21.1.265"}`
-(Forge: `net.minecraftforge:forge:<v>:universal`; NeoForge: `net.neoforged:neoforge:<v>:universal`). A loader target
-without an entry gets a warning instead of the check.
+(Forge: `net.minecraftforge:forge:<v>:universal`; NeoForge: `net.neoforged:neoforge:<v>:universal`). A supported
+target whose binding uses a `loader:` reference and has no entry is `UNRESOLVED` at step `loader-jar` (D-059).
 
 Payload sources: `{"arg": n}` (n-th argument of the hooked method), `{"this": "<field ref>"}`,
 `{"getter": "<method or field ref>"}` (on the native event object: a method without parameters is called, a field

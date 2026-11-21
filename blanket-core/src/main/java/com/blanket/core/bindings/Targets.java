@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-only
 package com.blanket.core.bindings;
 
+import com.blanket.core.resolve.GameClasses;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
@@ -11,6 +12,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.regex.PatternSyntaxException;
 
 /** {@code targets.json}: loader eras, per-version mapping sources and the supported matrix (binding-format.md section 3). */
 public final class Targets {
@@ -24,16 +26,19 @@ public final class Targets {
     private final Map<String, List<Era>> loaders;
     private final Map<String, VersionRow> versions;
     private final List<String> supported;
+    private final GameClasses gameClasses;
 
-    private Targets(String anchor, Map<String, List<Era>> loaders, Map<String, VersionRow> versions, List<String> supported) {
+    private Targets(String anchor, Map<String, List<Era>> loaders, Map<String, VersionRow> versions, List<String> supported,
+                    GameClasses gameClasses) {
         this.anchor = anchor;
         this.loaders = loaders;
         this.versions = versions;
         this.supported = supported;
+        this.gameClasses = gameClasses;
     }
 
     public static Targets parse(JsonElement root, String file) {
-        JsonObject o = Json.root(root, file, "anchor", "loaders", "versions", "supported");
+        JsonObject o = Json.root(root, file, "anchor", "loaders", "versions", "supported", "gamePackages", "obfuscatedClass");
         String anchor = Json.nonEmpty(o, "anchor", file, "$");
         if (!Version.isReleaseId(anchor)) {
             throw new BindingException(file, "$.anchor", "'" + anchor + "' is not a release id");
@@ -71,8 +76,36 @@ public final class Targets {
                 supported.add(Json.str(s.get(i), file, "$.supported[" + i + "]"));
             }
         }
+
+        GameClasses gameClasses = parseGameClasses(o, file);
         return new Targets(anchor, Collections.unmodifiableMap(loaders), Collections.unmodifiableMap(versions),
-                Collections.unmodifiableList(supported));
+                Collections.unmodifiableList(supported), gameClasses);
+    }
+
+    /** {@code gamePackages} (internal-name prefixes) and {@code obfuscatedClass} (a regex), both required. */
+    private static GameClasses parseGameClasses(JsonObject o, String file) {
+        if (!o.has("gamePackages")) {
+            throw new BindingException(file, "$.gamePackages", "missing \"gamePackages\"");
+        }
+        JsonArray a = Json.arr(o.get("gamePackages"), file, "$.gamePackages");
+        if (a.isEmpty()) {
+            throw new BindingException(file, "$.gamePackages", "needs at least one package");
+        }
+        List<String> packages = new ArrayList<String>();
+        for (int i = 0; i < a.size(); i++) {
+            String at = "$.gamePackages[" + i + "]";
+            String p = Json.str(a.get(i), file, at);
+            if (p.length() < 2 || !p.endsWith("/")) {
+                throw new BindingException(file, at, "'" + p + "' must be an internal-name prefix that ends with '/'");
+            }
+            packages.add(p);
+        }
+        String obfuscated = Json.nonEmpty(o, "obfuscatedClass", file, "$");
+        try {
+            return GameClasses.of(packages, obfuscated);
+        } catch (PatternSyntaxException e) {
+            throw new BindingException(file, "$.obfuscatedClass", "not a regular expression: " + e.getDescription());
+        }
     }
 
     public String anchor() {
@@ -91,6 +124,11 @@ public final class Targets {
 
     public List<String> supported() {
         return supported;
+    }
+
+    /** The game's own class names, for telling a missing mapping row from a library class. */
+    public GameClasses gameClasses() {
+        return gameClasses;
     }
 
     public JsonObject toJson() {
@@ -118,6 +156,12 @@ public final class Targets {
             }
             o.add("supported", s);
         }
+        JsonArray packages = new JsonArray();
+        for (String p : gameClasses.packages()) {
+            packages.add(p);
+        }
+        o.add("gamePackages", packages);
+        o.addProperty("obfuscatedClass", gameClasses.obfuscatedClass());
         return o;
     }
 

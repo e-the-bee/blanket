@@ -82,20 +82,22 @@ public final class Resolver {
     private final MappingFiles files;
     private final Map<String, MappingFile> opened = new HashMap<>();
     private final ClassIndex classIndex;
+    private final GameClasses game;
 
-    public Resolver(TargetSpec target, String anchor, MappingFiles files) {
-        this(target, anchor, files, null);
+    public Resolver(TargetSpec target, String anchor, MappingFiles files, GameClasses game) {
+        this(target, anchor, files, null, game);
     }
 
     /**
-     * With a class index, library references (classes that are not Minecraft's) are also checked for existence in it;
-     * without one they are passed through by name.
+     * With a class index, library references (classes that are not the game's) are also checked for existence in it;
+     * without one they are passed through by name. A game class with no mapping row is always a failed reference.
      */
-    public Resolver(TargetSpec target, String anchor, MappingFiles files, ClassIndex classIndex) {
+    public Resolver(TargetSpec target, String anchor, MappingFiles files, ClassIndex classIndex, GameClasses game) {
         this.target = target;
         this.anchor = anchor;
         this.files = files;
         this.classIndex = classIndex;
+        this.game = game;
     }
 
     /**
@@ -121,7 +123,7 @@ public final class Resolver {
                 m.runtimeName = ref.name();
                 // Only Minecraft classes are translated; loader, library and JDK classes in the descriptor are literal.
                 for (String c : Desc.classesIn(ref.desc())) {
-                    if (isMinecraft(c)) classJob(classes, "mojang", anchor, ref.text(), c);
+                    if (game.isGame(c)) classJob(classes, "mojang", anchor, ref.text(), c);
                 }
             }
             members.add(m);
@@ -348,10 +350,10 @@ public final class Resolver {
         return f;
     }
 
-    private static void apply(Job j, Hop hop, MappingIndex index) {
+    private void apply(Job j, Hop hop, MappingIndex index) {
         String ownerTo = index.mapClass(hop.from(), j.owner, hop.to());
         if (ownerTo == null) {
-            if (isMinecraft(j.owner)) {
+            if (game.isGame(j.owner)) {
                 j.failStep = hop.group();
                 j.failMessage = "class " + j.owner + " has no row in " + hop.file();
                 return;
@@ -384,20 +386,15 @@ public final class Resolver {
         j.runtimeName = j.name;
     }
 
-    /** True for a Minecraft class name: a net/minecraft/ name, or a short obfuscated name. */
-    static boolean isMinecraft(String owner) {
-        return owner.startsWith("net/minecraft/") || owner.matches("[a-z][a-z0-9]{0,3}");
-    }
-
     /**
      * True when a reference names a library or JDK class: a class with no mapping row, or, where no mapping file is
-     * involved at all (official names on an official runtime), a name that is not Minecraft's. Loader references are
+     * involved at all (official names on an official runtime), a name that is not the game's. Loader references are
      * used literally and are not checked.
      */
     private boolean isLibrary(Ref ref, Job ownerJob) {
         if (ref.ns().equals("loader")) return false;
         if (ownerJob.library) return true;
-        return hopsToTargetObf(ref.ns(), ref.version()).isEmpty() && runtimeClassHops().isEmpty() && !isMinecraft(ref.owner());
+        return hopsToTargetObf(ref.ns(), ref.version()).isEmpty() && runtimeClassHops().isEmpty() && !game.isGame(ref.owner());
     }
 
     /**

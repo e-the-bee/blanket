@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-only
 package com.blanket.core.lookup;
 
+import com.blanket.core.resolve.GameClasses;
 import com.blanket.core.resolve.Ref;
 import com.blanket.core.resolve.TargetSpec;
 
@@ -15,8 +16,8 @@ public final class Routes {
     private Routes() {}
 
     /** A sentence naming the missing route of {@code ref} on {@code target}, or null when a route exists. */
-    public static String problem(TargetSpec target, Ref ref) {
-        String library = ref.owner().startsWith("net/minecraft/") || ref.owner().startsWith("com/mojang/") ? ""
+    public static String problem(TargetSpec target, Ref ref, GameClasses game) {
+        String library = game.isGame(ref.owner()) ? ""
                 : " (a library or JDK class such as " + ref.owner() + " is written with a `loader:` reference)";
         switch (ref.ns()) {
             case "mojang":

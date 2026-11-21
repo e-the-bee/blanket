@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-only
 package com.blanket.core.resolve;
 
+import com.blanket.core.lookup.LookupFixture;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -45,7 +46,7 @@ class ResolverLoaderRefTest {
     private Map<String, Resolver.Resolved> resolve(List<Resolver.Problem> problems, String... texts) {
         List<Ref> refs = new ArrayList<>();
         for (String t : texts) refs.add(Ref.parse(t, "test", "$"));
-        return new Resolver(FORGE_189, "1.8.9", files()).resolve(refs, problems);
+        return new Resolver(FORGE_189, "1.8.9", files(), LookupFixture.targets().gameClasses()).resolve(refs, problems);
     }
 
     @Test
@@ -74,7 +75,7 @@ class ResolverLoaderRefTest {
 
     @Test
     void routeOfALoaderReferenceIsEmpty() {
-        Resolver r = new Resolver(FORGE_189, "1.8.9", files());
+        Resolver r = new Resolver(FORGE_189, "1.8.9", files(), LookupFixture.targets().gameClasses());
         assertTrue(r.route(Ref.parse(PHASE, "test", "$")).isEmpty());
         assertTrue(r.route(Ref.parse(PHASE_CLASS, "test", "$")).isEmpty());
     }

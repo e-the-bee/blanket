@@ -31,8 +31,8 @@ import java.util.Set;
  * Game data from the Blanket cache, downloaded on first use (build-and-gradle.md section 4): client jars and mapping files
  * through {@link MappingDownloads}. Loader jars are found through the optional file {@code loader-artifacts.json} in
  * the bindings folder, a flat object from target id to Forge or NeoForge artifact version
- * ({@code {"forge:1.20.1": "<version>"}}); a target without an entry has no loader jar and native-event classes of that
- * target are reported as warnings.
+ * ({@code {"forge:1.20.1": "<version>"}}); a target without an entry has no loader jar, and a loader reference on that
+ * target is an UNRESOLVED error at step {@code loader-jar}.
  */
 public final class DownloadedTargetData implements TargetData {
     /** The MCPConfig license (research-log.md R-MAP-16). */
@@ -148,8 +148,8 @@ public final class DownloadedTargetData implements TargetData {
 
     /**
      * The package a library is taken to provide, from its Maven coordinates: {@code org.joml:joml} gives
-     * {@code org/joml/}, {@code org.lwjgl:lwjgl-glfw} gives {@code org/lwjgl/glfw/}, {@code com.mojang:brigadier} gives
-     * {@code com/mojang/brigadier/}. The longest matching prefix wins, so {@code org/lwjgl/glfw/} beats {@code org/lwjgl/}.
+     * {@code org/joml/}, {@code org.lwjgl:lwjgl-glfw} gives {@code org/lwjgl/glfw/}. The longest matching prefix wins,
+     * so {@code org/lwjgl/glfw/} beats {@code org/lwjgl/}.
      */
     static List<String> prefixes(String group, String artifact) {
         String base = group.replace('.', '/') + "/";

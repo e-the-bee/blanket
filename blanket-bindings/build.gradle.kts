@@ -109,9 +109,10 @@ tasks.register<ScaffoldTask>("scaffold") {
     configureTool("com.blanket.core.lookup.ScaffoldMain", "Adds API stubs and binding rule lists for a member, type, event, feature or target.")
 }
 
-// validateBindings checks C1, C2, C3, C7 and C8 on every supported target. It is NOT a dependency of `check` yet: the
-// real bindings are still being completed (see docs/progress/M1.md), and it downloads about 60 MB per target on first use.
-// Wire `check` to it once it is green on the real bindings.
+// validateBindings checks C1, C2, C3, C7 and C8 on every supported target. It downloads about 60 MB per target on
+// first use. `check` depends on it, so the real bindings must stay green.
 tasks.register<ValidateTask>("validateBindings") {
     configureTool("com.blanket.core.validate.ValidateMain", "Checks the bindings against every supported target's game data (C1, C2, C3, C7, C8).")
 }
+
+tasks.named("check") { dependsOn("validateBindings") }
