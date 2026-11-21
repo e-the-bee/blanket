@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-only
 package com.blanket.core.bindings;
 
+import com.blanket.core.resolve.Ref;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
@@ -59,23 +60,19 @@ public final class EventBinding {
         return o;
     }
 
-    /** One recipe: a Mixin hook or a native loader event, with its payload. */
+    /**
+     * One recipe: Mixin injections (one object or an array, D-057) or one native loader event. Each injection or
+     * native body names the {@code Dispatch} method it calls and gives that method's payload.
+     */
     public static final class Recipe {
         private final Selector when;
-        private final String hook;
-        private final String nativeEvent;
-        private final String bus;
-        private final JsonObject filter;
-        private final Map<String, Source> payload;
+        private final boolean mixinArray;
+        private final List<Injection> injections;
 
-        private Recipe(Selector when, String hook, String nativeEvent, String bus, JsonObject filter,
-                       Map<String, Source> payload) {
+        private Recipe(Selector when, boolean mixinArray, List<Injection> injections) {
             this.when = when;
-            this.hook = hook;
-            this.nativeEvent = nativeEvent;
-            this.bus = bus;
-            this.filter = filter;
-            this.payload = payload;
+            this.mixinArray = mixinArray;
+            this.injections = injections;
         }
 
         static Recipe parse(JsonElement e, String file, String path) {
@@ -90,20 +87,134 @@ public final class EventBinding {
             }
             if (o.has("mixin")) {
                 String at = path + ".mixin";
-                JsonObject m = Json.obj(o.get("mixin"), file, at);
-                Json.checkKeys(m, file, at, new String[] {"hook", "payload"});
-                return new Recipe(when, Json.nonEmpty(m, "hook", file, at), null, null, null,
-                        payload(m, file, at));
+                JsonElement m = o.get("mixin");
+                List<Injection> out = new ArrayList<Injection>();
+                if (m.isJsonArray()) {
+                    JsonArray a = m.getAsJsonArray();
+                    if (a.size() == 0) {
+                        throw new BindingException(file, at, "a mixin array needs at least one injection");
+                    }
+                    for (int i = 0; i < a.size(); i++) {
+                        out.add(Injection.mixin(a.get(i), file, at + "[" + i + "]"));
+                    }
+                } else {
+                    out.add(Injection.mixin(m, file, at));
+                }
+                return new Recipe(when, m.isJsonArray(), Collections.unmodifiableList(out));
             }
-            String at = path + ".native";
-            JsonObject n = Json.obj(o.get("native"), file, at);
-            Json.checkKeys(n, file, at, new String[] {"event", "bus", "filter", "payload"});
+            return new Recipe(when, false, Collections.singletonList(Injection.nativeBody(o.get("native"), file, path + ".native")));
+        }
+
+        public Selector when() {
+            return when;
+        }
+
+        /** True for a Mixin recipe, false for a native one. */
+        public boolean isMixin() {
+            return injections.get(0).hook() != null;
+        }
+
+        /** The Mixin injections in order, or the single native body. */
+        public List<Injection> injections() {
+            return injections;
+        }
+
+        JsonObject toJson() {
+            JsonObject o = new JsonObject();
+            o.add("when", TypeBinding.selectorJson(when));
+            if (!isMixin()) {
+                o.add("native", injections.get(0).toJson());
+            } else if (mixinArray) {
+                JsonArray a = new JsonArray();
+                for (Injection i : injections) {
+                    a.add(i.toJson());
+                }
+                o.add("mixin", a);
+            } else {
+                o.add("mixin", injections.get(0).toJson());
+            }
+            return o;
+        }
+    }
+
+    /** One Mixin injection (a hook) or one native event body: the {@code Dispatch} call and what feeds it. */
+    public static final class Injection {
+        private static final java.util.regex.Pattern IDENTIFIER = java.util.regex.Pattern.compile("[A-Za-z_$][A-Za-z0-9_$]*");
+
+        private final String hook;
+        private final String nativeEvent;
+        private final String bus;
+        private final Map<String, String> filter;
+        private final String dispatch;
+        private final Map<String, Source> payload;
+        private final List<Source> before;
+
+        private Injection(String hook, String nativeEvent, String bus, Map<String, String> filter, String dispatch,
+                          Map<String, Source> payload, List<Source> before) {
+            this.hook = hook;
+            this.nativeEvent = nativeEvent;
+            this.bus = bus;
+            this.filter = filter;
+            this.dispatch = dispatch;
+            this.payload = payload;
+            this.before = before;
+        }
+
+        static Injection mixin(JsonElement e, String file, String at) {
+            JsonObject m = Json.obj(e, file, at);
+            Json.checkKeys(m, file, at, new String[] {"hook", "dispatch", "payload", "before"});
+            return new Injection(Json.nonEmpty(m, "hook", file, at), null, null, Collections.<String, String>emptyMap(),
+                    dispatch(m, file, at), payload(m, file, at), before(m, file, at));
+        }
+
+        static Injection nativeBody(JsonElement e, String file, String at) {
+            JsonObject n = Json.obj(e, file, at);
+            Json.checkKeys(n, file, at, new String[] {"event", "bus", "filter", "dispatch", "payload", "before"});
             String bus = Json.oneOf(n.get("bus"), BUSES, file, at + ".bus");
-            JsonObject filter = null;
-            if (n.has("filter")) {
-                filter = Json.obj(n.get("filter"), file, at + ".filter");
+            return new Injection(null, Json.nonEmpty(n, "event", file, at), bus, filter(n, file, at), dispatch(n, file, at),
+                    payload(n, file, at), before(n, file, at));
+        }
+
+        /** D-057.1: the required name of the {@code Dispatch} method this body calls. */
+        private static String dispatch(JsonObject o, String file, String at) {
+            if (!o.has("dispatch")) {
+                throw new BindingException(file, at, "missing \"dispatch\" (the Dispatch method this recipe calls, D-057)");
             }
-            return new Recipe(when, null, Json.nonEmpty(n, "event", file, at), bus, filter, payload(n, file, at));
+            String d = Json.nonEmpty(o, "dispatch", file, at);
+            if (!IDENTIFIER.matcher(d).matches()) {
+                throw new BindingException(file, at + ".dispatch", "dispatch is a Dispatch method name, found '" + d + "'");
+            }
+            return d;
+        }
+
+        /**
+         * D-057.2: {@code {"<getter or field ref>": "<static field ref>"}}, entries ANDed; the generated listener returns
+         * early unless each read is identical to the static field's value.
+         */
+        private static Map<String, String> filter(JsonObject n, String file, String at) {
+            if (!n.has("filter")) {
+                return Collections.emptyMap();
+            }
+            String fat = at + ".filter";
+            JsonObject f = Json.obj(n.get("filter"), file, fat);
+            if (f.size() == 0) {
+                throw new BindingException(file, fat, "a filter needs at least one entry");
+            }
+            Map<String, String> out = new LinkedHashMap<String, String>();
+            for (String key : f.keySet()) {
+                String p = fat + "." + key;
+                checkGetterRef(key, file, p);
+                JsonElement v = f.get(key);
+                if (!v.isJsonPrimitive() || !v.getAsJsonPrimitive().isString()) {
+                    throw new BindingException(file, p, "a filter value is a static field reference (Owner#NAME:desc)");
+                }
+                String value = v.getAsString();
+                if (!Ref.parse(value, file, p).field()) {
+                    throw new BindingException(file, p, "a filter value is a static field reference (Owner#NAME:desc), found '" + value + "'");
+                }
+                out.put(key, value);
+            }
+            return Collections.unmodifiableMap(out);
         }
 
         private static Map<String, Source> payload(JsonObject o, String file, String at) {
@@ -117,46 +228,85 @@ public final class EventBinding {
             return Collections.unmodifiableMap(out);
         }
 
-        public Selector when() {
-            return when;
+        /**
+         * D-056: the glue calls a recipe runs before its {@code Dispatch} call, in order. Each is a glue source
+         * whose member is written with its descriptor and returns {@code void}.
+         */
+        private static List<Source> before(JsonObject o, String file, String at) {
+            if (!o.has("before")) {
+                return Collections.emptyList();
+            }
+            JsonArray a = Json.arr(o.get("before"), file, at + ".before");
+            List<Source> out = new ArrayList<Source>();
+            for (int i = 0; i < a.size(); i++) {
+                String p = at + ".before[" + i + "]";
+                Source s = Source.parse(a.get(i), file, p);
+                String member = s.kind().equals("glue") ? s.value().getAsString() : "";
+                if (!member.contains("(") || !member.endsWith(")V")) {
+                    throw new BindingException(file, p, "a before entry is a glue source naming a void member with its descriptor"
+                            + " (GlueType#member(...)V), found " + s.toJson());
+                }
+                out.add(s);
+            }
+            return Collections.unmodifiableList(out);
         }
 
-        /** The hook id of a Mixin recipe, or null. */
+        /** The hook id of a Mixin injection, or null. */
         public String hook() {
             return hook;
         }
 
-        /** The loader event class of a native recipe, or null. */
+        /** The loader event class of a native body, or null. */
         public String nativeEvent() {
             return nativeEvent;
         }
 
-        /** The bus of a native recipe ({@code game}, {@code mod} or {@code fml}), or null. */
+        /** The bus of a native body ({@code game}, {@code mod} or {@code fml}), or null. */
         public String bus() {
             return bus;
         }
 
-        /** The optional filter object of a native recipe, or null. */
-        public JsonObject filter() {
+        /** The filter of a native body, getter or field ref to static field ref (D-057.2); empty when none. */
+        public Map<String, String> filter() {
             return filter;
+        }
+
+        /** The {@code Dispatch} method name (D-057.1). */
+        public String dispatch() {
+            return dispatch;
         }
 
         public Map<String, Source> payload() {
             return payload;
         }
 
+        /** The void glue calls run before the {@code Dispatch} call (D-056), in order; often empty. */
+        public List<Source> before() {
+            return before;
+        }
+
         JsonObject toJson() {
-            JsonObject o = new JsonObject();
-            o.add("when", TypeBinding.selectorJson(when));
             JsonObject body = new JsonObject();
             if (hook != null) {
                 body.addProperty("hook", hook);
             } else {
                 body.addProperty("event", nativeEvent);
                 body.addProperty("bus", bus);
-                if (filter != null) {
-                    body.add("filter", filter);
+                if (!filter.isEmpty()) {
+                    JsonObject f = new JsonObject();
+                    for (Map.Entry<String, String> e : filter.entrySet()) {
+                        f.addProperty(e.getKey(), e.getValue());
+                    }
+                    body.add("filter", f);
                 }
+            }
+            body.addProperty("dispatch", dispatch);
+            if (!before.isEmpty()) {
+                JsonArray b = new JsonArray();
+                for (Source s : before) {
+                    b.add(s.toJson());
+                }
+                body.add("before", b);
             }
             if (!payload.isEmpty()) {
                 JsonObject p = new JsonObject();
@@ -165,8 +315,19 @@ public final class EventBinding {
                 }
                 body.add("payload", p);
             }
-            o.add(hook != null ? "mixin" : "native", body);
-            return o;
+            return body;
+        }
+    }
+
+    /**
+     * D-057.3: a getter is a member reference: a method without parameters ({@code Owner#name()T}) or a field
+     * ({@code Owner#name:T}, read with GETFIELD).
+     */
+    static void checkGetterRef(String text, String file, String path) {
+        Ref r = Ref.parse(text, file, path);
+        if (r.isClass() || (!r.field() && !r.desc().startsWith("()"))) {
+            throw new BindingException(file, path, "a getter is a method without parameters (Owner#name()T) or a field"
+                    + " (Owner#name:T), found '" + text + "'");
         }
     }
 
@@ -224,10 +385,17 @@ public final class EventBinding {
                     return new Source(key, new JsonPrimitive(n), NO_ARGS);
                 }
                 case "const":
-                    if (!v.isJsonPrimitive()) {
-                        throw new BindingException(file, at, "const must be true, false, an integer or a string");
+                    if (!v.isJsonPrimitive() && !v.isJsonNull()) {
+                        throw new BindingException(file, at, "const must be true, false, a number, a string or null (D-056)");
                     }
                     return new Source(key, v, NO_ARGS);
+                case "getter": {
+                    String g = Json.nonEmpty(o, key, file, path);
+                    if (g.indexOf('#') >= 0) {
+                        checkGetterRef(g, file, at);
+                    }
+                    return new Source(key, new JsonPrimitive(g), NO_ARGS);
+                }
                 default:
                     return new Source(key, new JsonPrimitive(Json.nonEmpty(o, key, file, path)), NO_ARGS);
             }

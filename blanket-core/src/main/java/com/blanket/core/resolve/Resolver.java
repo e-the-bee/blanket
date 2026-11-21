@@ -36,8 +36,8 @@ public final class Resolver {
     /** A reference that did not resolve: the error code, the target, the reference, the failing step and a message. */
     public record Problem(String code, String target, String ref, String step, String message) {}
 
-    /** One streaming step: the mapping file, and the namespaces it translates between. */
-    record Hop(String file, String from, String to) {
+    /** One streaming step: the mapping file ({@code pg:<mc>}, {@code int:<mc>}, ...), and the namespaces it translates between. */
+    public record Hop(String file, String from, String to) {
         String group() {
             return file + "|" + from + "|" + to;
         }
@@ -59,6 +59,7 @@ public final class Resolver {
         String failMessage;
         String runtimeOwner;      // loader members: literal owner
         String runtimeName;
+        boolean library;          // the class has no mapping row and is not Minecraft's: its name is the same everywhere
 
         Job(boolean member, String ns, String version, String origin, String owner, String name, String desc, boolean field) {
             this.member = member;
@@ -80,11 +81,21 @@ public final class Resolver {
     private final String anchor;
     private final MappingFiles files;
     private final Map<String, MappingFile> opened = new HashMap<>();
+    private final ClassIndex classIndex;
 
     public Resolver(TargetSpec target, String anchor, MappingFiles files) {
+        this(target, anchor, files, null);
+    }
+
+    /**
+     * With a class index, library references (classes that are not Minecraft's) are also checked for existence in it;
+     * without one they are passed through by name.
+     */
+    public Resolver(TargetSpec target, String anchor, MappingFiles files, ClassIndex classIndex) {
         this.target = target;
         this.anchor = anchor;
         this.files = files;
+        this.classIndex = classIndex;
     }
 
     /**
@@ -108,7 +119,10 @@ public final class Resolver {
             if (ref.ns().equals("loader")) {
                 m.runtimeOwner = ref.owner();
                 m.runtimeName = ref.name();
-                for (String c : Desc.classesIn(ref.desc())) classJob(classes, "mojang", anchor, ref.text(), c);
+                // Only Minecraft classes are translated; loader, library and JDK classes in the descriptor are literal.
+                for (String c : Desc.classesIn(ref.desc())) {
+                    if (isMinecraft(c)) classJob(classes, "mojang", anchor, ref.text(), c);
+                }
             }
             members.add(m);
         }
@@ -135,6 +149,11 @@ public final class Resolver {
         List<Job> stageB = new ArrayList<>();
         for (Job j : classes.values()) {
             if (j.failed()) continue;
+            if (j.ns.equals("loader")) {
+                // docs/binding-format.md 2.4: loader names are the same on every target and in every namespace.
+                j.runtimeName = j.owner;
+                continue;
+            }
             j.hops = runtimeClassHops();
             if (j.hops.isEmpty()) j.runtimeName = j.owner;
             stageB.add(j);
@@ -165,6 +184,14 @@ public final class Resolver {
                 continue;
             }
             String desc = Desc.mapClasses(m.obfDesc, c -> classRuntime(classes, "obf", null, c, ref.text(), problems));
+            if (isLibrary(ref, ownerJob)) {
+                // docs/binding-format.md 2.4 last paragraph: a resolved reference missing from the class index is UNRESOLVED.
+                String missing = libraryMissing(ownerJob.runtimeName, m.runtimeName, desc, ref.field());
+                if (missing != null) {
+                    problems.add(problem(ref.text(), libraryStep(ref), missing));
+                    continue;
+                }
+            }
             out.put(ref.text(), new Resolved(ref.text(), ownerJob.runtimeName, m.runtimeName, desc, ref.field()));
         }
         for (Ref ref : refs) {
@@ -172,6 +199,8 @@ public final class Resolver {
             Job j = classes.get(jobKey(ref.ns(), ref.version(), ref.owner()));
             if (j.failed()) {
                 problems.add(problem(ref.text(), j.failStep, j.failMessage));
+            } else if (isLibrary(ref, j) && libraryMissing(j.runtimeName, null, null, false) instanceof String missing) {
+                problems.add(problem(ref.text(), libraryStep(ref), missing));
             } else {
                 out.put(ref.text(), new Resolved(ref.text(), j.runtimeName, null, null, false));
             }
@@ -181,6 +210,10 @@ public final class Resolver {
 
     private Problem problem(String ref, String step, String message) {
         return new Problem("UNRESOLVED", target.id(), ref, step, message);
+    }
+
+    private String libraryStep(Ref ref) {
+        return "index|" + ref.ns() + "|" + target.runtime();
     }
 
     /** The runtime name of a descriptor class; classes outside the mapping files (JDK, loader) are kept as they are. */
@@ -206,6 +239,16 @@ public final class Resolver {
         List<T> out = new ArrayList<>(a);
         out.addAll(b);
         return out;
+    }
+
+    /**
+     * The mapping-file steps {@link #resolve} takes for {@code ref}, in order: first to the target's obfuscated (or
+     * official) names, then to the runtime namespace. Empty when no mapping file is involved (official names on an
+     * official runtime, a loader reference). Read-only; opens no file.
+     */
+    public List<Hop> route(Ref ref) {
+        if (ref.ns().equals("loader")) return List.of();
+        return concat(hopsToTargetObf(ref.ns(), ref.version()), ref.isClass() ? runtimeClassHops() : runtimeMemberHops());
     }
 
     // ------------------------------------------------------------------------------------------------ routes
@@ -314,10 +357,18 @@ public final class Resolver {
                 return;
             }
             ownerTo = j.owner;   // JDK, loader and already-runtime classes are not in the mapping file
+            j.library = true;
         }
         if (!j.member) {
             j.owner = ownerTo;
             j.runtimeName = ownerTo;
+            return;
+        }
+        if (j.library) {
+            // A class with no mapping row keeps its name in every namespace, and so do its members; only Minecraft
+            // classes in the descriptor are translated.
+            j.desc = index.translateDesc(hop.from(), j.desc, hop.to());
+            j.runtimeName = j.name;
             return;
         }
         MappingIndex.MemberRow row = index.member(hop.from(), j.owner, j.name, j.desc);
@@ -333,7 +384,33 @@ public final class Resolver {
         j.runtimeName = j.name;
     }
 
+    /** True for a Minecraft class name: a net/minecraft/ name, or a short obfuscated name. */
     static boolean isMinecraft(String owner) {
         return owner.startsWith("net/minecraft/") || owner.matches("[a-z][a-z0-9]{0,3}");
+    }
+
+    /**
+     * True when a reference names a library or JDK class: a class with no mapping row, or, where no mapping file is
+     * involved at all (official names on an official runtime), a name that is not Minecraft's. Loader references are
+     * used literally and are not checked.
+     */
+    private boolean isLibrary(Ref ref, Job ownerJob) {
+        if (ref.ns().equals("loader")) return false;
+        if (ownerJob.library) return true;
+        return hopsToTargetObf(ref.ns(), ref.version()).isEmpty() && runtimeClassHops().isEmpty() && !isMinecraft(ref.owner());
+    }
+
+    /**
+     * Checks a resolved library reference against the class index: the class must exist, and a member must exist
+     * with its runtime descriptor. Returns the failure message, or null when it passes or there is no index.
+     */
+    private String libraryMissing(String owner, String name, String desc, boolean field) {
+        if (classIndex == null) return null;
+        ClassIndex.Info info = classIndex.get(owner).orElse(null);
+        if (info == null) return "class " + owner + " is not in the class index (client jar and libraries)";
+        if (name == null) return null;
+        boolean present = field ? info.fields().containsKey(name + ":" + desc) : info.methods().containsKey(name + desc);
+        return present ? null : (field ? "field " : "method ") + owner + "." + name + (field ? ":" : "") + desc
+                + " is not in the class index (client jar and libraries)";
     }
 }

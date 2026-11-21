@@ -76,6 +76,17 @@
         { "invoke": "official:net.minecraft.client.Minecraft#getWindow()Lcom/mojang/blaze3d/platform/Window;" },
         { "invoke": "official:com.mojang.blaze3d.platform.Window#getGuiScaledHeight()I" } ] } },
       { "when": {}, "lower": { "const": 0 } }
+    ],
+    "partialTick": [
+      { "when": { "mc": "1.21..1.21.11" }, "lower": { "chain": [
+        { "cast": "net.minecraft.client.DeltaTracker" },
+        { "const": true },
+        { "invoke": "net.minecraft.client.DeltaTracker#getGameTimeDeltaPartialTick(Z)F" } ] }, "note": "D-056 const step: M0 HudMixin/WorldMixin getGameTimeDeltaPartialTick(true)" },
+      { "when": { "mc": "26.1.." }, "lower": { "chain": [
+        { "cast": "official:net.minecraft.client.DeltaTracker" },
+        { "const": true },
+        { "invoke": "official:net.minecraft.client.DeltaTracker#getGameTimeDeltaPartialTick(Z)F" } ] } },
+      { "when": {}, "lower": { "unsupported": "no DeltaTracker before 1.21: hooks pass the float partial tick directly" } }
     ]
   },
   "note": "M1 T9. Stub bodies are never run; these lowerings replace the calls (D-051, D-052). Names are the M0 Gen.java names, verified in real games; BindingsGlueHooksTest resolves each one on the six targets. Unused members take the M0 Glue base-class defaults (0 or -1)."

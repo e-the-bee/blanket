@@ -87,11 +87,16 @@ class BindingFilesTest {
     void eventRecipesAndPayloads() {
         EventBinding e = BindingFiles.readEvent(fixture("events/HudRender.json"));
         assertEquals("HUD_RENDER", e.event());
-        EventBinding.Recipe mixin = e.recipes().get(0);
+        EventBinding.Injection mixin = e.recipes().get(0).injections().get(0);
+        assertTrue(e.recipes().get(0).isMixin());
         assertEquals("gui.render", mixin.hook());
+        assertEquals("hud", mixin.dispatch());
         assertEquals("arg", mixin.payload().get("partialTick").kind());
-        EventBinding.Recipe nat = e.recipes().get(1);
+        EventBinding.Injection nat = e.recipes().get(1).injections().get(0);
         assertEquals("game", nat.bus());
+        assertEquals("hud", nat.dispatch());
+        assertEquals("example.loader.GuiEvent$Stage#AFTER:Lexample/loader/GuiEvent$Stage;",
+                nat.filter().get("example.loader.GuiEvent#stage:Lexample/loader/GuiEvent$Stage;"));
         assertEquals("getter", nat.payload().get("partialTick").kind());
     }
 
@@ -191,7 +196,7 @@ class BindingFilesTest {
 
     @Test
     void payloadSourceMustHaveOneKey() {
-        String json = "{\"schema\":1,\"event\":\"E\",\"recipes\":[{\"when\":{},\"mixin\":{\"hook\":\"h\","
+        String json = "{\"schema\":1,\"event\":\"E\",\"recipes\":[{\"when\":{},\"mixin\":{\"hook\":\"h\",\"dispatch\":\"d\","
                 + "\"payload\":{\"p\":{\"arg\":1,\"const\":2}}}}]}";
         String m = message(() -> EventBinding.parse(JsonParser.parseString(json), "events/E.json"));
         assertTrue(m.startsWith("events/E.json: $.recipes[0].mixin.payload.p:"), m);

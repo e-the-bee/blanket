@@ -43,7 +43,74 @@
         { "get": "lf:net/minecraft/class_1600#field_10310:Lnet/minecraft/class_518;" },
         { "get": "lf:net/minecraft/class_864#field_3213:D" } ] } },
       { "when": {}, "lower": { "unsupported": "legacy camera interpolation exists only on the 1.8.9 eras (M0 Dispatch.worldLegacy)" } }
+    ],
+    "matrix": [
+      { "when": { "mc": "1.20..1.21.11" }, "lower": { "chain": [
+        { "cast": "org.joml.Matrix4f" },
+        { "newarray": "F", "length": 16 },
+        { "invoke": "org.joml.Matrix4f#get([F)[F" } ] }, "note": "D-056 newarray step: M0 toFloatArray, Matrix4f.get(new float[16])" },
+      { "when": { "mc": "26.1.." }, "lower": { "chain": [
+        { "cast": "official:org.joml.Matrix4f" },
+        { "newarray": "F", "length": 16 },
+        { "invoke": "official:org.joml.Matrix4f#get([F)[F" } ] }, "note": "26.x rules use the official form" },
+      { "when": {}, "lower": { "unsupported": "the legacy eras read matrices from the fixed-function stacks (M0 Dispatch.worldLegacy)" } }
+    ],
+    "poseMatrix": [
+      { "when": { "mc": "1.20..1.21.11" }, "lower": { "chain": [
+        { "cast": "com.mojang.blaze3d.vertex.PoseStack" },
+        { "invoke": "com.mojang.blaze3d.vertex.PoseStack#last()Lcom/mojang/blaze3d/vertex/PoseStack$Pose;" },
+        { "invoke": "com.mojang.blaze3d.vertex.PoseStack$Pose#pose()Lorg/joml/Matrix4f;" } ] }, "note": "M0 forge 1.20.1 view matrix: getPoseStack().last().pose()" },
+      { "when": {}, "lower": { "unsupported": "only the forge 1.20.1 world hook reads the view matrix from a PoseStack" } }
+    ],
+    "camera": [
+      { "when": { "mc": "26.1.." }, "lower": { "chain": [
+        { "invoke": "official:net.minecraft.client.Minecraft#getInstance()Lnet/minecraft/client/Minecraft;" },
+        { "get": "official:net.minecraft.client.Minecraft#gameRenderer:Lnet/minecraft/client/renderer/GameRenderer;" },
+        { "invoke": "official:net.minecraft.client.renderer.GameRenderer#getMainCamera()Lnet/minecraft/client/Camera;" } ] }, "note": "M0 WorldMixin on 26.1.2: the hook has no camera argument" },
+      { "when": {}, "lower": { "unsupported": "the hook or event gives the camera before 26.x" } }
+    ],
+    "newMatrix": [
+      { "when": { "mc": "26.1.." }, "lower": { "new": "official:org.joml.Matrix4f#<init>()V" }, "note": "destination for getViewRotationProjectionMatrix (M0 26.1.2)" },
+      { "when": {}, "lower": { "unsupported": "only the 26.x world hook builds a matrix" } }
+    ],
+    "viewProjection": [
+      { "when": { "mc": "26.1.." }, "lower": { "invoke": "official:net.minecraft.client.Camera#getViewRotationProjectionMatrix(Lorg/joml/Matrix4f;)Lorg/joml/Matrix4f;" },
+        "note": "M0 26.1.2 passes view-rotation-projection as the projection and null as the view" },
+      { "when": {}, "lower": { "unsupported": "only the 26.x world hook combines the matrices" } }
+    ],
+    "camX": [
+      { "when": { "mc": "1.20..1.21.11" }, "lower": { "chain": [
+        { "cast": "net.minecraft.client.Camera" },
+        { "invoke": "net.minecraft.client.Camera#getPosition()Lnet/minecraft/world/phys/Vec3;" },
+        { "get": "net.minecraft.world.phys.Vec3#x:D" } ] } },
+      { "when": { "mc": "26.1.." }, "lower": { "chain": [
+        { "cast": "official:net.minecraft.client.Camera" },
+        { "invoke": "official:net.minecraft.client.Camera#position()Lnet/minecraft/world/phys/Vec3;" },
+        { "get": "official:net.minecraft.world.phys.Vec3#x:D" } ] } },
+      { "when": {}, "lower": { "unsupported": "legacy eras interpolate the player position instead (px, lastPx)" } }
+    ],
+    "camY": [
+      { "when": { "mc": "1.20..1.21.11" }, "lower": { "chain": [
+        { "cast": "net.minecraft.client.Camera" },
+        { "invoke": "net.minecraft.client.Camera#getPosition()Lnet/minecraft/world/phys/Vec3;" },
+        { "get": "net.minecraft.world.phys.Vec3#y:D" } ] } },
+      { "when": { "mc": "26.1.." }, "lower": { "chain": [
+        { "cast": "official:net.minecraft.client.Camera" },
+        { "invoke": "official:net.minecraft.client.Camera#position()Lnet/minecraft/world/phys/Vec3;" },
+        { "get": "official:net.minecraft.world.phys.Vec3#y:D" } ] } },
+      { "when": {}, "lower": { "unsupported": "legacy eras interpolate the player position instead (py, lastPy)" } }
+    ],
+    "camZ": [
+      { "when": { "mc": "1.20..1.21.11" }, "lower": { "chain": [
+        { "cast": "net.minecraft.client.Camera" },
+        { "invoke": "net.minecraft.client.Camera#getPosition()Lnet/minecraft/world/phys/Vec3;" },
+        { "get": "net.minecraft.world.phys.Vec3#z:D" } ] } },
+      { "when": { "mc": "26.1.." }, "lower": { "chain": [
+        { "cast": "official:net.minecraft.client.Camera" },
+        { "invoke": "official:net.minecraft.client.Camera#position()Lnet/minecraft/world/phys/Vec3;" },
+        { "get": "official:net.minecraft.world.phys.Vec3#z:D" } ] } },
+      { "when": {}, "lower": { "unsupported": "legacy eras interpolate the player position instead (pz, lastPz)" } }
     ]
   },
-  "note": "M1 T9. Legacy eras only: the player position now and at the last tick, read through the 1.8.9 client (M0 legacyGlue). The lf names are the M0 names; the forge 1.8.9 obfuscated names come from the lf route."
+  "note": "M1 T9. Legacy eras: the player position now and at the last tick, read through the 1.8.9 client (M0 legacyGlue). Modern eras: matrix and camera conversions for Dispatch.world (M0 WorldMixin and world listeners, D-056). The lf names are the M0 names; the forge 1.8.9 obfuscated names come from the lf route."
 }

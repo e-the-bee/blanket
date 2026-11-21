@@ -1,0 +1,31 @@
+{
+  "schema": 1,
+  "event": "HUD_RENDER",
+  "recipes": [
+    { "when": { "loader": "legacy-fabric", "mc": "..1.13.2" },
+      "mixin": { "hook": "gui.hud", "dispatch": "hud", "payload": { "partialTick": { "arg": 1 } } } },
+    { "when": { "loader": "fabric", "mc": "1.21.1" },
+      "mixin": { "hook": "gui.hud", "dispatch": "hud",
+        "before": [ { "glue": "GlueGui#flush(Ljava/lang/Object;)V", "args": [ { "arg": 1 } ] } ],
+        "payload": { "partialTick": { "glue": "GlueFrame#partialTick", "args": [ { "arg": 2 } ] } } } },
+    { "when": { "loader": "fabric", "mc": "26.1.." },
+      "mixin": [
+        { "hook": "gui.record", "dispatch": "hudRecord", "payload": { "partialTick": { "glue": "GlueFrame#partialTick", "args": [ { "arg": 2 } ] } } },
+        { "hook": "gui.replay", "dispatch": "hudReplay" } ] },
+    { "when": { "loader": "forge", "mc": "1.8.9" },
+      "native": { "event": "loader:net.minecraftforge.client.event.RenderGameOverlayEvent$Post", "bus": "game", "dispatch": "hud",
+        "filter": { "loader:net.minecraftforge.client.event.RenderGameOverlayEvent#type:Lnet/minecraftforge/client/event/RenderGameOverlayEvent$ElementType;": "loader:net.minecraftforge.client.event.RenderGameOverlayEvent$ElementType#ALL:Lnet/minecraftforge/client/event/RenderGameOverlayEvent$ElementType;" },
+        "payload": { "partialTick": { "getter": "loader:net.minecraftforge.client.event.RenderGameOverlayEvent#partialTicks:F" } } } },
+    { "when": { "loader": "forge", "mc": "1.20.1" },
+      "native": { "event": "loader:net.minecraftforge.client.event.RenderGuiEvent$Post", "bus": "game", "dispatch": "hud",
+        "before": [ { "glue": "GlueGui#flush(Ljava/lang/Object;)V", "args": [
+          { "getter": "loader:net.minecraftforge.client.event.RenderGuiEvent#getGuiGraphics()Lnet/minecraft/client/gui/GuiGraphics;" } ] } ],
+        "payload": { "partialTick": { "getter": "loader:net.minecraftforge.client.event.RenderGuiEvent#getPartialTick()F" } } } },
+    { "when": { "loader": "neoforge", "mc": "1.21.1" },
+      "native": { "event": "loader:net.neoforged.neoforge.client.event.RenderGuiEvent$Post", "bus": "game", "dispatch": "hud",
+        "before": [ { "glue": "GlueGui#flush(Ljava/lang/Object;)V", "args": [
+          { "getter": "loader:net.neoforged.neoforge.client.event.RenderGuiEvent#getGuiGraphics()Lnet/minecraft/client/gui/GuiGraphics;" } ] } ],
+        "payload": { "partialTick": { "glue": "GlueFrame#partialTick", "args": [
+          { "getter": "loader:net.neoforged.neoforge.client.event.RenderGuiEvent#getPartialTick()Lnet/minecraft/client/DeltaTracker;" } ] } } } }
+  ]
+}

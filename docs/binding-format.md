@@ -18,13 +18,15 @@ blanket-bindings/
   glue/<GlueType>.json      the same, for runtime-internal glue types the GL backend uses (§4.5)
   hooks.json                named injection points inside Minecraft (§7)
   events/<Event>.json       event lowering recipes (§7, detail in events-and-hooks.md)
+  loader-artifacts.json     Forge/NeoForge artifact version per loader target, for native-event checks (§7, D-058)
   adapters/<set>/
     adapter-set.json        stub version, namespace, range (§5)
     src/...                 adapter Java sources
 ```
 
 All files are JSON (UTF-8, no comments; free text goes in `"note"` fields). Every file has
-`"schema": 1`. Unknown keys are an error, so typos fail loudly.
+`"schema": 1`. Unknown keys are an error, so typos fail loudly. The one exception is
+`loader-artifacts.json` (§7), a flat object from target id to artifact version with no `schema` key.
 
 ## 2. Shared grammar
 
@@ -232,10 +234,11 @@ exist on API types (accessors only). Static factories are keyed like methods (`"
 | field read | `{ "get": "<field ref>" }` | `GETFIELD` or `GETSTATIC` |
 | field write | `{ "put": "<field ref>" }` | `PUTFIELD` or `PUTSTATIC` |
 | construct | `{ "new": "<method ref to <init>>" }` | a call to a synthesized private static bridge in the calling class that does `NEW; DUP; load args; INVOKESPECIAL; ARETURN` (API factories are static methods, so arguments are already on the stack when the call is reached) |
-| chain | `{ "chain": [ <lowering>, ... ] }` | each step in order; the first step takes the API receiver and arguments (a direct lowering or a cast), every later step must be a zero-argument `invoke`, a `get` or a `cast` on the previous result. A later step cannot be a constant, `put`, `adapter` or nested chain (M1 T9, D-053) |
+| chain | `{ "chain": [ <lowering>, ... ] }` | each step in order; the first step takes the API receiver and arguments (a direct lowering or a cast), every later step is an `invoke`, a `get` or a `cast` on the previous result, or a `const` or `newarray` step that pushes an argument. A later `invoke` takes exactly the `const`/`newarray` steps written right before it, in order and with matching types (boolean `Z`, integer `B`/`S`/`C`/`I`/`J`/`F`/`D`, fraction `F`/`D`, string `Ljava/lang/String;`, newarray `[<prim>`); with none before it, it takes no parameters. A pushed value no invoke consumes is an error. A later step cannot be a `put`, `adapter` or nested chain, and the first step cannot be a `const` or `newarray` (D-053, D-056). Example: `[{"cast": "...DeltaTracker"}, {"const": true}, {"invoke": "...#getGameTimeDeltaPartialTick(Z)F"}]` |
 | cast (chain step only) | `{ "cast": "<class ref>" }` | `CHECKCAST` to the class: a checked change of the static type of the value on top of the stack, not a conversion. Only valid as a step of a `chain`, never as a top-level lowering (D-053) |
+| new array (chain step only) | `{ "newarray": "<Z\|B\|C\|S\|I\|J\|F\|D>", "length": <n> }` | `BIPUSH n; NEWARRAY`: pushes a new primitive array as the argument of the next `invoke` step, for example `Matrix4f#get([F)[F` with `{"newarray": "F", "length": 16}`. Never a top-level lowering (D-056) |
 | adapter | `{ "adapter": "<set>:<class>#<method>" }` | `INVOKESTATIC` to the adapter method; its descriptor is the API member's descriptor with the receiver (if any) as the first parameter, after type remapping |
-| constant | `{ "const": true \| false \| <int> \| <string> }` | `ICONST`/`LDC` (used by `Blanket.supports`) |
+| constant | `{ "const": true \| false \| <int> \| <string> }` | `ICONST`/`LDC` (used by `Blanket.supports`); as a later chain step, an argument of the next `invoke` (D-056) |
 | unsupported | `{ "unsupported": "<reason>" }` | nothing; any reachable use is an `UNSUPPORTED` error (§6) |
 
 **Shape check for direct kinds** (`invoke`, `get`, `put`, `new`, `chain`): after type remapping, the
@@ -274,6 +277,11 @@ of used packet types only.
 `GlueFrame#projectionMatrix([F)V`). The runtime's own code calls glue stubs; the generator lowers
 those calls exactly like mod calls. This keeps all Minecraft knowledge in bindings, including the
 render backend's ([rendering-api.md](rendering-api.md) §4).
+
+Shape check for glue members (C3): an `Object` parameter of the glue stub accepts any reference-type parameter
+of the lowering, receiver included; the generator emits a `checkcast` per argument. So
+`GlueWorld.viewProjection(Object, Object)` lowers to the direct invoke
+`Camera#getViewRotationProjectionMatrix(Matrix4f)Matrix4f` on 26.x (D-057).
 
 ## 5. Adapter sets `adapters/<set>/adapter-set.json`
 
@@ -363,22 +371,48 @@ Mixin injector with `require = 1` and `expect = 1`
   "schema": 1,
   "event": "HUD_RENDER",
   "recipes": [
-    { "when": {...}, "mixin":  { "hook": "<hook id>", "payload": { "<name>": <source>, ... } } },
-    { "when": {...}, "native": { "event": "<loader ref>", "bus": "game" | "mod" | "fml", "filter": {...}?, "payload": {...} } }
+    { "when": {...}, "mixin":  { "hook": "<hook id>", "dispatch": "<Dispatch method>", "before": [<glue source>, ...]?, "payload": { "<name>": <source>, ... } } },
+    { "when": {...}, "mixin":  [ { "hook": ..., "dispatch": ..., ... }, { "hook": ..., "dispatch": ... } ] },
+    { "when": {...}, "native": { "event": "<loader ref>", "bus": "game" | "mod" | "fml", "dispatch": "<Dispatch method>",
+                                 "filter": { "<getter or field ref>": "<static field ref>", ... }?, "before": [...]?, "payload": {...} } }
   ]
 }
 ```
 
+Every `mixin` injection and every `native` body has a required `dispatch` key: the name of the
+`com.blanket.runtime.Dispatch` method it calls, for example `tickEnd`, `hud`, `hudRecord`, `hudReplay`, `world`,
+`worldLegacy` (D-057). The method's parameter count equals the number of payload entries. `mixin` is one injection
+object or an array of them; each injection is its own Mixin injector with its own hook, dispatch, `before` and
+payload (26.x HUD: `gui.record` calls `hudRecord`, `gui.replay` calls `hudReplay`).
+
+`filter` (native only, D-057) maps a getter or field reference on the event object to a static field reference,
+for example `{"loader:...TickEvent#phase:L.../TickEvent$Phase;": "loader:...TickEvent$Phase#END:L.../TickEvent$Phase;"}`.
+The generated listener reads each key and returns early unless the value is identical (`==`) to the static field;
+entries are ANDed. A key is a field (`Owner#name:T`) or a method without parameters (`Owner#name()T`); a value is a
+field. Other forms are an error.
+
+`loader-artifacts.json` (D-058) lists, per Forge or NeoForge target, the loader artifact whose universal jar the
+validator indexes to check native event classes and their getter, field and filter references:
+`{"forge:1.8.9": "1.8.9-11.15.1.2318-1.8.9", "forge:1.20.1": "1.20.1-47.4.28", "neoforge:1.21.1": "21.1.265"}`
+(Forge: `net.minecraftforge:forge:<v>:universal`; NeoForge: `net.neoforged:neoforge:<v>:universal`). A loader target
+without an entry gets a warning instead of the check.
+
 Payload sources: `{"arg": n}` (n-th argument of the hooked method), `{"this": "<field ref>"}`,
-`{"getter": "<loader or method ref>"}` (called on the native event object), `{"adapter": "..."}`,
-`{"const": v}`, and `{"glue": "<GlueType>#<member>", "args": [<source>, ...]}` (D-054). A glue source calls a
+`{"getter": "<method or field ref>"}` (on the native event object: a method without parameters is called, a field
+`Owner#name:T` is read with GETFIELD, D-057), `{"adapter": "..."}`,
+`{"const": v}` (`v` may be `null` for a reference parameter, D-056), and `{"glue": "<GlueType>#<member>", "args": [<source>, ...]}` (D-054). A glue source calls a
 glue member with the value of each `args` source, in order (`args` may be omitted for a member with no
 parameters). Each argument is any payload source, including another glue source. The member is bound per
 target like any glue member (section 4.5), and its lowering consumes the arguments in order. Its result is the
 value passed to `Dispatch`, so it has the type of the `Dispatch` parameter it fills (for example `float`,
 `float[]` or `double`). It is not `Object`, because `Dispatch` is typed in M1 (D-055) and the `Object...`
-form of D-051 is not used. A glue member with a `void` result cannot be a payload source, because a payload
-value must exist.
+form of D-051 is not used; its parameters may stay `Object` (D-056). A glue member with a `void` result cannot
+be a payload source, because a payload value must exist.
+
+`before` (D-056) lists glue sources the hook runs, in order, before it computes the payload and calls `Dispatch`.
+Each names a `void` glue member with its descriptor, for example
+`{"glue": "GlueGui#flush(Ljava/lang/Object;)V", "args": [{"arg": 1}]}` (`GuiGraphics#flush()` before immediate HUD
+drawing, M0 on fabric 1.21.1, neoforge 1.21.1, forge 1.20.1). An entry without a `)V` descriptor is an error.
 
 Each payload entry fills one parameter of the `Dispatch` method for the event, in the order the entries are
 written. `Dispatch` keeps its typed M0 signatures for M1 (D-055).
@@ -387,7 +421,8 @@ written. `Dispatch` keeps its typed M0 signatures for M1 (D-055).
 to `Dispatch.<event>(Object...)` unconverted. Conversions are glue members that take the raw object and
 are bound per target like all glue (§4.5), for example `GlueFrame.partialTick(Object)` (`DeltaTracker`
 → `float` on 1.21+, the `float` argument boxed on older eras), `GlueWorld.matrix(Object, float[])`
-(`Matrix4f#get([F)`), `GlueGui.flush(Object)` (`GuiGraphics#flush()` before immediate HUD drawing).
+(`Matrix4f#get([F)`), `GlueGui.flush(Object)` (`GuiGraphics#flush()` before immediate HUD drawing, run
+through `before`). D-055 keeps `Dispatch` typed in M1, so glue results have the `Dispatch` parameter's type.
 This keeps hook bodies free of Minecraft names: a hook only loads values and calls `Dispatch`. M0 wrote
 these conversions inline in each hook (R-EXP-06); M1 moves them into glue. The full set of v1 recipes and their verified facts is in
 [events-and-hooks.md](events-and-hooks.md) §4.

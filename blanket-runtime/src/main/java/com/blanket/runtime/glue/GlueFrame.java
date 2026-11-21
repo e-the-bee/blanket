@@ -22,6 +22,9 @@ public final class GlueFrame {
     public static int guiWidth() { throw stub("guiWidth"); }
     public static int guiHeight() { throw stub("guiHeight"); }
 
+    /** Partial tick from a {@code DeltaTracker} hook argument (1.21+): {@code getGameTimeDeltaPartialTick(true)}. */
+    public static float partialTick(Object deltaTracker) { throw stub("partialTick"); }
+
     static UnsupportedOperationException stub(String member) {
         return new UnsupportedOperationException("GlueFrame." + member + " is a glue stub; bound per target by blanket-bindings");
     }

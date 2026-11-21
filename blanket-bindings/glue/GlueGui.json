@@ -1,0 +1,13 @@
+{
+  "schema": 1,
+  "api": "com.blanket.runtime.glue.GlueGui",
+  "members": {
+    "flush": [
+      { "when": { "mc": "1.20..1.21.11" }, "lower": { "chain": [
+        { "cast": "net.minecraft.client.gui.GuiGraphics" },
+        { "invoke": "net.minecraft.client.gui.GuiGraphics#flush()V" } ] }, "note": "M0 HudMixin (fabric 1.21.1) and RenderGuiEvent$Post listeners (neoforge 1.21.1, forge 1.20.1)" },
+      { "when": {}, "lower": { "unsupported": "no GuiGraphics batch to flush: 1.8.9 draws immediately, 26.x replays after GuiRenderer" } }
+    ]
+  },
+  "note": "M1 T9. Run through a recipe's before list (D-056), never as a payload value."
+}

@@ -1,0 +1,49 @@
+{
+  "schema": 1,
+  "event": "WORLD_RENDER",
+  "recipes": [
+    { "when": { "loader": "legacy-fabric", "mc": "..1.13.2" },
+      "mixin": { "hook": "world.legacy", "dispatch": "worldLegacy", "payload": { "partialTick": { "arg": 2 } } } },
+    { "when": { "loader": "fabric", "mc": "1.21.1" },
+      "mixin": { "hook": "world.render", "dispatch": "world", "payload": {
+        "partialTick": { "glue": "GlueFrame#partialTick", "args": [ { "arg": 1 } ] },
+        "projection": { "glue": "GlueWorld#matrix", "args": [ { "arg": 7 } ] },
+        "view": { "glue": "GlueWorld#matrix", "args": [ { "arg": 6 } ] },
+        "camX": { "glue": "GlueWorld#camX", "args": [ { "arg": 3 } ] },
+        "camY": { "glue": "GlueWorld#camY", "args": [ { "arg": 3 } ] },
+        "camZ": { "glue": "GlueWorld#camZ", "args": [ { "arg": 3 } ] } } } },
+    { "when": { "loader": "fabric", "mc": "26.1.." },
+      "mixin": { "hook": "world.render", "dispatch": "world", "payload": {
+        "partialTick": { "const": 0 },
+        "projection": { "glue": "GlueWorld#matrix", "args": [
+          { "glue": "GlueWorld#viewProjection", "args": [ { "glue": "GlueWorld#camera" }, { "glue": "GlueWorld#newMatrix" } ] } ] },
+        "view": { "const": null },
+        "camX": { "glue": "GlueWorld#camX", "args": [ { "glue": "GlueWorld#camera" } ] },
+        "camY": { "glue": "GlueWorld#camY", "args": [ { "glue": "GlueWorld#camera" } ] },
+        "camZ": { "glue": "GlueWorld#camZ", "args": [ { "glue": "GlueWorld#camera" } ] } } } },
+    { "when": { "loader": "forge", "mc": "1.8.9" },
+      "native": { "event": "loader:net.minecraftforge.client.event.RenderWorldLastEvent", "bus": "game", "dispatch": "worldLegacy",
+        "payload": { "partialTick": { "getter": "loader:net.minecraftforge.client.event.RenderWorldLastEvent#partialTicks:F" } } } },
+    { "when": { "loader": "forge", "mc": "1.20.1" },
+      "native": { "event": "loader:net.minecraftforge.client.event.RenderLevelStageEvent", "bus": "game", "dispatch": "world",
+        "filter": { "loader:net.minecraftforge.client.event.RenderLevelStageEvent#getStage()Lnet/minecraftforge/client/event/RenderLevelStageEvent$Stage;": "loader:net.minecraftforge.client.event.RenderLevelStageEvent$Stage#AFTER_TRANSLUCENT_BLOCKS:Lnet/minecraftforge/client/event/RenderLevelStageEvent$Stage;" },
+        "payload": {
+          "partialTick": { "getter": "loader:net.minecraftforge.client.event.RenderLevelStageEvent#getPartialTick()F" },
+          "projection": { "glue": "GlueWorld#matrix", "args": [ { "getter": "loader:net.minecraftforge.client.event.RenderLevelStageEvent#getProjectionMatrix()Lorg/joml/Matrix4f;" } ] },
+          "view": { "glue": "GlueWorld#matrix", "args": [ { "glue": "GlueWorld#poseMatrix", "args": [
+            { "getter": "loader:net.minecraftforge.client.event.RenderLevelStageEvent#getPoseStack()Lcom/mojang/blaze3d/vertex/PoseStack;" } ] } ] },
+          "camX": { "glue": "GlueWorld#camX", "args": [ { "getter": "loader:net.minecraftforge.client.event.RenderLevelStageEvent#getCamera()Lnet/minecraft/client/Camera;" } ] },
+          "camY": { "glue": "GlueWorld#camY", "args": [ { "getter": "loader:net.minecraftforge.client.event.RenderLevelStageEvent#getCamera()Lnet/minecraft/client/Camera;" } ] },
+          "camZ": { "glue": "GlueWorld#camZ", "args": [ { "getter": "loader:net.minecraftforge.client.event.RenderLevelStageEvent#getCamera()Lnet/minecraft/client/Camera;" } ] } } } },
+    { "when": { "loader": "neoforge", "mc": "1.21.1" },
+      "native": { "event": "loader:net.neoforged.neoforge.client.event.RenderLevelStageEvent", "bus": "game", "dispatch": "world",
+        "filter": { "loader:net.neoforged.neoforge.client.event.RenderLevelStageEvent#getStage()Lnet/neoforged/neoforge/client/event/RenderLevelStageEvent$Stage;": "loader:net.neoforged.neoforge.client.event.RenderLevelStageEvent$Stage#AFTER_LEVEL:Lnet/neoforged/neoforge/client/event/RenderLevelStageEvent$Stage;" },
+        "payload": {
+          "partialTick": { "glue": "GlueFrame#partialTick", "args": [ { "getter": "loader:net.neoforged.neoforge.client.event.RenderLevelStageEvent#getPartialTick()Lnet/minecraft/client/DeltaTracker;" } ] },
+          "projection": { "glue": "GlueWorld#matrix", "args": [ { "getter": "loader:net.neoforged.neoforge.client.event.RenderLevelStageEvent#getProjectionMatrix()Lorg/joml/Matrix4f;" } ] },
+          "view": { "glue": "GlueWorld#matrix", "args": [ { "getter": "loader:net.neoforged.neoforge.client.event.RenderLevelStageEvent#getModelViewMatrix()Lorg/joml/Matrix4f;" } ] },
+          "camX": { "glue": "GlueWorld#camX", "args": [ { "getter": "loader:net.neoforged.neoforge.client.event.RenderLevelStageEvent#getCamera()Lnet/minecraft/client/Camera;" } ] },
+          "camY": { "glue": "GlueWorld#camY", "args": [ { "getter": "loader:net.neoforged.neoforge.client.event.RenderLevelStageEvent#getCamera()Lnet/minecraft/client/Camera;" } ] },
+          "camZ": { "glue": "GlueWorld#camZ", "args": [ { "getter": "loader:net.neoforged.neoforge.client.event.RenderLevelStageEvent#getCamera()Lnet/minecraft/client/Camera;" } ] } } } }
+  ]
+}

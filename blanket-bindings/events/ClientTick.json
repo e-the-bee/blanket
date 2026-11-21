@@ -2,13 +2,15 @@
   "schema": 1,
   "event": "CLIENT_TICK_END",
   "recipes": [
-    { "when": { "loader": "legacy-fabric", "mc": "..1.13.2" }, "mixin": { "hook": "tick.end" } },
-    { "when": { "loader": "fabric" }, "mixin": { "hook": "tick.end" } },
+    { "when": { "loader": "legacy-fabric", "mc": "..1.13.2" }, "mixin": { "hook": "tick.end", "dispatch": "tickEnd" } },
+    { "when": { "loader": "fabric" }, "mixin": { "hook": "tick.end", "dispatch": "tickEnd" } },
     { "when": { "loader": "forge", "mc": "1.8.9" },
-      "native": { "event": "loader:net.minecraftforge.fml.common.gameevent.TickEvent$ClientTickEvent", "bus": "game", "filter": { "phase": "END" } } },
+      "native": { "event": "loader:net.minecraftforge.fml.common.gameevent.TickEvent$ClientTickEvent", "bus": "game", "dispatch": "tickEnd",
+      "filter": { "loader:net.minecraftforge.fml.common.gameevent.TickEvent#phase:Lnet/minecraftforge/fml/common/gameevent/TickEvent$Phase;": "loader:net.minecraftforge.fml.common.gameevent.TickEvent$Phase#END:Lnet/minecraftforge/fml/common/gameevent/TickEvent$Phase;" } } },
     { "when": { "loader": "forge", "mc": "1.20.1" },
-      "native": { "event": "loader:net.minecraftforge.event.TickEvent$ClientTickEvent", "bus": "game", "filter": { "phase": "END" } } },
+      "native": { "event": "loader:net.minecraftforge.event.TickEvent$ClientTickEvent", "bus": "game", "dispatch": "tickEnd",
+      "filter": { "loader:net.minecraftforge.event.TickEvent#phase:Lnet/minecraftforge/event/TickEvent$Phase;": "loader:net.minecraftforge.event.TickEvent$Phase#END:Lnet/minecraftforge/event/TickEvent$Phase;" } } },
     { "when": { "loader": "neoforge", "mc": "1.21.1" },
-      "native": { "event": "loader:net.neoforged.neoforge.client.event.ClientTickEvent$Post", "bus": "game" } }
+      "native": { "event": "loader:net.neoforged.neoforge.client.event.ClientTickEvent$Post", "bus": "game", "dispatch": "tickEnd" } }
   ]
 }
