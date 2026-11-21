@@ -1,0 +1,6 @@
+{
+  "schema": 1,
+  "hooks": {
+    "tick.end": [ { "when": {}, "method": "net.example.Client#tick()V", "at": "RETURN" } ]
+  }
+}

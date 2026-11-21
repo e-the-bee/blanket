@@ -1,0 +1,9 @@
+{
+  "schema": 1,
+  "api": "com.blanket.api.Client",
+  "representation": [ { "when": {}, "alias": "net.example.Client" } ],
+  "members": {
+    "tick": [ { "when": {}, "lower": { "invoke": "net.example.Client#tick()V" } } ],
+    "player": [ { "when": {}, "lower": { "get": "net.example.Client#player:Lnet/example/Player;" } } ]
+  }
+}

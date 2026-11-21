@@ -1,0 +1,11 @@
+{
+  "schema": 1,
+  "anchor": "1.21.1",
+  "loaders": {
+    "fabric": [ { "when": { "mc": "1.14..1.21.11" }, "runtime": "intermediary", "emitter": "fabric" } ]
+  },
+  "versions": {
+    "1.21.1": { "java": 21, "mappings": { "mojang": true, "intermediary": "net.fabricmc:intermediary:1.21.1:v2" }, "adapters": "modern" }
+  },
+  "supported": [ "fabric:1.21.1" ]
+}

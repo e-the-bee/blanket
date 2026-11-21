@@ -1,0 +1,5 @@
+{
+  "schema": 1,
+  "event": "CLIENT_TICK_END",
+  "recipes": [ { "when": { "loader": "fabric" }, "mixin": { "hook": "tick.end", "dispatch": "tickEnd" } } ]
+}

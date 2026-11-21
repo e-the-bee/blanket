@@ -1,0 +1,8 @@
+{
+  "schema": 1,
+  "api": "com.blanket.api.Player",
+  "representation": [ { "when": {}, "alias": "net.example.Player" } ],
+  "members": {
+    "x": [ { "when": {}, "lower": { "invoke": "net.example.Player#getX()D" } } ]
+  }
+}

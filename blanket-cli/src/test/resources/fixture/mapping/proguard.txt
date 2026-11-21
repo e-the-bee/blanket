@@ -1,0 +1,9 @@
+# fixture: ProGuard, Mojang names on the left
+net.example.Client -> a:
+    net.example.Player player -> b
+    void tick() -> c
+    void unused() -> z
+net.example.Player -> d:
+    double x -> e
+    double getX() -> f
+    void jump(net.example.Client,int) -> g
