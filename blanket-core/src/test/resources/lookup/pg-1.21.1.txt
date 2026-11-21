@@ -1,0 +1,13 @@
+# fixture: ProGuard client mappings, Mojang names on the left (invented names, not Minecraft data)
+net.example.Client -> a:
+    net.example.Player player -> b
+    void tick() -> c
+    net.example.Client getInstance() -> d
+net.example.Player -> e:
+    double x -> f
+    double getX() -> g
+    double getX(double) -> n
+    int armor() -> h
+    void jump(net.example.Client,int) -> i
+net.example.Base -> k:
+    double baseX() -> m

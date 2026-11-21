@@ -1,0 +1,10 @@
+tiny	2	0	official	intermediary
+c	a	class_1
+	f	Le;	b	field_2
+	m	()V	c	method_3
+	m	()La;	d	method_4
+c	e	class_5
+	f	D	f	field_6
+	m	()D	g	method_7
+	m	()I	h	method_8
+	m	(La;I)V	i	method_9
