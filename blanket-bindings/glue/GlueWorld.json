@@ -1,0 +1,49 @@
+{
+  "schema": 1,
+  "api": "com.blanket.runtime.glue.GlueWorld",
+  "members": {
+    "px": [
+      { "when": { "mc": "..1.13.2" }, "lower": { "chain": [
+        { "invoke": "lf:net/minecraft/class_1600#method_2965()Lnet/minecraft/class_1600;" },
+        { "get": "lf:net/minecraft/class_1600#field_10310:Lnet/minecraft/class_518;" },
+        { "get": "lf:net/minecraft/class_864#field_3252:D" } ] } },
+      { "when": {}, "lower": { "unsupported": "legacy camera interpolation exists only on the 1.8.9 eras (M0 Dispatch.worldLegacy)" } }
+    ],
+    "py": [
+      { "when": { "mc": "..1.13.2" }, "lower": { "chain": [
+        { "invoke": "lf:net/minecraft/class_1600#method_2965()Lnet/minecraft/class_1600;" },
+        { "get": "lf:net/minecraft/class_1600#field_10310:Lnet/minecraft/class_518;" },
+        { "get": "lf:net/minecraft/class_864#field_3253:D" } ] } },
+      { "when": {}, "lower": { "unsupported": "legacy camera interpolation exists only on the 1.8.9 eras (M0 Dispatch.worldLegacy)" } }
+    ],
+    "pz": [
+      { "when": { "mc": "..1.13.2" }, "lower": { "chain": [
+        { "invoke": "lf:net/minecraft/class_1600#method_2965()Lnet/minecraft/class_1600;" },
+        { "get": "lf:net/minecraft/class_1600#field_10310:Lnet/minecraft/class_518;" },
+        { "get": "lf:net/minecraft/class_864#field_3254:D" } ] } },
+      { "when": {}, "lower": { "unsupported": "legacy camera interpolation exists only on the 1.8.9 eras (M0 Dispatch.worldLegacy)" } }
+    ],
+    "lastPx": [
+      { "when": { "mc": "..1.13.2" }, "lower": { "chain": [
+        { "invoke": "lf:net/minecraft/class_1600#method_2965()Lnet/minecraft/class_1600;" },
+        { "get": "lf:net/minecraft/class_1600#field_10310:Lnet/minecraft/class_518;" },
+        { "get": "lf:net/minecraft/class_864#field_3211:D" } ] } },
+      { "when": {}, "lower": { "unsupported": "legacy camera interpolation exists only on the 1.8.9 eras (M0 Dispatch.worldLegacy)" } }
+    ],
+    "lastPy": [
+      { "when": { "mc": "..1.13.2" }, "lower": { "chain": [
+        { "invoke": "lf:net/minecraft/class_1600#method_2965()Lnet/minecraft/class_1600;" },
+        { "get": "lf:net/minecraft/class_1600#field_10310:Lnet/minecraft/class_518;" },
+        { "get": "lf:net/minecraft/class_864#field_3212:D" } ] } },
+      { "when": {}, "lower": { "unsupported": "legacy camera interpolation exists only on the 1.8.9 eras (M0 Dispatch.worldLegacy)" } }
+    ],
+    "lastPz": [
+      { "when": { "mc": "..1.13.2" }, "lower": { "chain": [
+        { "invoke": "lf:net/minecraft/class_1600#method_2965()Lnet/minecraft/class_1600;" },
+        { "get": "lf:net/minecraft/class_1600#field_10310:Lnet/minecraft/class_518;" },
+        { "get": "lf:net/minecraft/class_864#field_3213:D" } ] } },
+      { "when": {}, "lower": { "unsupported": "legacy camera interpolation exists only on the 1.8.9 eras (M0 Dispatch.worldLegacy)" } }
+    ]
+  },
+  "note": "M1 T9. Legacy eras only: the player position now and at the last tick, read through the 1.8.9 client (M0 legacyGlue). The lf names are the M0 names; the forge 1.8.9 obfuscated names come from the lf route."
+}

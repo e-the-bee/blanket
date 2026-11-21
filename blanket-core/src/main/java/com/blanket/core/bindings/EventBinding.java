@@ -15,7 +15,7 @@ import java.util.Set;
 /** {@code events/<Event>.json}: the recipes that deliver one event on each target (binding-format.md section 7). */
 public final class EventBinding {
     private static final Set<String> BUSES = Json.set("game", "mod", "fml");
-    private static final Set<String> SOURCES = Json.set("arg", "this", "getter", "adapter", "const");
+    private static final Set<String> SOURCES = Json.set("arg", "this", "getter", "adapter", "const", "glue");
 
     private final String event;
     private final List<Recipe> recipes;
@@ -170,18 +170,42 @@ public final class EventBinding {
         }
     }
 
-    /** A payload source: an argument, a field, a getter, an adapter or a constant (binding-format.md section 7). */
+    /**
+     * A payload source: an argument, a field, a getter, an adapter, a constant or a glue call (binding-format.md
+     * section 7, D-054). A glue source names a glue member and gives the payload sources that are its arguments.
+     */
     public static final class Source {
+        /** A glue member: {@code GlueType#member}, optionally followed by its descriptor. */
+        private static final java.util.regex.Pattern GLUE_MEMBER =
+                java.util.regex.Pattern.compile("[A-Za-z_][A-Za-z0-9_]*#[A-Za-z_$][A-Za-z0-9_$]*(\\(.*\\).*)?");
+
         private final String kind;
         private final JsonElement value;
+        private final List<Source> args;
 
-        private Source(String kind, JsonElement value) {
+        private Source(String kind, JsonElement value, List<Source> args) {
             this.kind = kind;
             this.value = value;
+            this.args = args;
         }
 
         static Source parse(JsonElement e, String file, String path) {
             JsonObject o = Json.obj(e, file, path);
+            if (o.has("glue")) {
+                Json.checkKeys(o, file, path, new String[] {"glue", "args"});
+                String member = Json.nonEmpty(o, "glue", file, path);
+                if (!GLUE_MEMBER.matcher(member).matches()) {
+                    throw new BindingException(file, path + ".glue", "a glue member is GlueType#member, found '" + member + "'");
+                }
+                List<Source> args = new ArrayList<Source>();
+                if (o.has("args")) {
+                    JsonArray a = Json.arr(o.get("args"), file, path + ".args");
+                    for (int i = 0; i < a.size(); i++) {
+                        args.add(parse(a.get(i), file, path + ".args[" + i + "]"));
+                    }
+                }
+                return new Source("glue", new JsonPrimitive(member), Collections.unmodifiableList(args));
+            }
             if (o.size() != 1) {
                 throw new BindingException(file, path, "a payload source has exactly one key (" + SOURCES + "), found " + o.size());
             }
@@ -197,19 +221,21 @@ public final class EventBinding {
                     if (n < 0) {
                         throw new BindingException(file, at, "argument index must not be negative");
                     }
-                    return new Source(key, new JsonPrimitive(n));
+                    return new Source(key, new JsonPrimitive(n), NO_ARGS);
                 }
                 case "const":
                     if (!v.isJsonPrimitive()) {
                         throw new BindingException(file, at, "const must be true, false, an integer or a string");
                     }
-                    return new Source(key, v);
+                    return new Source(key, v, NO_ARGS);
                 default:
-                    return new Source(key, new JsonPrimitive(Json.nonEmpty(o, key, file, path)));
+                    return new Source(key, new JsonPrimitive(Json.nonEmpty(o, key, file, path)), NO_ARGS);
             }
         }
 
-        /** The source kind: arg, this, getter, adapter or const. */
+        private static final List<Source> NO_ARGS = Collections.emptyList();
+
+        /** The source kind: arg, this, getter, adapter, const or glue. */
         public String kind() {
             return kind;
         }
@@ -218,9 +244,21 @@ public final class EventBinding {
             return value;
         }
 
+        /** The argument sources of a glue call, in order; empty for every other kind. */
+        public List<Source> args() {
+            return args;
+        }
+
         JsonElement toJson() {
             JsonObject o = new JsonObject();
             o.add(kind, value);
+            if (!args.isEmpty()) {
+                JsonArray a = new JsonArray();
+                for (Source s : args) {
+                    a.add(s.toJson());
+                }
+                o.add("args", a);
+            }
             return o;
         }
     }

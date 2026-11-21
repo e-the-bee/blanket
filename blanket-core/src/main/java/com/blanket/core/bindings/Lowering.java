@@ -14,10 +14,13 @@ import java.util.List;
  */
 public final class Lowering {
 
-    /** The lowering kinds of section 4.3. */
+    /**
+     * The lowering kinds of section 4.3, plus {@code cast} (D-053). A cast is a chain step only: a checked change of
+     * the static type of the value on top of the stack.
+     */
     public enum Kind {
         INVOKE("invoke"), GET("get"), PUT("put"), NEW("new"), CHAIN("chain"), ADAPTER("adapter"),
-        CONST("const"), UNSUPPORTED("unsupported");
+        CONST("const"), UNSUPPORTED("unsupported"), CAST("cast");
 
         private final String json;
 
@@ -73,13 +76,47 @@ public final class Lowering {
                 }
                 List<Lowering> steps = new ArrayList<Lowering>();
                 for (int i = 0; i < v.getAsJsonArray().size(); i++) {
-                    steps.add(parse(v.getAsJsonArray().get(i), file, at + "[" + i + "]"));
+                    steps.add(step(v.getAsJsonArray().get(i), file, at + "[" + i + "]", i));
                 }
                 return new Lowering(Kind.CHAIN, null, null, Collections.unmodifiableList(steps));
             }
+            case "cast":
+                throw new BindingException(file, at, "cast is only valid as a chain step (D-053)");
             default:
                 throw new BindingException(file, path, "unknown lowering kind '" + key + "' (expected one of " + kindList() + ")");
         }
+    }
+
+    /**
+     * One chain step (binding-format.md section 4.3, D-053). The first step takes the receiver and arguments, so it may
+     * be a direct lowering or a cast. Every later step works on the previous result: it is a zero-argument invoke, a
+     * get or a cast. Constants, puts, nested chains and adapters cannot be later steps.
+     */
+    private static Lowering step(JsonElement e, String file, String path, int index) {
+        JsonObject o = Json.obj(e, file, path);
+        if (o.has("cast")) {
+            if (o.size() != 1) {
+                throw new BindingException(file, path, "a cast step has exactly one key, \"cast\", found " + o.size());
+            }
+            return new Lowering(Kind.CAST, nonEmptyString(o.get("cast"), file, path + ".cast"), null, null);
+        }
+        Lowering l = parse(e, file, path);
+        if (index == 0) {
+            if (l.kind == Kind.PUT || l.kind == Kind.CONST || l.kind == Kind.UNSUPPORTED || l.kind == Kind.CHAIN) {
+                throw new BindingException(file, path, "the first chain step must be invoke, get, new, adapter or cast, found " + l.kind.json);
+            }
+            return l;
+        }
+        if (l.kind != Kind.INVOKE && l.kind != Kind.GET) {
+            throw new BindingException(file, path, "chain step " + index + " must be a zero-argument invoke, get or cast, found " + l.kind.json);
+        }
+        if (l.kind == Kind.INVOKE) {
+            int open = l.ref.indexOf('(', Math.max(0, l.ref.indexOf('#')));
+            if (open < 0 || open + 1 >= l.ref.length() || l.ref.charAt(open + 1) != ')') {
+                throw new BindingException(file, path, "chain step " + index + " must take no arguments (its descriptor has parameters): " + l.ref);
+            }
+        }
+        return l;
     }
 
     private static String nonEmptyString(JsonElement v, String file, String at) {

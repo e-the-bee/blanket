@@ -1,0 +1,82 @@
+{
+  "schema": 1,
+  "api": "com.blanket.runtime.glue.GlueFrame",
+  "members": {
+    "core": [
+      { "when": { "mc": "..1.13.2" },      "lower": { "const": false }, "note": "1.8.9 GLSL 1.20 path (M0 legacyGlue)" },
+      { "when": { "mc": "1.14..1.21.11" }, "lower": { "const": true },  "note": "M0 modernGlue: core profile" },
+      { "when": { "mc": "26.1.." },        "lower": { "const": true } }
+    ],
+    "fbo": [
+      { "when": { "mc": "..1.13.2" }, "lower": { "const": -1 }, "note": "whatever is bound (1.8.9)" },
+      { "when": { "mc": "1.14..1.21.11" }, "lower": { "chain": [
+        { "invoke": "net.minecraft.client.Minecraft#getInstance()Lnet/minecraft/client/Minecraft;" },
+        { "invoke": "net.minecraft.client.Minecraft#getMainRenderTarget()Lcom/mojang/blaze3d/pipeline/RenderTarget;" },
+        { "get": "com.mojang.blaze3d.pipeline.RenderTarget#frameBufferId:I" } ] } },
+      { "when": { "mc": "26.1.." }, "lower": { "const": -2 }, "note": "build from colorTex and depthTex (S-08: 26.x binds no main target)" }
+    ],
+    "colorTex": [
+      { "when": { "mc": "26.1.." }, "lower": { "chain": [
+        { "invoke": "official:net.minecraft.client.Minecraft#getInstance()Lnet/minecraft/client/Minecraft;" },
+        { "invoke": "official:net.minecraft.client.Minecraft#getMainRenderTarget()Lcom/mojang/blaze3d/pipeline/RenderTarget;" },
+        { "invoke": "official:com.mojang.blaze3d.pipeline.RenderTarget#getColorTexture()Lcom/mojang/blaze3d/textures/GpuTexture;" },
+        { "cast": "official:com.mojang.blaze3d.opengl.GlTexture" },
+        { "invoke": "official:com.mojang.blaze3d.opengl.GlTexture#glId()I" } ] }, "note": "D-053 cast: GpuTexture to GlTexture (M0 26.1.2 colorTex)" },
+      { "when": {}, "lower": { "const": 0 }, "note": "not read before 26.x (M0 Glue default)" }
+    ],
+    "depthTex": [
+      { "when": { "mc": "26.1.." }, "lower": { "chain": [
+        { "invoke": "official:net.minecraft.client.Minecraft#getInstance()Lnet/minecraft/client/Minecraft;" },
+        { "invoke": "official:net.minecraft.client.Minecraft#getMainRenderTarget()Lcom/mojang/blaze3d/pipeline/RenderTarget;" },
+        { "invoke": "official:com.mojang.blaze3d.pipeline.RenderTarget#getDepthTexture()Lcom/mojang/blaze3d/textures/GpuTexture;" },
+        { "cast": "official:com.mojang.blaze3d.opengl.GlTexture" },
+        { "invoke": "official:com.mojang.blaze3d.opengl.GlTexture#glId()I" } ] } },
+      { "when": {}, "lower": { "const": 0 } }
+    ],
+    "fbWidth": [
+      { "when": { "mc": "1.14..1.21.11" }, "lower": { "chain": [
+        { "invoke": "net.minecraft.client.Minecraft#getInstance()Lnet/minecraft/client/Minecraft;" },
+        { "invoke": "net.minecraft.client.Minecraft#getMainRenderTarget()Lcom/mojang/blaze3d/pipeline/RenderTarget;" },
+        { "get": "com.mojang.blaze3d.pipeline.RenderTarget#width:I" } ] } },
+      { "when": { "mc": "26.1.." }, "lower": { "chain": [
+        { "invoke": "official:net.minecraft.client.Minecraft#getInstance()Lnet/minecraft/client/Minecraft;" },
+        { "invoke": "official:net.minecraft.client.Minecraft#getMainRenderTarget()Lcom/mojang/blaze3d/pipeline/RenderTarget;" },
+        { "get": "official:com.mojang.blaze3d.pipeline.RenderTarget#width:I" } ] } },
+      { "when": {}, "lower": { "const": 0 } }
+    ],
+    "fbHeight": [
+      { "when": { "mc": "1.14..1.21.11" }, "lower": { "chain": [
+        { "invoke": "net.minecraft.client.Minecraft#getInstance()Lnet/minecraft/client/Minecraft;" },
+        { "invoke": "net.minecraft.client.Minecraft#getMainRenderTarget()Lcom/mojang/blaze3d/pipeline/RenderTarget;" },
+        { "get": "com.mojang.blaze3d.pipeline.RenderTarget#height:I" } ] } },
+      { "when": { "mc": "26.1.." }, "lower": { "chain": [
+        { "invoke": "official:net.minecraft.client.Minecraft#getInstance()Lnet/minecraft/client/Minecraft;" },
+        { "invoke": "official:net.minecraft.client.Minecraft#getMainRenderTarget()Lcom/mojang/blaze3d/pipeline/RenderTarget;" },
+        { "get": "official:com.mojang.blaze3d.pipeline.RenderTarget#height:I" } ] } },
+      { "when": {}, "lower": { "const": 0 } }
+    ],
+    "guiWidth": [
+      { "when": { "mc": "1.14..1.21.11" }, "lower": { "chain": [
+        { "invoke": "net.minecraft.client.Minecraft#getInstance()Lnet/minecraft/client/Minecraft;" },
+        { "invoke": "net.minecraft.client.Minecraft#getWindow()Lcom/mojang/blaze3d/platform/Window;" },
+        { "invoke": "com.mojang.blaze3d.platform.Window#getGuiScaledWidth()I" } ] } },
+      { "when": { "mc": "26.1.." }, "lower": { "chain": [
+        { "invoke": "official:net.minecraft.client.Minecraft#getInstance()Lnet/minecraft/client/Minecraft;" },
+        { "invoke": "official:net.minecraft.client.Minecraft#getWindow()Lcom/mojang/blaze3d/platform/Window;" },
+        { "invoke": "official:com.mojang.blaze3d.platform.Window#getGuiScaledWidth()I" } ] } },
+      { "when": {}, "lower": { "const": 0 } }
+    ],
+    "guiHeight": [
+      { "when": { "mc": "1.14..1.21.11" }, "lower": { "chain": [
+        { "invoke": "net.minecraft.client.Minecraft#getInstance()Lnet/minecraft/client/Minecraft;" },
+        { "invoke": "net.minecraft.client.Minecraft#getWindow()Lcom/mojang/blaze3d/platform/Window;" },
+        { "invoke": "com.mojang.blaze3d.platform.Window#getGuiScaledHeight()I" } ] } },
+      { "when": { "mc": "26.1.." }, "lower": { "chain": [
+        { "invoke": "official:net.minecraft.client.Minecraft#getInstance()Lnet/minecraft/client/Minecraft;" },
+        { "invoke": "official:net.minecraft.client.Minecraft#getWindow()Lcom/mojang/blaze3d/platform/Window;" },
+        { "invoke": "official:com.mojang.blaze3d.platform.Window#getGuiScaledHeight()I" } ] } },
+      { "when": {}, "lower": { "const": 0 } }
+    ]
+  },
+  "note": "M1 T9. Stub bodies are never run; these lowerings replace the calls (D-051, D-052). Names are the M0 Gen.java names, verified in real games; BindingsGlueHooksTest resolves each one on the six targets. Unused members take the M0 Glue base-class defaults (0 or -1)."
+}

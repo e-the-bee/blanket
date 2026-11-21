@@ -232,7 +232,8 @@ exist on API types (accessors only). Static factories are keyed like methods (`"
 | field read | `{ "get": "<field ref>" }` | `GETFIELD` or `GETSTATIC` |
 | field write | `{ "put": "<field ref>" }` | `PUTFIELD` or `PUTSTATIC` |
 | construct | `{ "new": "<method ref to <init>>" }` | a call to a synthesized private static bridge in the calling class that does `NEW; DUP; load args; INVOKESPECIAL; ARETURN` (API factories are static methods, so arguments are already on the stack when the call is reached) |
-| chain | `{ "chain": [ <lowering>, ... ] }` | each step in order; the first step takes the API receiver and arguments, every later step must be a zero-argument `invoke` or `get` on the previous result |
+| chain | `{ "chain": [ <lowering>, ... ] }` | each step in order; the first step takes the API receiver and arguments (a direct lowering or a cast), every later step must be a zero-argument `invoke`, a `get` or a `cast` on the previous result. A later step cannot be a constant, `put`, `adapter` or nested chain (M1 T9, D-053) |
+| cast (chain step only) | `{ "cast": "<class ref>" }` | `CHECKCAST` to the class: a checked change of the static type of the value on top of the stack, not a conversion. Only valid as a step of a `chain`, never as a top-level lowering (D-053) |
 | adapter | `{ "adapter": "<set>:<class>#<method>" }` | `INVOKESTATIC` to the adapter method; its descriptor is the API member's descriptor with the receiver (if any) as the first parameter, after type remapping |
 | constant | `{ "const": true \| false \| <int> \| <string> }` | `ICONST`/`LDC` (used by `Blanket.supports`) |
 | unsupported | `{ "unsupported": "<reason>" }` | nothing; any reachable use is an `UNSUPPORTED` error (§6) |
@@ -370,7 +371,17 @@ Mixin injector with `require = 1` and `expect = 1`
 
 Payload sources: `{"arg": n}` (n-th argument of the hooked method), `{"this": "<field ref>"}`,
 `{"getter": "<loader or method ref>"}` (called on the native event object), `{"adapter": "..."}`,
-`{"const": v}`.
+`{"const": v}`, and `{"glue": "<GlueType>#<member>", "args": [<source>, ...]}` (D-054). A glue source calls a
+glue member with the value of each `args` source, in order (`args` may be omitted for a member with no
+parameters). Each argument is any payload source, including another glue source. The member is bound per
+target like any glue member (section 4.5), and its lowering consumes the arguments in order. Its result is the
+value passed to `Dispatch`, so it has the type of the `Dispatch` parameter it fills (for example `float`,
+`float[]` or `double`). It is not `Object`, because `Dispatch` is typed in M1 (D-055) and the `Object...`
+form of D-051 is not used. A glue member with a `void` result cannot be a payload source, because a payload
+value must exist.
+
+Each payload entry fills one parameter of the `Dispatch` method for the event, in the order the entries are
+written. `Dispatch` keeps its typed M0 signatures for M1 (D-055).
 
 **Payload values reach the runtime as `Object` (D-051).** The generated hook passes each payload value
 to `Dispatch.<event>(Object...)` unconverted. Conversions are glue members that take the raw object and

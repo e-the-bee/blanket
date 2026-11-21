@@ -1,0 +1,42 @@
+{
+  "schema": 1,
+  "hooks": {
+    "tick.end": [
+      { "when": { "loader": "legacy-fabric", "mc": "..1.13.2" }, "method": "lf:net/minecraft/class_1600#method_2954()V", "at": "RETURN" },
+      { "when": { "loader": "fabric", "mc": "1.14..1.21.11" }, "method": "net.minecraft.client.Minecraft#tick()V", "at": "RETURN",
+        "note": "Mojang name routed to the intermediary (M0 method_1574 on 1.21.1)" },
+      { "when": { "loader": "fabric", "mc": "26.1.." }, "method": "official:net.minecraft.client.Minecraft#tick()V", "at": "RETURN" }
+    ],
+    "gui.hud": [
+      { "when": { "loader": "legacy-fabric", "mc": "..1.13.2" }, "method": "lf:net/minecraft/class_371#method_9420(F)V", "at": "TAIL" },
+      { "when": { "loader": "fabric", "mc": "1.21.1" },
+        "method": "intermediary:net/minecraft/class_329#method_1753(Lnet/minecraft/class_332;Lnet/minecraft/class_9779;)V",
+        "at": "TAIL", "note": "M0 HudMixin on 1.21.1; intermediary ids are exact to 1.21.1 only" }
+    ],
+    "gui.record": [
+      { "when": { "loader": "fabric", "mc": "26.1.." },
+        "method": "official:net.minecraft.client.gui.Gui#extractRenderState(Lnet/minecraft/client/gui/GuiGraphicsExtractor;Lnet/minecraft/client/DeltaTracker;)V",
+        "at": "TAIL", "note": "deferred HUD: record during extraction (M0 HudMixin on 26.1.2)" }
+    ],
+    "gui.replay": [
+      { "when": { "loader": "fabric", "mc": "26.1.." },
+        "method": "official:net.minecraft.client.renderer.GameRenderer#render(Lnet/minecraft/client/DeltaTracker;Z)V",
+        "at": { "invoke": "official:net.minecraft.client.gui.render.GuiRenderer#render(Lcom/mojang/blaze3d/buffers/GpuBufferSlice;)V", "shift": "AFTER" },
+        "note": "replay right after the GUI renderer ran (S-08)" }
+    ],
+    "world.render": [
+      { "when": { "loader": "fabric", "mc": "1.21.1" },
+        "method": "intermediary:net/minecraft/class_761#method_22710(Lnet/minecraft/class_9779;ZLnet/minecraft/class_4184;Lnet/minecraft/class_757;Lnet/minecraft/class_765;Lorg/joml/Matrix4f;Lorg/joml/Matrix4f;)V",
+        "at": "TAIL", "note": "M0 WorldMixin on 1.21.1: matrices are the 6th and 7th arguments" },
+      { "when": { "loader": "fabric", "mc": "26.1.." },
+        "method": "official:net.minecraft.client.renderer.LevelRenderer#lambda$addMainPass$0(Lcom/mojang/blaze3d/buffers/GpuBufferSlice;Lnet/minecraft/client/renderer/state/level/LevelRenderState;Lnet/minecraft/util/profiling/ProfilerFiller;Lnet/minecraft/client/renderer/chunk/ChunkSectionsToRender;Lcom/mojang/blaze3d/resource/ResourceHandle;Lcom/mojang/blaze3d/resource/ResourceHandle;Lcom/mojang/blaze3d/resource/ResourceHandle;Lcom/mojang/blaze3d/resource/ResourceHandle;Lcom/mojang/blaze3d/resource/ResourceHandle;ZLorg/joml/Matrix4fc;)V",
+        "at": "RETURN", "note": "M0 WorldMixin on 26.1.2 (a lambda; its name is from the 26.1.2 jar)" }
+    ],
+    "world.legacy": [
+      { "when": { "loader": "legacy-fabric", "mc": "..1.13.2" },
+        "method": "lf:net/minecraft/class_524#method_9776(IFJ)V",
+        "at": { "invokeString": "lf:net/minecraft/class_839#method_2360(Ljava/lang/String;)V", "ldc": "hand" },
+        "note": "the 1.8.9 world point: Profiler#swap(\"hand\") (R-EVT-09, R-EXP-06)" }
+    ]
+  }
+}
