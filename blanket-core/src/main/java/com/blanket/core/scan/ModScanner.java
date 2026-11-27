@@ -82,16 +82,26 @@ public final class ModScanner {
 
     /** Adds one class to {@code scan}. */
     public static void scanClass(byte[] bytes, Scan scan) {
-        new ClassReader(bytes).accept(new Classes(new Used(scan)), 0);
+        scanClass(bytes, scan, true);
+    }
+
+    /**
+     * Adds one class to {@code scan}; with {@code events} false its reads of {@code Events.X} still count as type uses but
+     * not as subscriptions (the runtime's own dispatcher reads every event and subscribes to none).
+     */
+    public static void scanClass(byte[] bytes, Scan scan, boolean events) {
+        new ClassReader(bytes).accept(new Classes(new Used(scan, events)), 0);
         scan.classRead();
     }
 
     /** Recording helpers shared by all visitors of one scan. */
     private static final class Used {
         final Scan scan;
+        final boolean events;
 
-        Used(Scan scan) {
+        Used(Scan scan, boolean events) {
             this.scan = scan;
+            this.events = events;
         }
 
         void internal(String name) {
@@ -363,7 +373,7 @@ public final class ModScanner {
             if (opcode == Opcodes.GETSTATIC && owner.equals(EVENTS)) {
                 used.internal(owner);
                 used.desc(desc);
-                used.scan.addEvent(name);
+                if (used.events) used.scan.addEvent(name);
                 return;
             }
             used.member(owner, name, desc, opcode == Opcodes.GETSTATIC || opcode == Opcodes.PUTSTATIC, true);
