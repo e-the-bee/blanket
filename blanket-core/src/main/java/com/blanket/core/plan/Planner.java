@@ -36,11 +36,12 @@ import java.util.function.Predicate;
 /**
  * RESOLVE (architecture.md section 3.2): SCANs a mod jar and turns the first matching rule of everything it uses into a
  * {@link Plan} per supported target, in runtime names with ready opcodes. The used set of a target is the mod's classes
- * plus the embedded classes {@link Reach} says the target's jar can run. Before planning a target, that used set is
- * checked like {@code blanket check} ({@link ModCheck}: C1, C2, C3, C7); any failure there or in planning throws an
- * {@link IllegalStateException} whose message is the {@link Diagnostic} lines. The adapter classes the plan names are
- * closed over and resolved in the same round as the plan's own references ({@link AdapterClosure}). A {@code testkit}
- * plan adds {@link #TESTKIT} to the roots (testing-strategy.md section 4).
+ * plus the embedded classes {@link Reach} says the target's jar can run, including those the shipped adapter classes
+ * name. Before planning a target, that used set is checked like {@code blanket check} ({@link ModCheck}: C1, C2, C3,
+ * C7); any failure there or in planning throws an {@link IllegalStateException} whose message is the {@link Diagnostic}
+ * lines. The adapter classes the plan names are closed over and resolved in the same round as the plan's own references
+ * ({@link AdapterClosure}). A glue member gets a body when a class of the used set or a wired hook calls it. A
+ * {@code testkit} plan adds {@link #TESTKIT} to the roots (testing-strategy.md section 4).
  */
 public final class Planner {
     private Planner() {}
@@ -134,19 +135,28 @@ public final class Planner {
         List<String> roots = new ArrayList<>(Reach.ROOTS);
         roots.add(TargetPlan.glImpl(t));
         if (testkit) roots.add(TESTKIT);
-        Scan scan = Reach.scan(mod, embed, roots, stubClasses(bindings));
-        Report check = ModCheck.run(bindings, data, api, scan, List.of(t));
-        List<Diagnostic> errors = new ArrayList<>();
+        Set<String> stubs = stubClasses(bindings);
+        Set<String> glueOwners = new TreeSet<>();
+        for (TypeBinding gb : bindings.glue().values()) glueOwners.add(gb.api().replace('.', '/'));
         Predicate<String> enums = owner -> isEnum(apiLoader, owner);
-        for (Diagnostic d : check.errors()) {
-            if (!decidedHere(d, bindings, scan, enums)) errors.add(d);
-        }
-        if (!errors.isEmpty()) throw fail(errors);
         try (Names names = new Names(t, bindings.targets().gameClasses())) {
-            TargetPlan builder = new TargetPlan(bindings, scan, api, t, names, enums);
-            Plan collecting = builder.build();   // collects every reference
-            AdapterClosure adapters = AdapterClosure.collect(bindings.dir(), t, bindings.targets().gameClasses(), bindings.targets().anchor(),
-                    collecting.adapterCalls(), names);   // and the adapter closure's, in the same round (glue adapters included)
+            // The adapter closure ships whole, so the embedded classes it names join the used set, whose members and glue
+            // calls can name more adapters: repeat until the used set stands still. Each round's used set contains the
+            // last one's (more adapter classes only add sources), so this ends; the references every round collects are
+            // the final round's too.
+            Reach.Used used = Reach.used(mod, Map.of(), embed, roots, stubs, glueOwners);
+            TargetPlan builder;
+            AdapterClosure adapters;
+            while (true) {
+                check(bindings, data, api, used.scan(), t, enums);
+                builder = new TargetPlan(bindings, used.scan(), used.glueCalls(), api, t, names, enums);
+                Plan collecting = builder.build();   // collects every reference
+                adapters = AdapterClosure.collect(bindings.dir(), t, bindings.targets().gameClasses(), bindings.targets().anchor(),
+                        collecting.adapterCalls(), names);   // and the adapter closure's, in the same round (glue adapters included)
+                Reach.Used next = Reach.used(mod, adapters.classes(), embed, roots, stubs, glueOwners);
+                if (next.classes().equals(used.classes()) && next.glueCalls().equals(used.glueCalls())) break;
+                used = next;
+            }
             names.resolve(data);
             Plan plan = builder.build();         // the plan in resolved names
             Map<String, String> runtimeToJar = names.runtimeToJar();
@@ -157,6 +167,16 @@ public final class Planner {
                         plan.features(), plan.classVersionMax(), Collections.unmodifiableMap(closure), plan.glue(), plan.hooks()), runtimeToJar);
             }
         }
+    }
+
+    /** Checks the used set like {@code blanket check}, leaving out what the plan decides itself ({@link #decidedHere}). */
+    private static void check(BindingSet bindings, TargetData data, ApiClasses api, Scan scan, TargetSpec t, Predicate<String> enums) throws IOException {
+        Report check = ModCheck.run(bindings, data, api, scan, List.of(t));
+        List<Diagnostic> errors = new ArrayList<>();
+        for (Diagnostic d : check.errors()) {
+            if (!decidedHere(d, bindings, scan, enums)) errors.add(d);
+        }
+        if (!errors.isEmpty()) throw fail(errors);
     }
 
     /**

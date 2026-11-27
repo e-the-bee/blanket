@@ -354,7 +354,11 @@ class PlannerTest implements Opcodes {
 
     @Test
     void glueCallsAnInterfaceMethodWithInvokeInterfaceAndCastsObjectParameters() throws IOException {
-        Plan p = plan("fabric:26.1.2");
+        // the GL backend (a root) calls fbo, colorTex and camX; partialTick is the HUD hook's
+        Path gl = jar("gl.jar", Map.of("com/blanket/runtime/Lwjgl3Gl", caller("com/blanket/runtime/Lwjgl3Gl",
+                new Object[] {INVOKESTATIC, FRAME, "fbo", "()I"}, new Object[] {INVOKESTATIC, FRAME, "colorTex", "()I"},
+                new Object[] {INVOKESTATIC, WORLD, "camX", "(Ljava/lang/Object;)D"})));
+        Plan p = plan(files(), mod, List.of(gl), PlannerTest.class.getClassLoader(), TARGETS_26);
         Glue partial = glue(p, FRAME + ".partialTick");
         assertEquals("F", partial.retDesc());
         assertEquals(List.of(Op.load(ALOAD, 0), Op.cast("net/example/Clock"), Op.constant(true),
@@ -710,13 +714,16 @@ class PlannerTest implements Opcodes {
         assertTrue(e.getMessage().startsWith("UNBOUND fabric:26.1.2 Player.z"), e.getMessage());
     }
 
-    /** A class whose {@code run} makes the given calls: {opcode, owner, name, desc}. */
+    /** A class whose {@code run} makes the given calls: {opcode, owner, name, desc}; each argument is a null or a zero. */
     private static byte[] caller(String name, Object[]... calls) {
         return simple(name, "java/lang/Object", ACC_PUBLIC, w -> {
             MethodVisitor m = w.visitMethod(ACC_PUBLIC | ACC_STATIC, "run", "()V", null, null);
             m.visitCode();
             for (Object[] c : calls) {
                 if ((int) c[0] == INVOKEVIRTUAL) m.visitInsn(ACONST_NULL);
+                for (org.objectweb.asm.Type a : org.objectweb.asm.Type.getArgumentTypes((String) c[3])) {
+                    m.visitInsn(a.getSort() >= org.objectweb.asm.Type.ARRAY ? ACONST_NULL : ICONST_0);
+                }
                 m.visitMethodInsn((int) c[0], (String) c[1], (String) c[2], (String) c[3], false);
                 m.visitInsn(c[3].toString().endsWith(")V") ? NOP : ((String) c[3]).endsWith(")D") ? POP2 : POP);
             }
@@ -941,5 +948,98 @@ class PlannerTest implements Opcodes {
 
         // Mixin hooks carry their hooks.json ids
         assertEquals(List.of("gui.record", "gui.replay"), hooks(plan("fabric:26.1.2"), "HUD_RENDER").stream().map(Hook::hookId).toList());
+    }
+
+    // ---------------------------------------------------------------------------------------- M3: what the adapters reach
+
+    private void builtAdapter(String name, java.util.function.Consumer<ClassWriter> body) {
+        if (!builtFiles.containsKey("build/adapters/unobf/adapter-refs.json")) {
+            builtFiles.put("build/adapters/unobf/adapter-refs.json", """
+                    { "schema": 1, "set": "unobf", "namespace": "official", "declaring": {}, "overrides": {} }""".getBytes(StandardCharsets.UTF_8));
+        }
+        String internal = "com/blanket/adapters/unobf/" + name;
+        builtFiles.put("build/adapters/unobf/" + internal + ".class", simple(internal, "java/lang/Object", ACC_PUBLIC | ACC_FINAL, body));
+    }
+
+    private static void staticMethod(ClassWriter w, String name, String desc, java.util.function.Consumer<MethodVisitor> body) {
+        MethodVisitor m = w.visitMethod(ACC_PUBLIC | ACC_STATIC, name, desc, null, null);
+        m.visitCode();
+        body.accept(m);
+        m.visitMaxs(0, 0);
+        m.visitEnd();
+    }
+
+    @Test
+    void embeddedClassesOnlyTheAdaptersReachJoinTheUsedSetUntilItStandsStill() throws IOException {
+        Map<String, String> f = files();
+        String axes = String.join(", ", List.of("getMinX", "getMinY", "getMaxY").stream()
+                .map(a -> rule(a, "{ \"invoke\": \"official:net.example.Aabb#" + a + "()D\" }")).toList());
+        f.put("types/Hitbox.json", apiType("Hitbox", "official:net.example.Aabb", axes));
+        f.put("types/Player.json", apiType("Player", "official:net.example.Hero", rule("x", "{ \"adapter\": \"unobf:com.blanket.adapters.Boxes#x\" }")));
+        f.put("types/Cell.json", apiType("Cell", "official:net.example.Pos", rule("of", "{ \"adapter\": \"unobf:com.blanket.adapters.Cells#of\" }")));
+        // the mod's Player.x goes to the adapter Boxes, which calls HostDraw; HostDraw uses Hitbox.getMinX, the glue camX and
+        // Cell.of, whose adapter Cells calls Deep, which uses Hitbox.getMinY: three rounds until the used set stands still
+        builtAdapter("Boxes", w -> staticMethod(w, "x", "(Lnet/example/Hero;)D", m -> {
+            m.visitMethodInsn(INVOKESTATIC, "com/blanket/runtime/HostDraw", "run", "()V", false);
+            m.visitInsn(DCONST_0);
+            m.visitInsn(DRETURN);
+        }));
+        builtAdapter("Cells", w -> staticMethod(w, "of", "(III)Lnet/example/Pos;", m -> {
+            m.visitMethodInsn(INVOKESTATIC, "com/blanket/runtime/Deep", "run", "()V", false);
+            m.visitTypeInsn(NEW, "net/example/Pos");
+            m.visitInsn(DUP);
+            for (int i = 0; i < 3; i++) m.visitVarInsn(ILOAD, i);
+            m.visitMethodInsn(INVOKESPECIAL, "net/example/Pos", "<init>", "(III)V", false);
+            m.visitInsn(ARETURN);
+        }));
+        Path embed = jar("embed.jar", Map.of(
+                "com/blanket/runtime/HostDraw", caller("com/blanket/runtime/HostDraw", box("getMinX"),
+                        new Object[] {INVOKESTATIC, WORLD, "camX", "(Ljava/lang/Object;)D"},
+                        new Object[] {INVOKESTATIC, "com/blanket/api/Cell", "of", "(III)Lcom/blanket/api/Cell;"}),
+                "com/blanket/runtime/Deep", caller("com/blanket/runtime/Deep", box("getMinY")),
+                "com/blanket/runtime/Unused", caller("com/blanket/runtime/Unused", box("getMaxY"))));
+        Plan p = plan(f, mod, List.of(embed), PlannerTest.class.getClassLoader(), TARGETS_26);
+        assertEquals(java.util.Set.of("com/blanket/adapters/unobf/Boxes", "com/blanket/adapters/unobf/Cells"), p.adapters().keySet());
+        assertEquals(java.util.Set.of(
+                "com/blanket/api/Client.get()Lcom/blanket/api/Client;", "com/blanket/api/Client.player()Lcom/blanket/api/Player;", "com/blanket/api/Player.x()D",
+                "com/blanket/api/Hitbox.getMinX()D", "com/blanket/api/Cell.of(III)Lcom/blanket/api/Cell;", "com/blanket/api/Hitbox.getMinY()D"),
+                p.members().keySet());
+        assertEquals(new Lowered.Inline(List.of(Op.invoke(INVOKEVIRTUAL, "net/example/Aabb", "getMinY", "()D", false))), p.members().get("com/blanket/api/Hitbox.getMinY()D"));
+        assertEquals(List.of(Op.load(ALOAD, 0), Op.cast("net/example/Mob"), Op.invoke(INVOKEVIRTUAL, "net/example/Mob", "getX", "()D", false)),
+                glue(p, WORLD + ".camX").steps(), "the glue an adapter-reached class calls gets its body");
+
+        // with an inline Player.x no adapter reaches HostDraw: neither its members nor its glue are planned
+        f.put("types/Player.json", player("official:net.example.Mob#getX()D"));
+        Plan inline = plan(f, mod, List.of(embed), PlannerTest.class.getClassLoader(), TARGETS_26);
+        assertEquals(Map.of(), inline.adapters());
+        assertEquals(java.util.Set.of("com/blanket/api/Client.get()Lcom/blanket/api/Client;", "com/blanket/api/Client.player()Lcom/blanket/api/Player;",
+                "com/blanket/api/Player.x()D"), inline.members().keySet());
+        assertTrue(inline.glue().stream().noneMatch(g -> g.name().equals(WORLD + ".camX")), inline.glue().toString());
+    }
+
+    @Test
+    void aGlueMemberGetsABodyOnlyWhenAUsedClassOrAHookCallsIt() throws IOException {
+        Map<String, String> f = files();
+        f.put("glue/GlueTestkit.json", """
+                { "schema": 1, "api": "com.blanket.runtime.glue.GlueTestkit", "members": {
+                    "press": [ { "when": {}, "lower": { "adapter": "unobf:com.blanket.adapters.KeyPress#press" } } ] } }""");
+        builtAdapter("KeyPress", w -> staticMethod(w, "press", "(Ljava/lang/Object;)V", m -> m.visitInsn(RETURN)));
+        String glueTestkit = "com/blanket/runtime/glue/GlueTestkit";
+        Path embed = jar("testkit.jar", Map.of(Planner.TESTKIT,
+                caller(Planner.TESTKIT, new Object[] {INVOKESTATIC, glueTestkit, "press", "(Ljava/lang/Object;)V"})));
+        for (boolean testkit : List.of(false, true)) {
+            PlanSource s = source(f, mod, List.of(embed), PlannerTest.class.getClassLoader(), testkit);
+            Plan p = s.plan(s.targets().stream().filter(t -> t.id().equals(TARGETS_26)).findFirst().orElseThrow());
+            boolean pressed = p.glue().stream().anyMatch(g -> g.name().equals(glueTestkit + ".press"));
+            assertEquals(testkit, pressed, "testkit " + testkit + ": " + p.glue());
+            assertEquals(testkit ? java.util.Set.of("com/blanket/adapters/unobf/KeyPress") : java.util.Set.of(), p.adapters().keySet(), "testkit " + testkit);
+            // the HUD and world hooks' glue is planned with no class calling it; camX, called by nothing, is not
+            glue(p, GUI + ".flush");
+            glue(p, FRAME + ".partialTick");
+            glue(p, WORLD + ".matrix");
+            glue(p, WORLD + ".newMatrix");
+            assertTrue(p.glue().stream().noneMatch(g -> g.name().equals(WORLD + ".camX") || g.name().equals(FRAME + ".fbo")), p.glue().toString());
+            assertTrue(p.core(), "the core flag is a target fact, read from its rule without a caller");
+        }
     }
 }

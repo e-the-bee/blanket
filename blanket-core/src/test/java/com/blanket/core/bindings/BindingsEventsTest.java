@@ -9,6 +9,7 @@ import com.blanket.core.plan.Plan;
 import com.blanket.core.plan.PlanSource;
 import com.blanket.core.plan.Planner;
 import com.blanket.core.resolve.TargetSpec;
+import com.blanket.core.testsupport.GlueCallers;
 import com.blanket.core.testsupport.RealData;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -82,7 +83,9 @@ class BindingsEventsTest implements Opcodes {
     private PlanSource plan(Path mod) throws IOException {
         PlanSource source;
         try {
-            source = Planner.plan(mod, BINDINGS, List.of());
+            // Dispatch.screenOpen and hudRecord call the screen glue in the real runtime
+            source = Planner.plan(mod, BINDINGS, List.of(GlueCallers.jar(tmp.resolve("glue-callers.jar"),
+                    "GlueScreen.kind", "GlueScreen.isModScreen", "GlueScreen.current")));
         } catch (IllegalStateException e) {
             throw RealData.skipIfOffline(e);
         }

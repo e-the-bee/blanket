@@ -2,6 +2,7 @@
 package com.blanket.core.plan;
 
 import com.blanket.core.resolve.TargetSpec;
+import com.blanket.core.testsupport.GlueCallers;
 import com.blanket.core.testsupport.RealData;
 import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -73,7 +74,11 @@ class PlannerOracleTest implements Opcodes {
 
     private static Plan plan(String id) {
         try {
-            if (source == null) source = Planner.plan(m0Mod(), BINDINGS, List.of());
+            // Dispatch (camera position) and Executor (frame facts) call this glue in the real runtime
+            if (source == null) source = Planner.plan(m0Mod(), BINDINGS, List.of(GlueCallers.jar(tmp.resolve("glue-callers.jar"),
+                    "GlueWorld.px", "GlueWorld.py", "GlueWorld.pz", "GlueWorld.lastPx", "GlueWorld.lastPy", "GlueWorld.lastPz",
+                    "GlueFrame.fbo", "GlueFrame.colorTex", "GlueFrame.depthTex", "GlueFrame.fbWidth", "GlueFrame.fbHeight",
+                    "GlueFrame.guiWidth", "GlueFrame.guiHeight")));
             for (TargetSpec t : source.targets()) if (t.id().equals(id)) return source.plan(t);
         } catch (IOException | RuntimeException e) {
             throw RealData.skipIfOffline(e);
