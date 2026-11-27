@@ -75,10 +75,18 @@ public final class Lower implements Opcodes {
         return out;
     }
 
-    /** A hierarchy that knows {@code classes} (already in output names) and then {@code next}; for generated classes. */
+    /** A hierarchy that knows {@code classes} (already in output names) and then {@code next}. */
     public static Hierarchy hierarchy(Map<String, byte[]> classes, Hierarchy next) {
+        return hierarchy(classes, new Remapper(ASM9) {}, next);
+    }
+
+    /**
+     * A hierarchy that knows {@code classes} as {@code map} names them in the output, then {@code next}: the facts of the
+     * classes before they are lowered, for generated classes written first.
+     */
+    public static Hierarchy hierarchy(Map<String, byte[]> classes, Remapper map, Hierarchy next) {
         Map<String, Hierarchy.Facts> known = new HashMap<>();
-        facts(classes, new Remapper(ASM9) {}, known);
+        facts(classes, map, known);
         return Hierarchy.layered(known, next);
     }
 
