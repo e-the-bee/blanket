@@ -115,4 +115,39 @@ tasks.register<ValidateTask>("validateBindings") {
     configureTool("com.blanket.core.validate.ValidateMain", "Checks the bindings against every supported target's game data (C1, C2, C3, C7, C8).")
 }
 
+// stubJars (build-and-gradle.md section 6, lowering-and-adapters.md section 5.1): per adapter set the era stub jar
+// build/stubs/<version>-<authoring>.jar, the API view jar build/stubs/<set>-api.jar and the library list
+// build/stubs/<set>-libs.txt. It downloads the stub versions' client jars, mappings and libraries on first use.
+val apiClasses by configurations.creating {
+    isCanBeConsumed = false
+    isCanBeResolved = true
+    isTransitive = false
+}
+
+dependencies {
+    apiClasses(project(":blanket-api"))
+    apiClasses(project(":blanket-runtime"))
+}
+
+abstract class StubJarsTask : BlanketTool() {
+    @get:Input @get:Optional @get:Option(option = "set", description = "An adapter set to build (legacy, modern, unobf); repeat for several. Default: every set.")
+    abstract val set: ListProperty<String>
+
+    /** The compiled blanket-api and blanket-runtime, which the API view jar is made from. */
+    @get:InputFiles @get:PathSensitive(PathSensitivity.NONE)
+    abstract val apiJars: ConfigurableFileCollection
+
+    override fun toolArgs(): List<String> {
+        val args = mutableListOf<String>()
+        apiJars.files.forEach { args += listOf("--classes", it.absolutePath) }
+        set.getOrElse(emptyList()).forEach { args += listOf("--set", it) }
+        return args
+    }
+}
+
+tasks.register<StubJarsTask>("stubJars") {
+    configureTool("com.blanket.core.adapters.StubJarsMain", "Builds the era stub jars, the API view jars and the library lists of every adapter set into build/stubs.")
+    apiJars.from(apiClasses)
+}
+
 tasks.named("check") { dependsOn("validateBindings") }

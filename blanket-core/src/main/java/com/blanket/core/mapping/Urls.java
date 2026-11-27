@@ -20,6 +20,23 @@ public final class Urls {
         return "https://maven.legacyfabric.net/net/legacyfabric/intermediary/" + mc + "/intermediary-" + mc + "-v2.jar";
     }
 
+    /**
+     * Legacy Fabric Yarn v2 jar of a Maven coordinate {@code group:artifact:version}, for example
+     * {@code net.legacyfabric:yarn:1.8.9+build.604}. The Legacy Fabric maven listing of that version
+     * ({@code .../net/legacyfabric/yarn/1.8.9+build.604/}) holds the classifiers {@code constants}, {@code javadoc},
+     * {@code mergedv2}, {@code sources}, {@code tiny.gz} and {@code v2}; {@code v2} is the jar whose
+     * {@code mappings/mappings.tiny} has the namespaces {@code intermediary named}, which chain after the LF
+     * intermediary of {@link #legacyIntermediary}.
+     */
+    public static String legacyYarn(String coordinate) {
+        String[] gav = coordinate.split(":");
+        if (gav.length != 3 || gav[0].isEmpty() || gav[1].isEmpty() || gav[2].isEmpty()) {
+            throw new IllegalArgumentException("'" + coordinate + "' is not a Maven coordinate group:artifact:version");
+        }
+        return "https://maven.legacyfabric.net/" + gav[0].replace('.', '/') + "/" + gav[1] + "/" + gav[2] + "/"
+                + gav[1] + "-" + gav[2] + "-v2.jar";
+    }
+
     /** MCPConfig archive; {@code config/joined.tsrg} is the obf to SRG table (D-033). */
     public static String mcpConfig(String mc, String mcpVersion) {
         return "https://maven.minecraftforge.net/de/oceanlabs/mcp/mcp_config/" + mcpVersion + "/mcp_config-" + mcpVersion + ".zip";

@@ -3,6 +3,7 @@ package com.blanket.core.mapping;
 
 import com.blanket.core.fetch.ArtifactFetcher;
 
+import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 
@@ -13,6 +14,8 @@ import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
@@ -87,6 +90,36 @@ public final class MappingDownloads {
         Path jar = fetchMavenChecked(url);
         Path out = extracted.resolve((legacy ? "lfint-" : "int-") + mc + ".tiny");
         return extractOnce(jar, "mappings/mappings.tiny", out);
+    }
+
+    /**
+     * Legacy Yarn (CC0, R-MAP-14) for a Maven coordinate {@code group:artifact:version}, extracted to its
+     * {@code mappings/mappings.tiny} (tiny v2, namespaces {@code intermediary named}). The {@code v2} classifier is the
+     * one the Legacy Fabric maven listing holds for it (see {@link Urls#legacyYarn}).
+     */
+    public Path legacyYarn(String coordinate) {
+        Path jar = fetchMavenChecked(Urls.legacyYarn(coordinate));
+        Path out = extracted.resolve("yarn-" + coordinate.replaceAll("[^A-Za-z0-9._+-]", "_") + ".tiny");
+        return extractOnce(jar, "mappings/mappings.tiny", out);
+    }
+
+    /**
+     * The library jars named in the version JSON of {@code mc}, each checked against the SHA-1 the JSON gives. Only
+     * entries with a plain {@code group:artifact:version} name and a {@code downloads.artifact} are taken: a name with a
+     * classifier is a natives jar, which holds no classes. The {@code rules} (operating system) are not applied; a jar
+     * for another system holds classes javac can read as well.
+     */
+    public Map<String, Path> libraryJars(String mc) {
+        Map<String, Path> jars = new LinkedHashMap<>();
+        for (JsonElement e : versionJson(mc).getAsJsonArray("libraries")) {
+            JsonObject lib = e.getAsJsonObject();
+            String name = lib.get("name").getAsString();
+            if (name.split(":").length != 3) continue;
+            JsonObject downloads = lib.has("downloads") ? lib.getAsJsonObject("downloads") : null;
+            if (downloads == null || !downloads.has("artifact")) continue;
+            jars.putIfAbsent(name, download(downloads.getAsJsonObject("artifact")));
+        }
+        return jars;
     }
 
     /** {@code config/joined.tsrg} from the MCPConfig archive named by {@code mcpVersion}. */
