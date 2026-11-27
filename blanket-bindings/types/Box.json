@@ -43,12 +43,12 @@
       {"when": {}, "lower": {"get": "net.minecraft.world.phys.AABB#maxZ:D"}}
     ],
     "inflate": [
-      {"when": {"mc": "..1.13.2"}, "lower": {"unsupported": "no direct lowering on 1.8.9: Legacy Yarn Box (class_231) has only expand(DDD), no inflate(D); needs an adapter (Boxes) once adapters exist"}},
+      {"when": {"mc": "..1.13.2"}, "lower": {"adapter": "legacy:com.blanket.adapters.Boxes#inflate"}},
       {"when": {"mc": "26.1.."}, "lower": {"invoke": "official:net.minecraft.world.phys.AABB#inflate(D)Lnet/minecraft/world/phys/AABB;"}},
       {"when": {}, "lower": {"invoke": "net.minecraft.world.phys.AABB#inflate(D)Lnet/minecraft/world/phys/AABB;"}}
     ],
     "center": [
-      {"when": {"mc": "..1.13.2"}, "lower": {"unsupported": "no direct lowering on 1.8.9: Legacy Yarn Box (class_231) has no center accessor; needs an adapter (Boxes) once adapters exist"}},
+      {"when": {"mc": "..1.13.2"}, "lower": {"adapter": "legacy:com.blanket.adapters.Boxes#center"}},
       {"when": {"mc": "26.1.."}, "lower": {"invoke": "official:net.minecraft.world.phys.AABB#getCenter()Lnet/minecraft/world/phys/Vec3;"}},
       {"when": {}, "lower": {"invoke": "net.minecraft.world.phys.AABB#getCenter()Lnet/minecraft/world/phys/Vec3;"}}
     ]
