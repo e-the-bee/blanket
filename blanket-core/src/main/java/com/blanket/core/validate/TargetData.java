@@ -31,9 +31,9 @@ public interface TargetData {
     }
 
     /**
-     * The jars of the libraries the target ships beside its client jar that provide the given classes (internal names
-     * in the names of the library, which are the same in every namespace). Only libraries that provide one of them are
-     * returned, so nothing else is downloaded.
+     * The jars of the libraries that provide the given classes (internal names in the names of the library, which are the
+     * same in every namespace): those the target ships beside its client jar and, on a target with a loader jar, the
+     * loader's own libraries. Only libraries that provide one of them are returned, so nothing else is downloaded.
      */
     default List<Path> libraryJars(TargetSpec target, Set<String> owners) throws IOException {
         return List.of();
