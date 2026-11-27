@@ -114,12 +114,25 @@ final class TargetChecks {
             Hooks.Rule rule = h.getValue().get(i);
             selected.put(h.getKey(), rule);
             String site = "hooks.json hook \"" + h.getKey() + "\"";
-            use("hook " + h.getKey(), site, C7, rule.method(), bindings.targets().anchor());
+            use(hookLabel(h.getKey()), site, C7, rule.method(), bindings.targets().anchor());
             Hooks.At.Kind kind = rule.at().kind();
             if (kind == Hooks.At.Kind.INVOKE || kind == Hooks.At.Kind.INVOKE_STRING) {
-                use("hook " + h.getKey(), site, C7, rule.at().method(), bindings.targets().anchor());
+                use(hookLabel(h.getKey()), site, C7, rule.at().method(), bindings.targets().anchor());
             }
         }
+    }
+
+    /** {@code hook tick.end (event CLIENT_TICK_END)}: the hook id and the events whose recipe on this target injects at it. */
+    private String hookLabel(String hookId) {
+        Set<String> events = new TreeSet<>();
+        for (EventBinding eb : bindings.events().values()) {
+            int i = Rules.first(eb.recipes(), EventBinding.Recipe::when, t);
+            if (i < 0) continue;
+            for (EventBinding.Injection in : eb.recipes().get(i).injections()) {
+                if (hookId.equals(in.hook())) events.add(eb.event());
+            }
+        }
+        return "hook " + hookId + (events.isEmpty() ? "" : " (event " + String.join(", ", events) + ")");
     }
 
     private void collectEvents() {
@@ -335,7 +348,7 @@ final class TargetChecks {
             if (ok) continue;
             String wanted = string || at.ordinal() == null ? "exactly 1 (every hook is a Mixin injector with expect = 1)"
                     : "at least " + (at.ordinal() + 1) + " for ordinal " + at.ordinal();
-            errors.add(new Diagnostic(ErrorCode.UNRESOLVED, t.id(), "hook " + e.getKey(), at.method(), "call sites",
+            errors.add(new Diagnostic(ErrorCode.UNRESOLVED, t.id(), hookLabel(e.getKey()), at.method(), "call sites",
                     C7 + ": " + e.getValue().method() + " contains " + n + " call sites of " + at.method()
                             + (string ? " with the string \"" + at.ldc() + "\"" : "") + ", the injection point needs " + wanted,
                     "change the \"at\" of hook \"" + e.getKey() + "\" in hooks.json for " + t.id() + ": " + (n == 0

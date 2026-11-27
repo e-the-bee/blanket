@@ -279,6 +279,10 @@ class PlannerTest implements Opcodes {
     private final Map<String, byte[]> builtFiles = new LinkedHashMap<>();
 
     private PlanSource source(Map<String, String> files, Path modJar, List<Path> embed, ClassLoader api) throws IOException {
+        return source(files, modJar, embed, api, false);
+    }
+
+    private PlanSource source(Map<String, String> files, Path modJar, List<Path> embed, ClassLoader api, boolean testkit) throws IOException {
         Path dir = Files.createTempDirectory(tmp, "bindings");
         for (Map.Entry<String, String> e : files.entrySet()) {
             Path p = dir.resolve(e.getKey());
@@ -290,7 +294,7 @@ class PlannerTest implements Opcodes {
             Files.createDirectories(p.getParent());
             Files.write(p, e.getValue());
         }
-        return Planner.plan(modJar, dir, embed, data(), api);
+        return Planner.plan(modJar, dir, embed, data(), api, testkit);
     }
 
     private Plan plan(String id) throws IOException {
@@ -820,6 +824,27 @@ class PlannerTest implements Opcodes {
                 "com/blanket/runtime/Dispatch", eventReader("com/blanket/runtime/Dispatch", "com/blanket/runtime/Helper", "HUD_RENDER"),
                 "com/blanket/runtime/Helper", eventReader("com/blanket/runtime/Helper", null, "WORLD_RENDER")));
         assertEquals(List.of("CLIENT_TICK_END", "WORLD_RENDER"), events(plan(files(), m, List.of(fromDispatch), PlannerTest.class.getClassLoader(), TARGETS_26)));
+    }
+
+    @Test
+    void theTestkitIsARootOnlyInTestkitPlans() throws IOException {
+        // the testkit subscribes to WORLD_RENDER and nothing reaches it: only a --testkit plan wires that event
+        Path embed = jar("testkit.jar", Map.of(
+                "com/blanket/runtime/Dispatch", eventReader("com/blanket/runtime/Dispatch", null, "CLIENT_TICK_END", "HUD_RENDER", "WORLD_RENDER"),
+                Planner.TESTKIT, eventReader(Planner.TESTKIT, null, "WORLD_RENDER")));
+        Path m = modJar("tick-only.jar", reads("CLIENT_TICK_END"));
+        for (boolean testkit : List.of(false, true)) {
+            PlanSource s = source(files(), m, List.of(embed), PlannerTest.class.getClassLoader(), testkit);
+            assertEquals(testkit, s.testkit());
+            Plan p = s.plan(s.targets().stream().filter(t -> t.id().equals(TARGETS_26)).findFirst().orElseThrow());
+            assertEquals(testkit ? List.of("CLIENT_TICK_END", "WORLD_RENDER") : List.of("CLIENT_TICK_END"), events(p), "testkit " + testkit);
+        }
+
+        // a --testkit plan without the testkit class in the embedded classes is a usage error
+        Path without = jar("no-testkit.jar", Map.of("com/blanket/runtime/Dispatch", eventReader("com/blanket/runtime/Dispatch", null)));
+        IllegalArgumentException e = assertThrows(IllegalArgumentException.class,
+                () -> source(files(), m, List.of(without), PlannerTest.class.getClassLoader(), true));
+        assertTrue(e.getMessage().contains(Planner.TESTKIT), e.getMessage());
     }
 
     static final String HOOKS_WITH_START = HOOKS.replace("\"tick.end\":",
