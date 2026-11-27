@@ -1,0 +1,35 @@
+date: 2026-11-27
+machine: testbox container 143 (Debian 13, Mesa llvmpipe, no GPU, Xvfb 854x480x24)
+target: forge:1.8.9
+jar: apitour-0.0.0+1.8.9-forge.jar
+scene: in world after 33s
+checker: apitour forge:1.8.9: 26/26 keys pass -> PASS
+last logged block:
+[apitour] pos=0.500 4.000 0.500
+[apitour] rot=180.000 90.000
+[apitour] onGround=true
+[apitour] health=20.000
+[apitour] maxHealth=20.000
+[apitour] food=20
+[apitour] saturation=5.000
+[apitour] main=minecraft:stick 7 Stick false
+[apitour] slot8=minecraft:air 0 Air true
+[apitour] up.y=4
+[apitour] block.id=minecraft:furnace
+[apitour] block.facing=north
+[apitour] block.air=false
+[apitour] block.nope=null
+[apitour] dim=minecraft:overworld
+[apitour] offhand.skip=true
+[apitour] target=BLOCK 0 3 0 UP
+[apitour] target.loc=0.500 4.000 0.500
+[apitour] side.switch=UP
+[apitour] mref.y=4.000
+[apitour] lambda.xz=1.000
+[apitour] loop=1
+[apitour] dir=SOUTH 2 6
+[apitour] box.w=0.600
+[apitour] dist=0.000
+[apitour] end
+M0 regression: result: in world (33s) (container 145)
+M0 [m0spike] box anchored at 1091.0 4.0 1699.0

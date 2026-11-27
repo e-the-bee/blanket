@@ -1,0 +1,12 @@
+=== apitour-0.0.0+1.20.1-forge.jar
+offhand= constant lines: 1
+=== apitour-0.0.0+1.21.1-fabric.jar
+offhand= constant lines: 1
+=== apitour-0.0.0+1.21.1-neoforge.jar
+offhand= constant lines: 1
+=== apitour-0.0.0+1.8.9-forge.jar
+offhand= constant lines: 0
+=== apitour-0.0.0+1.8.9-legacyfabric.jar
+offhand= constant lines: 0
+=== apitour-0.0.0+26.1.2-fabric.jar
+offhand= constant lines: 1

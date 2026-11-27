@@ -1,0 +1,27 @@
+PASS pos
+PASS rot
+PASS onGround
+PASS health
+PASS maxHealth
+PASS food
+PASS saturation
+PASS block.id
+PASS block.facing
+PASS block.air
+PASS block.nope
+PASS main
+PASS slot8
+PASS offhand
+PASS offhand.skip
+PASS target
+PASS target.loc
+PASS side.switch
+PASS mref.y
+PASS lambda.xz
+PASS loop
+PASS dir
+PASS dim
+PASS up.y
+PASS box.w
+PASS dist
+apitour fabric:26.1.2: 26/26 keys pass -> PASS

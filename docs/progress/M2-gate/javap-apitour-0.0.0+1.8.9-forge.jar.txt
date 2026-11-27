@@ -1,0 +1,618 @@
+Compiled from "ApiTour.java"
+public class com.example.apitour.ApiTour implements com.example.apitour.blanket.api.ClientMod {
+  private int ticks;
+
+  public com.example.apitour.ApiTour();
+    Code:
+       0: aload_0
+       1: invokespecial #20                 // Method java/lang/Object."<init>":()V
+       4: return
+
+  public void init();
+    Code:
+       0: ldc           #24                 // String init
+       2: invokestatic  #28                 // Method log:(Ljava/lang/String;)V
+       5: getstatic     #34                 // Field com/example/apitour/blanket/api/Events.CLIENT_TICK_END:Lcom/example/apitour/blanket/api/EventSource;
+       8: aload_0
+       9: invokedynamic #53,  0             // InvokeDynamic #0:on:(Lcom/example/apitour/ApiTour;)Lcom/example/apitour/blanket/api/Listener;
+      14: invokevirtual #59                 // Method com/example/apitour/blanket/api/EventSource.register:(Lcom/example/apitour/blanket/api/Listener;)Lcom/example/apitour/blanket/api/Subscription;
+      17: pop
+      18: return
+
+  static java.lang.String sideName(cq);
+    Code:
+       0: aload_0
+       1: ifnonnull     7
+       4: ldc           #63                 // String null
+       6: areturn
+       7: getstatic     #67                 // Field com/example/apitour/ApiTour$1.$SwitchMap$com$blanket$api$Direction:[I
+      10: aload_0
+      11: invokevirtual #73                 // Method cq.ordinal:()I
+      14: iaload
+      15: tableswitch   { // 1 to 6
+                     1: 52
+                     2: 55
+                     3: 58
+                     4: 61
+                     5: 64
+                     6: 67
+               default: 70
+          }
+      52: ldc           #75                 // String DOWN
+      54: areturn
+      55: ldc           #77                 // String UP
+      57: areturn
+      58: ldc           #79                 // String NORTH
+      60: areturn
+      61: ldc           #81                 // String SOUTH
+      63: areturn
+      64: ldc           #83                 // String WEST
+      66: areturn
+      67: ldc           #85                 // String EAST
+      69: areturn
+      70: ldc           #87                 // String ?
+      72: areturn
+
+  private static java.lang.String item(zx);
+    Code:
+       0: new           #93                 // class java/lang/StringBuilder
+       3: dup
+       4: invokespecial #94                 // Method java/lang/StringBuilder."<init>":()V
+       7: aload_0
+       8: invokestatic  #99                 // Method com/example/apitour/blanket/adapters/Stacks.itemId:(Lzx;)Ljava/lang/String;
+      11: invokevirtual #103                // Method java/lang/StringBuilder.append:(Ljava/lang/String;)Ljava/lang/StringBuilder;
+      14: ldc           #105                // String
+      16: invokevirtual #103                // Method java/lang/StringBuilder.append:(Ljava/lang/String;)Ljava/lang/StringBuilder;
+      19: aload_0
+      20: invokestatic  #109                // Method com/example/apitour/blanket/adapters/Stacks.count:(Lzx;)I
+      23: invokevirtual #112                // Method java/lang/StringBuilder.append:(I)Ljava/lang/StringBuilder;
+      26: ldc           #105                // String
+      28: invokevirtual #103                // Method java/lang/StringBuilder.append:(Ljava/lang/String;)Ljava/lang/StringBuilder;
+      31: aload_0
+      32: invokestatic  #115                // Method com/example/apitour/blanket/adapters/Stacks.displayName:(Lzx;)Ljava/lang/String;
+      35: invokevirtual #103                // Method java/lang/StringBuilder.append:(Ljava/lang/String;)Ljava/lang/StringBuilder;
+      38: ldc           #105                // String
+      40: invokevirtual #103                // Method java/lang/StringBuilder.append:(Ljava/lang/String;)Ljava/lang/StringBuilder;
+      43: aload_0
+      44: invokestatic  #119                // Method com/example/apitour/blanket/adapters/Stacks.isEmpty:(Lzx;)Z
+      47: invokevirtual #122                // Method java/lang/StringBuilder.append:(Z)Ljava/lang/StringBuilder;
+      50: invokevirtual #126                // Method java/lang/StringBuilder.toString:()Ljava/lang/String;
+      53: areturn
+
+  private static java.lang.String f(double);
+    Code:
+       0: getstatic     #136                // Field java/util/Locale.ROOT:Ljava/util/Locale;
+       3: ldc           #138                // String %.3f
+       5: iconst_1
+       6: anewarray     #4                  // class java/lang/Object
+       9: dup
+      10: iconst_0
+      11: dload_0
+      12: invokestatic  #144                // Method java/lang/Double.valueOf:(D)Ljava/lang/Double;
+      15: aastore
+      16: invokestatic  #150                // Method java/lang/String.format:(Ljava/util/Locale;Ljava/lang/String;[Ljava/lang/Object;)Ljava/lang/String;
+      19: areturn
+
+  private static void log(java.lang.String);
+    Code:
+       0: getstatic     #158                // Field java/lang/System.out:Ljava/io/PrintStream;
+       3: new           #93                 // class java/lang/StringBuilder
+       6: dup
+       7: invokespecial #94                 // Method java/lang/StringBuilder."<init>":()V
+      10: ldc           #160                // String [apitour]
+      12: invokevirtual #103                // Method java/lang/StringBuilder.append:(Ljava/lang/String;)Ljava/lang/StringBuilder;
+      15: aload_0
+      16: invokevirtual #103                // Method java/lang/StringBuilder.append:(Ljava/lang/String;)Ljava/lang/StringBuilder;
+      19: invokevirtual #126                // Method java/lang/StringBuilder.toString:()Ljava/lang/String;
+      22: invokevirtual #165                // Method java/io/PrintStream.println:(Ljava/lang/String;)V
+      25: return
+
+  private void lambda$init$1(com.example.apitour.blanket.api.ClientTick);
+    Code:
+       0: invokestatic  #173                // Method ave.A:()Lave;
+       3: astore_2
+       4: aload_2
+       5: getfield      #177                // Field ave.h:Lbew;
+       8: astore_3
+       9: aload_3
+      10: ifnull        30
+      13: aload_0
+      14: dup
+      15: getfield      #179                // Field ticks:I
+      18: iconst_1
+      19: iadd
+      20: dup_x1
+      21: putfield      #179                // Field ticks:I
+      24: bipush        40
+      26: irem
+      27: ifeq          31
+      30: return
+      31: aload_2
+      32: getfield      #182                // Field ave.f:Lbdb;
+      35: astore        4
+      37: new           #93                 // class java/lang/StringBuilder
+      40: dup
+      41: invokespecial #94                 // Method java/lang/StringBuilder."<init>":()V
+      44: ldc           #184                // String pos=
+      46: invokevirtual #103                // Method java/lang/StringBuilder.append:(Ljava/lang/String;)Ljava/lang/StringBuilder;
+      49: aload_3
+      50: getfield      #188                // Field pk.s:D
+      53: invokestatic  #190                // Method f:(D)Ljava/lang/String;
+      56: invokevirtual #103                // Method java/lang/StringBuilder.append:(Ljava/lang/String;)Ljava/lang/StringBuilder;
+      59: ldc           #105                // String
+      61: invokevirtual #103                // Method java/lang/StringBuilder.append:(Ljava/lang/String;)Ljava/lang/StringBuilder;
+      64: aload_3
+      65: getfield      #193                // Field pk.t:D
+      68: invokestatic  #190                // Method f:(D)Ljava/lang/String;
+      71: invokevirtual #103                // Method java/lang/StringBuilder.append:(Ljava/lang/String;)Ljava/lang/StringBuilder;
+      74: ldc           #105                // String
+      76: invokevirtual #103                // Method java/lang/StringBuilder.append:(Ljava/lang/String;)Ljava/lang/StringBuilder;
+      79: aload_3
+      80: getfield      #196                // Field pk.u:D
+      83: invokestatic  #190                // Method f:(D)Ljava/lang/String;
+      86: invokevirtual #103                // Method java/lang/StringBuilder.append:(Ljava/lang/String;)Ljava/lang/StringBuilder;
+      89: invokevirtual #126                // Method java/lang/StringBuilder.toString:()Ljava/lang/String;
+      92: invokestatic  #28                 // Method log:(Ljava/lang/String;)V
+      95: aload_3
+      96: getfield      #200                // Field pk.y:F
+      99: ldc           #201                // float 360.0f
+     101: frem
+     102: ldc           #201                // float 360.0f
+     104: fadd
+     105: ldc           #201                // float 360.0f
+     107: frem
+     108: f2d
+     109: dstore        5
+     111: new           #93                 // class java/lang/StringBuilder
+     114: dup
+     115: invokespecial #94                 // Method java/lang/StringBuilder."<init>":()V
+     118: ldc           #203                // String rot=
+     120: invokevirtual #103                // Method java/lang/StringBuilder.append:(Ljava/lang/String;)Ljava/lang/StringBuilder;
+     123: dload         5
+     125: invokestatic  #190                // Method f:(D)Ljava/lang/String;
+     128: invokevirtual #103                // Method java/lang/StringBuilder.append:(Ljava/lang/String;)Ljava/lang/StringBuilder;
+     131: ldc           #105                // String
+     133: invokevirtual #103                // Method java/lang/StringBuilder.append:(Ljava/lang/String;)Ljava/lang/StringBuilder;
+     136: aload_3
+     137: getfield      #206                // Field pk.z:F
+     140: f2d
+     141: invokestatic  #190                // Method f:(D)Ljava/lang/String;
+     144: invokevirtual #103                // Method java/lang/StringBuilder.append:(Ljava/lang/String;)Ljava/lang/StringBuilder;
+     147: invokevirtual #126                // Method java/lang/StringBuilder.toString:()Ljava/lang/String;
+     150: invokestatic  #28                 // Method log:(Ljava/lang/String;)V
+     153: new           #93                 // class java/lang/StringBuilder
+     156: dup
+     157: invokespecial #94                 // Method java/lang/StringBuilder."<init>":()V
+     160: ldc           #208                // String onGround=
+     162: invokevirtual #103                // Method java/lang/StringBuilder.append:(Ljava/lang/String;)Ljava/lang/StringBuilder;
+     165: aload_3
+     166: getfield      #212                // Field pk.C:Z
+     169: invokevirtual #122                // Method java/lang/StringBuilder.append:(Z)Ljava/lang/StringBuilder;
+     172: invokevirtual #126                // Method java/lang/StringBuilder.toString:()Ljava/lang/String;
+     175: invokestatic  #28                 // Method log:(Ljava/lang/String;)V
+     178: new           #93                 // class java/lang/StringBuilder
+     181: dup
+     182: invokespecial #94                 // Method java/lang/StringBuilder."<init>":()V
+     185: ldc           #214                // String health=
+     187: invokevirtual #103                // Method java/lang/StringBuilder.append:(Ljava/lang/String;)Ljava/lang/StringBuilder;
+     190: aload_3
+     191: invokevirtual #220                // Method pr.bn:()F
+     194: f2d
+     195: invokestatic  #190                // Method f:(D)Ljava/lang/String;
+     198: invokevirtual #103                // Method java/lang/StringBuilder.append:(Ljava/lang/String;)Ljava/lang/StringBuilder;
+     201: invokevirtual #126                // Method java/lang/StringBuilder.toString:()Ljava/lang/String;
+     204: invokestatic  #28                 // Method log:(Ljava/lang/String;)V
+     207: new           #93                 // class java/lang/StringBuilder
+     210: dup
+     211: invokespecial #94                 // Method java/lang/StringBuilder."<init>":()V
+     214: ldc           #222                // String maxHealth=
+     216: invokevirtual #103                // Method java/lang/StringBuilder.append:(Ljava/lang/String;)Ljava/lang/StringBuilder;
+     219: aload_3
+     220: invokevirtual #225                // Method pr.bu:()F
+     223: f2d
+     224: invokestatic  #190                // Method f:(D)Ljava/lang/String;
+     227: invokevirtual #103                // Method java/lang/StringBuilder.append:(Ljava/lang/String;)Ljava/lang/StringBuilder;
+     230: invokevirtual #126                // Method java/lang/StringBuilder.toString:()Ljava/lang/String;
+     233: invokestatic  #28                 // Method log:(Ljava/lang/String;)V
+     236: new           #93                 // class java/lang/StringBuilder
+     239: dup
+     240: invokespecial #94                 // Method java/lang/StringBuilder."<init>":()V
+     243: ldc           #227                // String food=
+     245: invokevirtual #103                // Method java/lang/StringBuilder.append:(Ljava/lang/String;)Ljava/lang/StringBuilder;
+     248: aload_3
+     249: invokevirtual #233                // Method wn.cl:()Lxg;
+     252: invokevirtual #238                // Method xg.a:()I
+     255: invokevirtual #112                // Method java/lang/StringBuilder.append:(I)Ljava/lang/StringBuilder;
+     258: invokevirtual #126                // Method java/lang/StringBuilder.toString:()Ljava/lang/String;
+     261: invokestatic  #28                 // Method log:(Ljava/lang/String;)V
+     264: new           #93                 // class java/lang/StringBuilder
+     267: dup
+     268: invokespecial #94                 // Method java/lang/StringBuilder."<init>":()V
+     271: ldc           #240                // String saturation=
+     273: invokevirtual #103                // Method java/lang/StringBuilder.append:(Ljava/lang/String;)Ljava/lang/StringBuilder;
+     276: aload_3
+     277: invokevirtual #233                // Method wn.cl:()Lxg;
+     280: invokevirtual #243                // Method xg.e:()F
+     283: f2d
+     284: invokestatic  #190                // Method f:(D)Ljava/lang/String;
+     287: invokevirtual #103                // Method java/lang/StringBuilder.append:(Ljava/lang/String;)Ljava/lang/StringBuilder;
+     290: invokevirtual #126                // Method java/lang/StringBuilder.toString:()Ljava/lang/String;
+     293: invokestatic  #28                 // Method log:(Ljava/lang/String;)V
+     296: new           #93                 // class java/lang/StringBuilder
+     299: dup
+     300: invokespecial #94                 // Method java/lang/StringBuilder."<init>":()V
+     303: ldc           #245                // String main=
+     305: invokevirtual #103                // Method java/lang/StringBuilder.append:(Ljava/lang/String;)Ljava/lang/StringBuilder;
+     308: aload_3
+     309: invokestatic  #249                // Method com/example/apitour/blanket/adapters/Stacks.mainHand:(Lbew;)Lzx;
+     312: invokestatic  #251                // Method item:(Lzx;)Ljava/lang/String;
+     315: invokevirtual #103                // Method java/lang/StringBuilder.append:(Ljava/lang/String;)Ljava/lang/StringBuilder;
+     318: invokevirtual #126                // Method java/lang/StringBuilder.toString:()Ljava/lang/String;
+     321: invokestatic  #28                 // Method log:(Ljava/lang/String;)V
+     324: new           #93                 // class java/lang/StringBuilder
+     327: dup
+     328: invokespecial #94                 // Method java/lang/StringBuilder."<init>":()V
+     331: ldc           #253                // String slot8=
+     333: invokevirtual #103                // Method java/lang/StringBuilder.append:(Ljava/lang/String;)Ljava/lang/StringBuilder;
+     336: aload_3
+     337: bipush        8
+     339: invokestatic  #259                // Method com/example/apitour/blanket/adapters/Inventory.inventoryItem:(Lbew;I)Lzx;
+     342: invokestatic  #251                // Method item:(Lzx;)Ljava/lang/String;
+     345: invokevirtual #103                // Method java/lang/StringBuilder.append:(Ljava/lang/String;)Ljava/lang/StringBuilder;
+     348: invokevirtual #126                // Method java/lang/StringBuilder.toString:()Ljava/lang/String;
+     351: invokestatic  #28                 // Method log:(Ljava/lang/String;)V
+     354: aload_3
+     355: invokevirtual #263                // Method pk.aR:()Laug;
+     358: astore        7
+     360: aload_3
+     361: invokeinterface #269,  1          // InterfaceMethod m.d:()Laui;
+     366: astore        8
+     368: aload_3
+     369: getfield      #188                // Field pk.s:D
+     372: invokestatic  #275                // Method java/lang/Math.floor:(D)D
+     375: d2i
+     376: aload_3
+     377: getfield      #193                // Field pk.t:D
+     380: invokestatic  #275                // Method java/lang/Math.floor:(D)D
+     383: d2i
+     384: iconst_1
+     385: isub
+     386: aload_3
+     387: getfield      #196                // Field pk.u:D
+     390: invokestatic  #275                // Method java/lang/Math.floor:(D)D
+     393: d2i
+     394: invokestatic  #279                // Method blanket$new$BlockPos$of:(III)Lcj;
+     397: astore        9
+     399: new           #93                 // class java/lang/StringBuilder
+     402: dup
+     403: invokespecial #94                 // Method java/lang/StringBuilder."<init>":()V
+     406: ldc_w         #281                // String up.y=
+     409: invokevirtual #103                // Method java/lang/StringBuilder.append:(Ljava/lang/String;)Ljava/lang/StringBuilder;
+     412: aload         9
+     414: getstatic     #284                // Field cq.b:Lcq;
+     417: invokevirtual #289                // Method cj.a:(Lcq;)Lcj;
+     420: invokevirtual #294                // Method df.o:()I
+     423: invokevirtual #112                // Method java/lang/StringBuilder.append:(I)Ljava/lang/StringBuilder;
+     426: invokevirtual #126                // Method java/lang/StringBuilder.toString:()Ljava/lang/String;
+     429: invokestatic  #28                 // Method log:(Ljava/lang/String;)V
+     432: aload         4
+     434: aload         9
+     436: invokeinterface #300,  2          // InterfaceMethod adq.p:(Lcj;)Lalz;
+     441: astore        10
+     443: new           #93                 // class java/lang/StringBuilder
+     446: dup
+     447: invokespecial #94                 // Method java/lang/StringBuilder."<init>":()V
+     450: ldc_w         #302                // String block.id=
+     453: invokevirtual #103                // Method java/lang/StringBuilder.append:(Ljava/lang/String;)Ljava/lang/StringBuilder;
+     456: aload         10
+     458: invokestatic  #308                // Method com/example/apitour/blanket/adapters/States.blockId:(Lalz;)Ljava/lang/String;
+     461: invokevirtual #103                // Method java/lang/StringBuilder.append:(Ljava/lang/String;)Ljava/lang/StringBuilder;
+     464: invokevirtual #126                // Method java/lang/StringBuilder.toString:()Ljava/lang/String;
+     467: invokestatic  #28                 // Method log:(Ljava/lang/String;)V
+     470: new           #93                 // class java/lang/StringBuilder
+     473: dup
+     474: invokespecial #94                 // Method java/lang/StringBuilder."<init>":()V
+     477: ldc_w         #310                // String block.facing=
+     480: invokevirtual #103                // Method java/lang/StringBuilder.append:(Ljava/lang/String;)Ljava/lang/StringBuilder;
+     483: aload         10
+     485: ldc_w         #312                // String facing
+     488: invokestatic  #316                // Method com/example/apitour/blanket/adapters/States.propertyValue:(Lalz;Ljava/lang/String;)Ljava/lang/String;
+     491: invokevirtual #103                // Method java/lang/StringBuilder.append:(Ljava/lang/String;)Ljava/lang/StringBuilder;
+     494: invokevirtual #126                // Method java/lang/StringBuilder.toString:()Ljava/lang/String;
+     497: invokestatic  #28                 // Method log:(Ljava/lang/String;)V
+     500: new           #93                 // class java/lang/StringBuilder
+     503: dup
+     504: invokespecial #94                 // Method java/lang/StringBuilder."<init>":()V
+     507: ldc_w         #318                // String block.air=
+     510: invokevirtual #103                // Method java/lang/StringBuilder.append:(Ljava/lang/String;)Ljava/lang/StringBuilder;
+     513: aload         10
+     515: invokestatic  #322                // Method com/example/apitour/blanket/adapters/States.isAir:(Lalz;)Z
+     518: invokevirtual #122                // Method java/lang/StringBuilder.append:(Z)Ljava/lang/StringBuilder;
+     521: invokevirtual #126                // Method java/lang/StringBuilder.toString:()Ljava/lang/String;
+     524: invokestatic  #28                 // Method log:(Ljava/lang/String;)V
+     527: new           #93                 // class java/lang/StringBuilder
+     530: dup
+     531: invokespecial #94                 // Method java/lang/StringBuilder."<init>":()V
+     534: ldc_w         #324                // String block.nope=
+     537: invokevirtual #103                // Method java/lang/StringBuilder.append:(Ljava/lang/String;)Ljava/lang/StringBuilder;
+     540: aload         10
+     542: ldc_w         #326                // String nope
+     545: invokestatic  #316                // Method com/example/apitour/blanket/adapters/States.propertyValue:(Lalz;Ljava/lang/String;)Ljava/lang/String;
+     548: invokevirtual #103                // Method java/lang/StringBuilder.append:(Ljava/lang/String;)Ljava/lang/StringBuilder;
+     551: invokevirtual #126                // Method java/lang/StringBuilder.toString:()Ljava/lang/String;
+     554: invokestatic  #28                 // Method log:(Ljava/lang/String;)V
+     557: new           #93                 // class java/lang/StringBuilder
+     560: dup
+     561: invokespecial #94                 // Method java/lang/StringBuilder."<init>":()V
+     564: ldc_w         #328                // String dim=
+     567: invokevirtual #103                // Method java/lang/StringBuilder.append:(Ljava/lang/String;)Ljava/lang/StringBuilder;
+     570: aload         4
+     572: invokestatic  #334                // Method com/example/apitour/blanket/adapters/Worlds.dimension:(Lbdb;)Ljava/lang/String;
+     575: invokevirtual #103                // Method java/lang/StringBuilder.append:(Ljava/lang/String;)Ljava/lang/StringBuilder;
+     578: invokevirtual #126                // Method java/lang/StringBuilder.toString:()Ljava/lang/String;
+     581: invokestatic  #28                 // Method log:(Ljava/lang/String;)V
+     584: goto          600
+     587: nop
+     588: nop
+     589: nop
+     590: nop
+     591: nop
+     592: nop
+     593: nop
+     594: nop
+     595: nop
+     596: nop
+     597: nop
+     598: nop
+     599: athrow
+     600: getstatic     #158                // Field java/lang/System.out:Ljava/io/PrintStream;
+     603: ldc_w         #336                // String [apitour] offhand.skip=true
+     606: invokevirtual #165                // Method java/io/PrintStream.println:(Ljava/lang/String;)V
+     609: aload_2
+     610: invokestatic  #342                // Method com/example/apitour/blanket/adapters/Targets.crosshair:(Lave;)Lcom/example/apitour/blanket/api/Target;
+     613: astore        11
+     615: aload         11
+     617: ifnonnull     629
+     620: ldc_w         #344                // String target=null
+     623: invokestatic  #28                 // Method log:(Ljava/lang/String;)V
+     626: goto          876
+     629: aload         11
+     631: invokevirtual #350                // Method com/example/apitour/blanket/api/Target.blockPos:()Lcj;
+     634: astore        12
+     636: new           #93                 // class java/lang/StringBuilder
+     639: dup
+     640: invokespecial #94                 // Method java/lang/StringBuilder."<init>":()V
+     643: ldc_w         #352                // String target=
+     646: invokevirtual #103                // Method java/lang/StringBuilder.append:(Ljava/lang/String;)Ljava/lang/StringBuilder;
+     649: aload         11
+     651: invokevirtual #356                // Method com/example/apitour/blanket/api/Target.kind:()Lcom/example/apitour/blanket/api/TargetKind;
+     654: invokevirtual #359                // Method java/lang/StringBuilder.append:(Ljava/lang/Object;)Ljava/lang/StringBuilder;
+     657: ldc           #105                // String
+     659: invokevirtual #103                // Method java/lang/StringBuilder.append:(Ljava/lang/String;)Ljava/lang/StringBuilder;
+     662: aload         12
+     664: ifnonnull     672
+     667: ldc           #63                 // String null
+     669: goto          716
+     672: new           #93                 // class java/lang/StringBuilder
+     675: dup
+     676: invokespecial #94                 // Method java/lang/StringBuilder."<init>":()V
+     679: aload         12
+     681: invokevirtual #362                // Method df.n:()I
+     684: invokevirtual #112                // Method java/lang/StringBuilder.append:(I)Ljava/lang/StringBuilder;
+     687: ldc           #105                // String
+     689: invokevirtual #103                // Method java/lang/StringBuilder.append:(Ljava/lang/String;)Ljava/lang/StringBuilder;
+     692: aload         12
+     694: invokevirtual #294                // Method df.o:()I
+     697: invokevirtual #112                // Method java/lang/StringBuilder.append:(I)Ljava/lang/StringBuilder;
+     700: ldc           #105                // String
+     702: invokevirtual #103                // Method java/lang/StringBuilder.append:(Ljava/lang/String;)Ljava/lang/StringBuilder;
+     705: aload         12
+     707: invokevirtual #364                // Method df.p:()I
+     710: invokevirtual #112                // Method java/lang/StringBuilder.append:(I)Ljava/lang/StringBuilder;
+     713: invokevirtual #126                // Method java/lang/StringBuilder.toString:()Ljava/lang/String;
+     716: invokevirtual #103                // Method java/lang/StringBuilder.append:(Ljava/lang/String;)Ljava/lang/StringBuilder;
+     719: ldc           #105                // String
+     721: invokevirtual #103                // Method java/lang/StringBuilder.append:(Ljava/lang/String;)Ljava/lang/StringBuilder;
+     724: aload         11
+     726: invokevirtual #367                // Method com/example/apitour/blanket/api/Target.side:()Lcq;
+     729: ifnonnull     737
+     732: ldc           #63                 // String null
+     734: goto          745
+     737: aload         11
+     739: invokevirtual #367                // Method com/example/apitour/blanket/api/Target.side:()Lcq;
+     742: invokevirtual #370                // Method cq.name:()Ljava/lang/String;
+     745: invokevirtual #103                // Method java/lang/StringBuilder.append:(Ljava/lang/String;)Ljava/lang/StringBuilder;
+     748: invokevirtual #126                // Method java/lang/StringBuilder.toString:()Ljava/lang/String;
+     751: invokestatic  #28                 // Method log:(Ljava/lang/String;)V
+     754: aload         11
+     756: invokevirtual #373                // Method com/example/apitour/blanket/api/Target.location:()Laui;
+     759: astore        13
+     761: new           #93                 // class java/lang/StringBuilder
+     764: dup
+     765: invokespecial #94                 // Method java/lang/StringBuilder."<init>":()V
+     768: ldc_w         #375                // String target.loc=
+     771: invokevirtual #103                // Method java/lang/StringBuilder.append:(Ljava/lang/String;)Ljava/lang/StringBuilder;
+     774: aload         13
+     776: ifnonnull     784
+     779: ldc           #63                 // String null
+     781: goto          837
+     784: new           #93                 // class java/lang/StringBuilder
+     787: dup
+     788: invokespecial #94                 // Method java/lang/StringBuilder."<init>":()V
+     791: aload         13
+     793: getfield      #379                // Field aui.a:D
+     796: invokestatic  #190                // Method f:(D)Ljava/lang/String;
+     799: invokevirtual #103                // Method java/lang/StringBuilder.append:(Ljava/lang/String;)Ljava/lang/StringBuilder;
+     802: ldc           #105                // String
+     804: invokevirtual #103                // Method java/lang/StringBuilder.append:(Ljava/lang/String;)Ljava/lang/StringBuilder;
+     807: aload         13
+     809: getfield      #381                // Field aui.b:D
+     812: invokestatic  #190                // Method f:(D)Ljava/lang/String;
+     815: invokevirtual #103                // Method java/lang/StringBuilder.append:(Ljava/lang/String;)Ljava/lang/StringBuilder;
+     818: ldc           #105                // String
+     820: invokevirtual #103                // Method java/lang/StringBuilder.append:(Ljava/lang/String;)Ljava/lang/StringBuilder;
+     823: aload         13
+     825: getfield      #384                // Field aui.c:D
+     828: invokestatic  #190                // Method f:(D)Ljava/lang/String;
+     831: invokevirtual #103                // Method java/lang/StringBuilder.append:(Ljava/lang/String;)Ljava/lang/StringBuilder;
+     834: invokevirtual #126                // Method java/lang/StringBuilder.toString:()Ljava/lang/String;
+     837: invokevirtual #103                // Method java/lang/StringBuilder.append:(Ljava/lang/String;)Ljava/lang/StringBuilder;
+     840: invokevirtual #126                // Method java/lang/StringBuilder.toString:()Ljava/lang/String;
+     843: invokestatic  #28                 // Method log:(Ljava/lang/String;)V
+     846: new           #93                 // class java/lang/StringBuilder
+     849: dup
+     850: invokespecial #94                 // Method java/lang/StringBuilder."<init>":()V
+     853: ldc_w         #386                // String side.switch=
+     856: invokevirtual #103                // Method java/lang/StringBuilder.append:(Ljava/lang/String;)Ljava/lang/StringBuilder;
+     859: aload         11
+     861: invokevirtual #367                // Method com/example/apitour/blanket/api/Target.side:()Lcq;
+     864: invokestatic  #388                // Method sideName:(Lcq;)Ljava/lang/String;
+     867: invokevirtual #103                // Method java/lang/StringBuilder.append:(Ljava/lang/String;)Ljava/lang/StringBuilder;
+     870: invokevirtual #126                // Method java/lang/StringBuilder.toString:()Ljava/lang/String;
+     873: invokestatic  #28                 // Method log:(Ljava/lang/String;)V
+     876: invokedynamic #400,  0            // InvokeDynamic #1:applyAsDouble:()Ljava/util/function/ToDoubleFunction;
+     881: astore        12
+     883: invokedynamic #405,  0            // InvokeDynamic #2:applyAsDouble:()Ljava/util/function/ToDoubleFunction;
+     888: astore        13
+     890: new           #93                 // class java/lang/StringBuilder
+     893: dup
+     894: invokespecial #94                 // Method java/lang/StringBuilder."<init>":()V
+     897: ldc_w         #407                // String mref.y=
+     900: invokevirtual #103                // Method java/lang/StringBuilder.append:(Ljava/lang/String;)Ljava/lang/StringBuilder;
+     903: aload         12
+     905: aload_3
+     906: invokeinterface #411,  2          // InterfaceMethod java/util/function/ToDoubleFunction.applyAsDouble:(Ljava/lang/Object;)D
+     911: invokestatic  #190                // Method f:(D)Ljava/lang/String;
+     914: invokevirtual #103                // Method java/lang/StringBuilder.append:(Ljava/lang/String;)Ljava/lang/StringBuilder;
+     917: invokevirtual #126                // Method java/lang/StringBuilder.toString:()Ljava/lang/String;
+     920: invokestatic  #28                 // Method log:(Ljava/lang/String;)V
+     923: new           #93                 // class java/lang/StringBuilder
+     926: dup
+     927: invokespecial #94                 // Method java/lang/StringBuilder."<init>":()V
+     930: ldc_w         #413                // String lambda.xz=
+     933: invokevirtual #103                // Method java/lang/StringBuilder.append:(Ljava/lang/String;)Ljava/lang/StringBuilder;
+     936: aload         13
+     938: aload_3
+     939: invokeinterface #411,  2          // InterfaceMethod java/util/function/ToDoubleFunction.applyAsDouble:(Ljava/lang/Object;)D
+     944: invokestatic  #190                // Method f:(D)Ljava/lang/String;
+     947: invokevirtual #103                // Method java/lang/StringBuilder.append:(Ljava/lang/String;)Ljava/lang/StringBuilder;
+     950: invokevirtual #126                // Method java/lang/StringBuilder.toString:()Ljava/lang/String;
+     953: invokestatic  #28                 // Method log:(Ljava/lang/String;)V
+     956: iconst_0
+     957: istore        14
+     959: aload_3
+     960: invokestatic  #419                // Method java/util/Collections.singletonList:(Ljava/lang/Object;)Ljava/util/List;
+     963: invokeinterface #425,  1          // InterfaceMethod java/util/List.iterator:()Ljava/util/Iterator;
+     968: astore        15
+     970: aload         15
+     972: invokeinterface #431,  1          // InterfaceMethod java/util/Iterator.hasNext:()Z
+     977: ifeq          1003
+     980: aload         15
+     982: invokeinterface #435,  1          // InterfaceMethod java/util/Iterator.next:()Ljava/lang/Object;
+     987: checkcast     #437                // class bew
+     990: astore        16
+     992: aload         16
+     994: ifnull        1000
+     997: iinc          14, 1
+    1000: goto          970
+    1003: new           #93                 // class java/lang/StringBuilder
+    1006: dup
+    1007: invokespecial #94                 // Method java/lang/StringBuilder."<init>":()V
+    1010: ldc_w         #439                // String loop=
+    1013: invokevirtual #103                // Method java/lang/StringBuilder.append:(Ljava/lang/String;)Ljava/lang/StringBuilder;
+    1016: iload         14
+    1018: invokevirtual #112                // Method java/lang/StringBuilder.append:(I)Ljava/lang/StringBuilder;
+    1021: invokevirtual #126                // Method java/lang/StringBuilder.toString:()Ljava/lang/String;
+    1024: invokestatic  #28                 // Method log:(Ljava/lang/String;)V
+    1027: new           #93                 // class java/lang/StringBuilder
+    1030: dup
+    1031: invokespecial #94                 // Method java/lang/StringBuilder."<init>":()V
+    1034: ldc_w         #441                // String dir=
+    1037: invokevirtual #103                // Method java/lang/StringBuilder.append:(Ljava/lang/String;)Ljava/lang/StringBuilder;
+    1040: getstatic     #443                // Field cq.c:Lcq;
+    1043: invokevirtual #445                // Method cq.d:()Lcq;
+    1046: invokevirtual #370                // Method cq.name:()Ljava/lang/String;
+    1049: invokevirtual #103                // Method java/lang/StringBuilder.append:(Ljava/lang/String;)Ljava/lang/StringBuilder;
+    1052: ldc           #105                // String
+    1054: invokevirtual #103                // Method java/lang/StringBuilder.append:(Ljava/lang/String;)Ljava/lang/StringBuilder;
+    1057: getstatic     #443                // Field cq.c:Lcq;
+    1060: invokevirtual #73                 // Method cq.ordinal:()I
+    1063: invokevirtual #112                // Method java/lang/StringBuilder.append:(I)Ljava/lang/StringBuilder;
+    1066: ldc           #105                // String
+    1068: invokevirtual #103                // Method java/lang/StringBuilder.append:(Ljava/lang/String;)Ljava/lang/StringBuilder;
+    1071: invokestatic  #449                // Method cq.values:()[Lcq;
+    1074: arraylength
+    1075: invokevirtual #112                // Method java/lang/StringBuilder.append:(I)Ljava/lang/StringBuilder;
+    1078: invokevirtual #126                // Method java/lang/StringBuilder.toString:()Ljava/lang/String;
+    1081: invokestatic  #28                 // Method log:(Ljava/lang/String;)V
+    1084: new           #93                 // class java/lang/StringBuilder
+    1087: dup
+    1088: invokespecial #94                 // Method java/lang/StringBuilder."<init>":()V
+    1091: ldc_w         #451                // String box.w=
+    1094: invokevirtual #103                // Method java/lang/StringBuilder.append:(Ljava/lang/String;)Ljava/lang/StringBuilder;
+    1097: aload         7
+    1099: getfield      #455                // Field aug.d:D
+    1102: aload         7
+    1104: getfield      #456                // Field aug.a:D
+    1107: dsub
+    1108: invokestatic  #190                // Method f:(D)Ljava/lang/String;
+    1111: invokevirtual #103                // Method java/lang/StringBuilder.append:(Ljava/lang/String;)Ljava/lang/StringBuilder;
+    1114: invokevirtual #126                // Method java/lang/StringBuilder.toString:()Ljava/lang/String;
+    1117: invokestatic  #28                 // Method log:(Ljava/lang/String;)V
+    1120: new           #93                 // class java/lang/StringBuilder
+    1123: dup
+    1124: invokespecial #94                 // Method java/lang/StringBuilder."<init>":()V
+    1127: ldc_w         #458                // String dist=
+    1130: invokevirtual #103                // Method java/lang/StringBuilder.append:(Ljava/lang/String;)Ljava/lang/StringBuilder;
+    1133: aload_3
+    1134: getfield      #188                // Field pk.s:D
+    1137: aload_3
+    1138: getfield      #193                // Field pk.t:D
+    1141: aload_3
+    1142: getfield      #196                // Field pk.u:D
+    1145: invokestatic  #462                // Method blanket$new$Vec3$of:(DDD)Laui;
+    1148: aload         8
+    1150: invokevirtual #465                // Method aui.f:(Laui;)D
+    1153: invokestatic  #190                // Method f:(D)Ljava/lang/String;
+    1156: invokevirtual #103                // Method java/lang/StringBuilder.append:(Ljava/lang/String;)Ljava/lang/StringBuilder;
+    1159: invokevirtual #126                // Method java/lang/StringBuilder.toString:()Ljava/lang/String;
+    1162: invokestatic  #28                 // Method log:(Ljava/lang/String;)V
+    1165: ldc_w         #467                // String end
+    1168: invokestatic  #28                 // Method log:(Ljava/lang/String;)V
+    1171: return
+
+  private static double lambda$init$0(bew);
+    Code:
+       0: aload_0
+       1: getfield      #188                // Field pk.s:D
+       4: aload_0
+       5: getfield      #196                // Field pk.u:D
+       8: dadd
+       9: dreturn
+
+  private static cj blanket$new$BlockPos$of(int, int, int);
+    Code:
+       0: new           #286                // class cj
+       3: dup
+       4: iload_0
+       5: iload_1
+       6: iload_2
+       7: invokespecial #501                // Method cj."<init>":(III)V
+      10: areturn
+
+  private static aui blanket$new$Vec3$of(double, double, double);
+    Code:
+       0: new           #377                // class aui
+       3: dup
+       4: dload_0
+       5: dload_2
+       6: dload         4
+       8: invokespecial #504                // Method aui."<init>":(DDD)V
+      11: areturn
+
+  private static double blanket$get$Player$y(bew);
+    Code:
+       0: aload_0
+       1: getfield      #193                // Field pk.t:D
+       4: dreturn
+}

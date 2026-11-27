@@ -1,0 +1,35 @@
+date: 2026-11-27
+machine: testbox container 143 (Debian 13, Mesa llvmpipe, no GPU, Xvfb 854x480x24)
+target: fabric:1.21.1
+jar: apitour-0.0.0+1.21.1-fabric.jar
+scene: in world after 82s
+checker: apitour fabric:1.21.1: 26/26 keys pass -> PASS
+last logged block:
+[apitour] pos=0.500 -60.000 0.500
+[apitour] rot=180.000 90.000
+[apitour] onGround=true
+[apitour] health=20.000
+[apitour] maxHealth=20.000
+[apitour] food=20
+[apitour] saturation=5.000
+[apitour] main=minecraft:stick 7 Stick false
+[apitour] slot8=minecraft:air 0 Air true
+[apitour] up.y=-60
+[apitour] block.id=minecraft:furnace
+[apitour] block.facing=north
+[apitour] block.air=false
+[apitour] block.nope=null
+[apitour] dim=minecraft:overworld
+[apitour] offhand=minecraft:apple 3 Apple false
+[apitour] target=BLOCK 0 -61 0 UP
+[apitour] target.loc=0.500 -60.000 0.500
+[apitour] side.switch=UP
+[apitour] mref.y=-60.000
+[apitour] lambda.xz=1.000
+[apitour] loop=1
+[apitour] dir=SOUTH 2 6
+[apitour] box.w=0.600
+[apitour] dist=0.000
+[apitour] end
+M0 regression: result: in world (39s) (container 143)
+M0 [m0spike] box anchored at -10.0 -60.0 0.0
