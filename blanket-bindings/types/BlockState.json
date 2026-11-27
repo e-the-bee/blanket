@@ -1,0 +1,21 @@
+{
+  "schema": 1,
+  "api": "com.blanket.api.BlockState",
+  "representation": [
+    { "when": { "mc": "..1.13.2" }, "alias": "lf:net/minecraft/class_2232" },
+    { "when": { "mc": "26.1.." },    "alias": "official:net.minecraft.world.level.block.state.BlockState" },
+    { "when": {},                    "alias": "net.minecraft.world.level.block.state.BlockState" }
+  ],
+  "note": "1.8.9 aliases IBlockState, an interface (invoke opcode chosen per target)",
+  "members": {
+    "blockId": [
+      { "when": {}, "lower": { "unsupported": "TODO M2 T7: bind BlockState.blockId on every target; try `lookup --ref net.minecraft.world.level.block.state.BlockState#blockId`" } }
+    ],
+    "isAir": [
+      { "when": {}, "lower": { "unsupported": "TODO M2 T7: bind BlockState.isAir on every target; try `lookup --ref net.minecraft.world.level.block.state.BlockState#isAir`" } }
+    ],
+    "propertyValue": [
+      { "when": {}, "lower": { "unsupported": "TODO M2 T7: bind BlockState.propertyValue on every target; try `lookup --ref net.minecraft.world.level.block.state.BlockState#propertyValue`" } }
+    ]
+  }
+}

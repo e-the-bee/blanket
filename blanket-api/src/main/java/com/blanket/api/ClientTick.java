@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-only
 package com.blanket.api;
 
+@Owned
 public final class ClientTick {
     public static final ClientTick INSTANCE = new ClientTick();
 

@@ -3,6 +3,7 @@ package com.blanket.api;
 
 import com.blanket.api.render.Canvas2D;
 
+@Owned
 public final class HudRender {
     private final Canvas2D canvas;
     private float partialTick;

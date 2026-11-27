@@ -21,6 +21,45 @@
       { "when": { "mc": "..1.13.2" }, "lower": { "get": "lf:net/minecraft/class_864#field_3254:D" } },
       { "when": { "mc": "26.1.." },    "lower": { "invoke": "official:net.minecraft.world.entity.Entity#getZ()D" } },
       { "when": {},                    "lower": { "invoke": "net.minecraft.world.entity.Entity#getZ()D" } }
+    ],
+    "position": [
+      { "when": {}, "lower": { "unsupported": "TODO M2 T7: bind Player.position on every target; try `lookup --ref net.minecraft.client.player.LocalPlayer#position`" } }
+    ],
+    "yaw": [
+      { "when": {}, "lower": { "unsupported": "TODO M2 T7: bind Player.yaw on every target; try `lookup --ref net.minecraft.client.player.LocalPlayer#yaw`" } }
+    ],
+    "pitch": [
+      { "when": {}, "lower": { "unsupported": "TODO M2 T7: bind Player.pitch on every target; try `lookup --ref net.minecraft.client.player.LocalPlayer#pitch`" } }
+    ],
+    "onGround": [
+      { "when": {}, "lower": { "unsupported": "TODO M2 T7: bind Player.onGround on every target; try `lookup --ref net.minecraft.client.player.LocalPlayer#onGround`" } }
+    ],
+    "health": [
+      { "when": {}, "lower": { "unsupported": "TODO M2 T7: bind Player.health on every target; try `lookup --ref net.minecraft.client.player.LocalPlayer#health`" } }
+    ],
+    "maxHealth": [
+      { "when": {}, "lower": { "unsupported": "TODO M2 T7: bind Player.maxHealth on every target; try `lookup --ref net.minecraft.client.player.LocalPlayer#maxHealth`" } }
+    ],
+    "foodLevel": [
+      { "when": {}, "lower": { "unsupported": "TODO M2 T7: bind Player.foodLevel on every target; try `lookup --ref net.minecraft.client.player.LocalPlayer#foodLevel`" } }
+    ],
+    "saturation": [
+      { "when": {}, "lower": { "unsupported": "TODO M2 T7: bind Player.saturation on every target; try `lookup --ref net.minecraft.client.player.LocalPlayer#saturation`" } }
+    ],
+    "mainHandItem": [
+      { "when": {}, "lower": { "unsupported": "TODO M2 T7: bind Player.mainHandItem on every target; try `lookup --ref net.minecraft.client.player.LocalPlayer#mainHandItem`" } }
+    ],
+    "offHandItem": [
+      { "when": {}, "lower": { "unsupported": "TODO M2 T7: bind Player.offHandItem on every target; try `lookup --ref net.minecraft.client.player.LocalPlayer#offHandItem`" }, "note": "needs Feature.OFFHAND (api-surface 3.3): the real rules carry \"requires\": \"OFFHAND\"" }
+    ],
+    "selectedSlot": [
+      { "when": {}, "lower": { "unsupported": "TODO M2 T7: bind Player.selectedSlot on every target; try `lookup --ref net.minecraft.client.player.LocalPlayer#selectedSlot`" } }
+    ],
+    "inventoryItem": [
+      { "when": {}, "lower": { "unsupported": "TODO M2 T7: bind Player.inventoryItem on every target; try `lookup --ref net.minecraft.client.player.LocalPlayer#inventoryItem`" } }
+    ],
+    "boundingBox": [
+      { "when": {}, "lower": { "unsupported": "TODO M2 T7: bind Player.boundingBox on every target; try `lookup --ref net.minecraft.client.player.LocalPlayer#boundingBox`" } }
     ]
   },
   "note": "Gen.java lowers Player.x/y/z on the entity class. The entity owner is written on the declaring class, as binding-format.md 2.3 requires."

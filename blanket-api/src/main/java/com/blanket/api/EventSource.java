@@ -4,6 +4,7 @@ package com.blanket.api;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 /** Owned. Listeners run in registration order on the client thread. */
+@Owned
 public final class EventSource<E> {
     private final CopyOnWriteArrayList<Listener<E>> listeners = new CopyOnWriteArrayList<Listener<E>>();
 

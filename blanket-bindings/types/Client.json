@@ -16,6 +16,39 @@
       { "when": { "mc": "..1.13.2" }, "lower": { "get": "lf:net/minecraft/class_1600#field_10310:Lnet/minecraft/class_518;" } },
       { "when": { "mc": "26.1.." },    "lower": { "get": "official:net.minecraft.client.Minecraft#player:Lnet/minecraft/client/player/LocalPlayer;" } },
       { "when": {},                    "lower": { "get": "net.minecraft.client.Minecraft#player:Lnet/minecraft/client/player/LocalPlayer;" } }
+    ],
+    "world": [
+      { "when": {}, "lower": { "unsupported": "TODO M2 T7: bind Client.world on every target; try `lookup --ref net.minecraft.client.Minecraft#world`" } }
+    ],
+    "guiWidth": [
+      { "when": {}, "lower": { "unsupported": "TODO M2 T7: bind Client.guiWidth on every target; try `lookup --ref net.minecraft.client.Minecraft#guiWidth`" } }
+    ],
+    "guiHeight": [
+      { "when": {}, "lower": { "unsupported": "TODO M2 T7: bind Client.guiHeight on every target; try `lookup --ref net.minecraft.client.Minecraft#guiHeight`" } }
+    ],
+    "guiScale": [
+      { "when": {}, "lower": { "unsupported": "TODO M2 T7: bind Client.guiScale on every target; try `lookup --ref net.minecraft.client.Minecraft#guiScale`" } }
+    ],
+    "openScreen": [
+      { "when": {}, "lower": { "unsupported": "TODO M2 T7: bind Client.openScreen on every target; try `lookup --ref net.minecraft.client.Minecraft#openScreen`" } }
+    ],
+    "closeScreen": [
+      { "when": {}, "lower": { "unsupported": "TODO M2 T7: bind Client.closeScreen on every target; try `lookup --ref net.minecraft.client.Minecraft#closeScreen`" } }
+    ],
+    "isScreenOpen": [
+      { "when": {}, "lower": { "unsupported": "TODO M2 T7: bind Client.isScreenOpen on every target; try `lookup --ref net.minecraft.client.Minecraft#isScreenOpen`" } }
+    ],
+    "crosshairTarget": [
+      { "when": {}, "lower": { "unsupported": "TODO M2 T7: bind Client.crosshairTarget on every target; try `lookup --ref net.minecraft.client.Minecraft#crosshairTarget`" } }
+    ],
+    "showMessage": [
+      { "when": {}, "lower": { "unsupported": "TODO M2 T7: bind Client.showMessage on every target; try `lookup --ref net.minecraft.client.Minecraft#showMessage`" } }
+    ],
+    "runOnClientThread": [
+      { "when": {}, "lower": { "unsupported": "TODO M2 T7: bind Client.runOnClientThread on every target; try `lookup --ref net.minecraft.client.Minecraft#runOnClientThread`" } }
+    ],
+    "translate": [
+      { "when": {}, "lower": { "unsupported": "TODO M2 T7: bind Client.translate on every target; try `lookup --ref net.minecraft.client.Minecraft#translate`" } }
     ]
   },
   "note": "M0 subset. Names are the ones Gen.java used in real games; the M1 T9 test resolves them on the six targets."

@@ -1,0 +1,24 @@
+{
+  "schema": 1,
+  "api": "com.blanket.api.Direction",
+  "representation": [
+    { "when": { "mc": "..1.13.2" }, "alias": "lf:net/minecraft/class_1354" },
+    { "when": { "mc": "26.1.." },    "alias": "official:net.minecraft.core.Direction" },
+    { "when": {},                    "alias": "net.minecraft.core.Direction" }
+  ],
+  "note": "alias enum; the order of the constants is checked by C5",
+  "members": {
+    "opposite": [
+      { "when": { "loader": "legacy-fabric", "mc": "1.8.9" }, "lower": { "unsupported": "TODO M2 T7: legacy-fabric:1.8.9: write the lf: rule" } },
+      { "when": { "loader": "forge", "mc": "1.8.9" }, "lower": { "unsupported": "TODO M2 T7: forge:1.8.9: write the lf: rule" } },
+      { "when": { "loader": "fabric", "mc": "26.1.2" }, "lower": { "unsupported": "TODO M2 T7: fabric:26.1.2: write the official: rule" } },
+      { "when": {}, "lower": { "invoke": "net.minecraft.core.Direction#getOpposite()Lnet/minecraft/core/Direction;" } }
+    ],
+    "values": [
+      { "when": {}, "lower": { "unsupported": "TODO M2 T7: Enum.values has no intermediary row on fabric:1.21.1 and forge:1.20.1; pass-through (plan 3): C1 exempts it, then delete this key" } }
+    ],
+    "valueOf": [
+      { "when": {}, "lower": { "unsupported": "TODO M2 T7: Enum.valueOf has no intermediary row on fabric:1.21.1 and forge:1.20.1; pass-through (plan 3): C1 exempts it, then delete this key" } }
+    ]
+  }
+}

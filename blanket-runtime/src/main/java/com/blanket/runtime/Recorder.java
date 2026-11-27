@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-only
 package com.blanket.runtime;
 
+import com.blanket.api.Box;
 import com.blanket.api.render.Canvas2D;
 import com.blanket.api.render.Draw3D;
 
@@ -18,7 +19,11 @@ public final class Recorder implements Canvas2D, Draw3D {
         quad(x, y, 0, x, y + h, 0, x + w, y + h, 0, x + w, y, 0, argb);
     }
 
-    public void boxFill(double x0, double y0, double z0, double x1, double y1, double z1, int argb) {
+    public void boxFill(Box box, int argb) {
+        box(box.minX(), box.minY(), box.minZ(), box.maxX(), box.maxY(), box.maxZ(), argb);
+    }
+
+    void box(double x0, double y0, double z0, double x1, double y1, double z1, int argb) {
         float a = (float) (x0 - camX), b = (float) (y0 - camY), c = (float) (z0 - camZ);
         float d = (float) (x1 - camX), e = (float) (y1 - camY), f = (float) (z1 - camZ);
         quad(a, b, c, d, b, c, d, b, f, a, b, f, argb); // bottom
