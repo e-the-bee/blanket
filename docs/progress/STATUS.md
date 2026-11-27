@@ -1,8 +1,6 @@
 # Milestone status
 | M | Builder rounds (model) | Verdict | Date | Notes |
 |---|---|---|---|---|
-| M1 | orchestrated agents 2026-11-20/21 | code complete, gate passed on testbox (agent-checked) | 2026-11-26 | T1-T12 done in code; build green (247 tests). Six targets in world on testbox; positions match F3. Owner has not looked at the screenshots. See M1.md. |
+| M1 | orchestrated agents 2026-11-20/21 | gate confirmed by owner; verification running | 2026-11-26 | T1-T12 done in code; build green (247 tests). Six targets in world on testbox; positions match F3. Gate on testbox 2026-11-26 confirmed by the owner. D-052..D-059 confirmed (D-060). 0.1 not published (owner). See M1.md. |
 ## Open for the owner
-- Confirm D-052..D-059 (all Provisional).
-- Look at `docs/progress/M1-gate/*.png` and confirm the gate.
-- Review the public repo commits before any push (none pushed; blanket-emit has no remote).
+- blanket-emit stays local with no remote (owner, 2026-11-26).
