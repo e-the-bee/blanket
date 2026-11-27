@@ -1,10 +1,12 @@
 // SPDX-License-Identifier: GPL-3.0-only
-// SPDX-License-Identifier: GPL-3.0-only
 package com.blanket.runtime;
 
+import com.blanket.api.Client;
 import com.blanket.api.ClientTick;
 import com.blanket.api.Events;
 import com.blanket.api.HudRender;
+import com.blanket.api.WorldJoin;
+import com.blanket.api.WorldLeave;
 import com.blanket.api.WorldRender;
 import com.blanket.runtime.glue.GlueWorld;
 
@@ -16,7 +18,16 @@ public final class Dispatch {
     private static final Recorder WORLD = new Recorder();
     private static final HudRender HUD_PAYLOAD = new HudRender(HUD);
     private static final WorldRender WORLD_PAYLOAD = new WorldRender(WORLD);
+    private static final WorldChange WORLDS = new WorldChange();
     private static boolean hudPending;
+
+    /** Start of a client tick: WORLD_LEAVE and WORLD_JOIN when the world changed (D-015), then CLIENT_TICK_START. */
+    public static void tickStart() {
+        int change = WORLDS.update(Client.get().world());
+        if ((change & WorldChange.LEAVE) != 0) Events.WORLD_LEAVE.fire(WorldLeave.INSTANCE);
+        if ((change & WorldChange.JOIN) != 0) Events.WORLD_JOIN.fire(WorldJoin.INSTANCE);
+        Events.CLIENT_TICK_START.fire(ClientTick.INSTANCE);
+    }
 
     public static void tickEnd() {
         Events.CLIENT_TICK_END.fire(ClientTick.INSTANCE);

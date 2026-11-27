@@ -45,8 +45,9 @@ import java.util.TreeSet;
  *
  * <p>The binding set is narrowed first: a type file keeps only the member rule lists the mod uses (plus the types that
  * appear in the descriptors of used members, which {@code TargetChecks} needs for their aliases), an events file is kept
- * only for a used event, hooks only when a used event's recipe names them, glue files only for the members a used event
- * passes as payload. The rule list of an aliased enum constant the mod reads is kept like a method's.
+ * only for a used event or an event a used event goes {@code via}, hooks only when a kept event's recipe names them, glue
+ * files only for the members a kept event passes as payload. The rule list of an aliased enum constant the mod reads is
+ * kept like a method's.
  */
 public final class ModCheck {
     private ModCheck() {}
@@ -151,9 +152,15 @@ public final class ModCheck {
             types.put(e.getKey(), only(all.types().get(e.getKey()), e.getValue()));
         }
 
+        // a used event's file, and the file of every event one of its recipes goes via (binding-format.md section 7)
+        Set<String> wanted = new TreeSet<>(scan.events());
+        for (EventBinding eb : all.events().values()) {
+            if (!scan.events().contains(eb.event())) continue;
+            for (EventBinding.Recipe r : eb.recipes()) if (r.via() != null) wanted.add(r.via());
+        }
         Map<String, EventBinding> events = new LinkedHashMap<>();
         for (Map.Entry<String, EventBinding> e : all.events().entrySet()) {
-            if (scan.events().contains(e.getValue().event())) events.put(e.getKey(), e.getValue());
+            if (wanted.contains(e.getValue().event())) events.put(e.getKey(), e.getValue());
         }
 
         Set<String> hookIds = new TreeSet<>();
@@ -273,29 +280,10 @@ public final class ModCheck {
             }
         }
         for (String event : scan.events()) {
+            EventRecipes.Wired w = EventRecipes.wire(narrowed.events(), event, t, errors);
+            if (w == null) continue;
             String label = "event " + event;
-            EventBinding eb = null;
-            String file = null;
-            for (Map.Entry<String, EventBinding> e : narrowed.events().entrySet()) {
-                if (e.getValue().event().equals(event)) {
-                    eb = e.getValue();
-                    file = e.getKey();
-                }
-            }
-            if (eb == null) {
-                errors.add(new Diagnostic(ErrorCode.UNBOUND, t.id(), label, null, null,
-                        "C1 coverage: no events/ file binds " + label,
-                        "add an events file for " + event + " with a recipe whose \"when\" matches " + t.id() + " (contributing.md 3.3)"));
-                continue;
-            }
-            int i = Rules.first(eb.recipes(), EventBinding.Recipe::when, t);
-            if (i < 0) {
-                errors.add(new Diagnostic(ErrorCode.UNBOUND, t.id(), label, null, null,
-                        "C1 coverage: " + label + " has no recipe for " + t.id() + " in " + file,
-                        "add a recipe whose \"when\" matches " + t.id() + " to " + file + ": a `mixin` on a hook of hooks.json, or a `native` loader event (contributing.md 3.3)"));
-                continue;
-            }
-            for (EventBinding.Injection in : eb.recipes().get(i).injections()) {
+            for (EventBinding.Injection in : w.recipe().injections()) {
                 String hook = in.hook();
                 if (hook == null) continue;
                 List<Hooks.Rule> rules = narrowed.hooks() == null ? null : narrowed.hooks().hooks().get(hook);
@@ -305,7 +293,7 @@ public final class ModCheck {
                             "add \"" + hook + "\": [ { \"when\": ..., \"method\": ..., \"at\": ... } ] under \"hooks\" in hooks.json"));
                 } else if (Rules.first(rules, Hooks.Rule::when, t) < 0) {
                     errors.add(new Diagnostic(ErrorCode.UNBOUND, t.id(), label, null, null,
-                            "C1 coverage: hook '" + hook + "' (used by " + label + " in " + file + ") has no rule for " + t.id(),
+                            "C1 coverage: hook '" + hook + "' (used by " + label + " in " + w.file() + ") has no rule for " + t.id(),
                             "add a rule whose \"when\" matches " + t.id() + " to hook \"" + hook + "\" in hooks.json, with its method written with "
                                     + Rules.refAdvice(t) + "; " + Rules.lookupCommand("<Minecraft class>#<method>")));
                 }

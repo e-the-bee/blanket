@@ -14,6 +14,7 @@ public final class KeyQueue {
     private KeyQueue() {}
 
     private static final List<Object> PENDING = new ArrayList<>();
+    private static final List<Object> REGISTERED = new ArrayList<>();
     private static boolean sealed;
     private static String modId = "";
 
@@ -21,6 +22,7 @@ public final class KeyQueue {
     public static synchronized void begin(String id) {
         modId = id;
         sealed = false;
+        REGISTERED.clear();
     }
 
     /** The mod id of the registration window. */
@@ -34,6 +36,7 @@ public final class KeyQueue {
             throw new IllegalStateException("KeyBinding.register is only allowed inside ClientMod.init()");
         }
         PENDING.add(mapping);
+        REGISTERED.add(mapping);
     }
 
     /** Ends the registration window. */
@@ -48,6 +51,11 @@ public final class KeyQueue {
         return out;
     }
 
+    /** Every mapping queued since {@link #begin}, in registration order; {@link #drain} does not remove them (the testkit presses the first). */
+    public static synchronized List<Object> registered() {
+        return new ArrayList<>(REGISTERED);
+    }
+
     /** Number of mappings still queued. */
     public static synchronized int size() {
         return PENDING.size();
@@ -56,6 +64,7 @@ public final class KeyQueue {
     /** Test support: empties the queue and reopens the window. */
     static synchronized void reset() {
         PENDING.clear();
+        REGISTERED.clear();
         sealed = false;
     }
 }

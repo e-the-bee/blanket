@@ -35,7 +35,11 @@ public final class EventBinding {
         }
         List<Recipe> recipes = new ArrayList<Recipe>();
         for (int i = 0; i < arr.size(); i++) {
-            recipes.add(Recipe.parse(arr.get(i), file, "$.recipes[" + i + "]"));
+            Recipe r = Recipe.parse(arr.get(i), file, "$.recipes[" + i + "]");
+            if (event.equals(r.via())) {
+                throw new BindingException(file, "$.recipes[" + i + "].via", "a via names another event; " + event + " cannot go via itself");
+            }
+            recipes.add(r);
         }
         return new EventBinding(event, Collections.unmodifiableList(recipes));
     }
@@ -61,60 +65,80 @@ public final class EventBinding {
     }
 
     /**
-     * One recipe: Mixin injections (one object or an array, D-057) or one native loader event. Each injection or
+     * One recipe: Mixin injections (one object or an array, D-057), native loader event bodies (one object or an array),
+     * or {@code via}: the runtime synthesizes the event from another event's hook (WORLD_JOIN from CLIENT_TICK_START), so
+     * the recipe has no injection of its own and the planner wires the named event's recipe instead. Each injection or
      * native body names the {@code Dispatch} method it calls and gives that method's payload.
      */
     public static final class Recipe {
-        private final Selector when;
-        private final boolean mixinArray;
-        private final List<Injection> injections;
+        /** An event constant name ({@code CLIENT_TICK_START}). */
+        private static final java.util.regex.Pattern EVENT = java.util.regex.Pattern.compile("[A-Z][A-Z0-9_]*");
 
-        private Recipe(Selector when, boolean mixinArray, List<Injection> injections) {
+        private final Selector when;
+        private final boolean array;
+        private final List<Injection> injections;
+        private final String via;
+
+        private Recipe(Selector when, boolean array, List<Injection> injections, String via) {
             this.when = when;
-            this.mixinArray = mixinArray;
+            this.array = array;
             this.injections = injections;
+            this.via = via;
         }
 
         static Recipe parse(JsonElement e, String file, String path) {
             JsonObject o = Json.obj(e, file, path);
-            Json.checkKeys(o, file, path, new String[] {"when", "mixin", "native"});
+            Json.checkKeys(o, file, path, new String[] {"when", "mixin", "native", "via"});
             if (!o.has("when")) {
                 throw new BindingException(file, path, "missing \"when\"");
             }
             Selector when = Selector.parse(o.get("when"), file, path + ".when");
-            if (o.has("mixin") == o.has("native")) {
-                throw new BindingException(file, path, "a recipe has exactly one of \"mixin\" and \"native\"");
+            int kinds = (o.has("mixin") ? 1 : 0) + (o.has("native") ? 1 : 0) + (o.has("via") ? 1 : 0);
+            if (kinds != 1) {
+                throw new BindingException(file, path, "a recipe has exactly one of \"mixin\", \"native\" and \"via\"");
             }
-            if (o.has("mixin")) {
-                String at = path + ".mixin";
-                JsonElement m = o.get("mixin");
-                List<Injection> out = new ArrayList<Injection>();
-                if (m.isJsonArray()) {
-                    JsonArray a = m.getAsJsonArray();
-                    if (a.size() == 0) {
-                        throw new BindingException(file, at, "a mixin array needs at least one injection");
-                    }
-                    for (int i = 0; i < a.size(); i++) {
-                        out.add(Injection.mixin(a.get(i), file, at + "[" + i + "]"));
-                    }
-                } else {
-                    out.add(Injection.mixin(m, file, at));
+            if (o.has("via")) {
+                String via = Json.nonEmpty(o, "via", file, path);
+                if (!EVENT.matcher(via).matches()) {
+                    throw new BindingException(file, path + ".via", "via names an event constant (CLIENT_TICK_START), found '" + via + "'");
                 }
-                return new Recipe(when, m.isJsonArray(), Collections.unmodifiableList(out));
+                return new Recipe(when, false, Collections.<Injection>emptyList(), via);
             }
-            return new Recipe(when, false, Collections.singletonList(Injection.nativeBody(o.get("native"), file, path + ".native")));
+            boolean mixin = o.has("mixin");
+            String key = mixin ? "mixin" : "native";
+            String at = path + "." + key;
+            JsonElement m = o.get(key);
+            List<Injection> out = new ArrayList<Injection>();
+            if (m.isJsonArray()) {
+                JsonArray a = m.getAsJsonArray();
+                if (a.size() == 0) {
+                    throw new BindingException(file, at, "a " + key + " array needs at least one " + (mixin ? "injection" : "native body"));
+                }
+                for (int i = 0; i < a.size(); i++) {
+                    String p = at + "[" + i + "]";
+                    out.add(mixin ? Injection.mixin(a.get(i), file, p) : Injection.nativeBody(a.get(i), file, p));
+                }
+            } else {
+                out.add(mixin ? Injection.mixin(m, file, at) : Injection.nativeBody(m, file, at));
+            }
+            return new Recipe(when, m.isJsonArray(), Collections.unmodifiableList(out), null);
         }
 
         public Selector when() {
             return when;
         }
 
-        /** True for a Mixin recipe, false for a native one. */
+        /** True for a Mixin recipe, false for a native or a via one. */
         public boolean isMixin() {
-            return injections.get(0).hook() != null;
+            return !injections.isEmpty() && injections.get(0).hook() != null;
         }
 
-        /** The Mixin injections in order, or the single native body. */
+        /** The event whose recipe delivers this one ({@code "via"}), or null for a Mixin or native recipe. */
+        public String via() {
+            return via;
+        }
+
+        /** The Mixin injections or the native bodies, in order; empty for a via recipe. */
         public List<Injection> injections() {
             return injections;
         }
@@ -122,16 +146,19 @@ public final class EventBinding {
         JsonObject toJson() {
             JsonObject o = new JsonObject();
             o.add("when", TypeBinding.selectorJson(when));
-            if (!isMixin()) {
-                o.add("native", injections.get(0).toJson());
-            } else if (mixinArray) {
+            if (via != null) {
+                o.addProperty("via", via);
+                return o;
+            }
+            String key = isMixin() ? "mixin" : "native";
+            if (array) {
                 JsonArray a = new JsonArray();
                 for (Injection i : injections) {
                     a.add(i.toJson());
                 }
-                o.add("mixin", a);
+                o.add(key, a);
             } else {
-                o.add("mixin", injections.get(0).toJson());
+                o.add(key, injections.get(0).toJson());
             }
             return o;
         }

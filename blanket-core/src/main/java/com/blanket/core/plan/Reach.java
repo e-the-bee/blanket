@@ -33,8 +33,10 @@ import java.util.stream.Stream;
  * (lowering-and-adapters.md section 8, class-level shrink).
  */
 public final class Reach {
+    /** The runtime's event dispatcher: its reads of {@code Events.X} fire events and do not subscribe to them. */
+    static final String DISPATCH = "com/blanket/runtime/Dispatch";
     /** Roots every jar runs besides the mod: the dispatcher and the boot class. The GL backend of the target is the third. */
-    public static final List<String> ROOTS = List.of("com/blanket/runtime/Dispatch", "com/blanket/runtime/Boot");
+    public static final List<String> ROOTS = List.of(DISPATCH, "com/blanket/runtime/Boot");
 
     private Reach() {}
 
@@ -89,17 +91,21 @@ public final class Reach {
         new ClassReader(bytes).accept(new ClassRemapper(new ClassWriter(0), names), 0);
     }
 
-    /** The used set of one target: the mod's classes plus the embedded classes reachable from them and from {@code roots}. */
+    /**
+     * The used set of one target: the mod's classes plus the embedded classes reachable from them and from {@code roots}.
+     * An event is used where one of these classes reads {@code Events.X}, except {@link #DISPATCH}, which reads every
+     * event to fire it (events-and-hooks.md section 1 principle 5: wire only what a subscriber uses).
+     */
     static Scan scan(Map<String, byte[]> mod, Map<String, byte[]> embed, Collection<String> roots, Set<String> stubs) {
         Scan scan = new Scan();
-        for (Map.Entry<String, byte[]> e : mod.entrySet()) scanClass(e.getKey(), e.getValue(), scan);
-        for (String name : closure(mod, embed, roots, stubs)) scanClass(name, embed.get(name), scan);
+        for (Map.Entry<String, byte[]> e : mod.entrySet()) scanClass(e.getKey(), e.getValue(), scan, true);
+        for (String name : closure(mod, embed, roots, stubs)) scanClass(name, embed.get(name), scan, !name.equals(DISPATCH));
         return scan;
     }
 
-    private static void scanClass(String name, byte[] bytes, Scan scan) {
+    private static void scanClass(String name, byte[] bytes, Scan scan, boolean events) {
         try {
-            ModScanner.scanClass(bytes, scan);
+            ModScanner.scanClass(bytes, scan, events);
         } catch (RuntimeException ex) {
             throw new IllegalStateException("cannot read class " + name + ": " + ex.getMessage(), ex);
         }

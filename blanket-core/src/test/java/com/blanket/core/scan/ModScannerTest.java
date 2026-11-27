@@ -76,4 +76,14 @@ class ModScannerTest {
         assertFalse(s.types().contains("java/lang/Object"));
         assertFalse(s.members().stream().anyMatch(m -> m.owner().startsWith("java/")));
     }
+
+    @Test
+    void withoutEventsTheReadsStillCountAsTypesAndMembersButSubscribeToNothing() {
+        Scan s = new Scan();
+        ModScanner.scanClass(modClass(), s, false);
+        assertEquals(List.of(), List.copyOf(s.events()));
+        assertEquals(2, s.members().size());
+        assertEquals(List.of("com/blanket/api/Client", "com/blanket/api/EventSource", "com/blanket/api/Events",
+                "com/blanket/api/HudRender", "com/blanket/api/Player"), List.copyOf(s.types()));
+    }
 }
