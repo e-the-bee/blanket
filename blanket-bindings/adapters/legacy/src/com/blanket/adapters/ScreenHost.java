@@ -88,14 +88,4 @@ public final class ScreenHost extends Screen {
     public boolean shouldPauseGame() {
         return screen.pausesGame();
     }
-
-    /**
-     * Needed by javac only: in the 1.8.9 stub jar {@code Screen} implements this method of
-     * {@code IdentifiableBooleanConsumer} under its obfuscated name {@code a(ZI)V} (LF intermediary has the row only on
-     * the interface, so the stub jar names it there alone) and javac sees it unimplemented. Remapped, this declaration
-     * overrides the game's {@code Screen} method, which only answers a chat-link confirmation screen opened from this
-     * screen; a mod's screen never opens one.
-     */
-    @Override
-    public void confirmResult(boolean result, int id) {}
 }

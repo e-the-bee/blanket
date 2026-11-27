@@ -177,14 +177,15 @@ public final class StubJars {
     public static int write(Path clientJar, List<Table> stages, Path out) throws IOException {
         Map<String, byte[]> classes = new TreeMap<>();
         try (ZipFile zip = new ZipFile(clientJar.toFile())) {
+            List<Table> chain = withHierarchy(zip, stages);
             Enumeration<? extends ZipEntry> entries = zip.entries();
             while (entries.hasMoreElements()) {
                 ZipEntry e = entries.nextElement();
                 String name = e.getName();
-                if (e.isDirectory() || !name.endsWith(".class") || name.startsWith("META-INF/") || name.equals("module-info.class")) continue;
+                if (!isClass(e)) continue;
                 byte[] stub;
                 try (InputStream in = zip.getInputStream(e)) {
-                    stub = signatures(in.readAllBytes(), stages);
+                    stub = signatures(in.readAllBytes(), chain);
                 } catch (RuntimeException ex) {
                     throw new IOException("cannot read " + name + " of " + clientJar + ": " + ex.getMessage(), ex);
                 }
@@ -193,6 +194,34 @@ public final class StubJars {
         }
         writeJar(out, classes);
         return classes.size();
+    }
+
+    private static boolean isClass(ZipEntry e) {
+        String name = e.getName();
+        return !e.isDirectory() && name.endsWith(".class") && !name.startsWith("META-INF/") && !name.equals("module-info.class");
+    }
+
+    /** The stages with the jar's class hierarchy (superclass, then interfaces) in each stage's own input names. */
+    private static List<Table> withHierarchy(ZipFile zip, List<Table> stages) throws IOException {
+        Map<String, List<String>> hierarchy = new HashMap<>();
+        Enumeration<? extends ZipEntry> entries = zip.entries();
+        while (entries.hasMoreElements()) {
+            ZipEntry e = entries.nextElement();
+            if (!isClass(e)) continue;
+            try (InputStream in = zip.getInputStream(e)) {
+                ClassReader r = new ClassReader(in);
+                List<String> supers = new ArrayList<>();
+                if (r.getSuperName() != null) supers.add(r.getSuperName());
+                supers.addAll(List.of(r.getInterfaces()));
+                hierarchy.put(r.getClassName(), supers);
+            }
+        }
+        List<Table> out = new ArrayList<>(stages.size());
+        for (Table stage : stages) {
+            out.add(stage.withHierarchy(hierarchy));
+            hierarchy = stage.mapHierarchy(hierarchy);
+        }
+        return out;
     }
 
     /** One class file without code, remapped through {@code stages} (first stage first). */
@@ -228,17 +257,23 @@ public final class StubJars {
     /**
      * One mapping file as a {@link Remapper}: classes, and fields and methods by declaring class, name and descriptor,
      * all in the names of the {@code from} namespace and mapped to the {@code to} namespace. A name without a row stays
-     * as it is. A stub has declarations only, so the declaring class is always the owner and no inheritance walk is needed.
+     * as it is. A table made with {@link #withHierarchy} also finds a method row declared on a supertype of the owner.
      */
     public static final class Table extends Remapper {
         private final Map<String, String> classes;
         private final Map<String, String> fields;
         private final Map<String, String> methods;
+        private final Map<String, List<String>> supers;
 
         Table(Map<String, String> classes, Map<String, String> fields, Map<String, String> methods) {
+            this(classes, fields, methods, Map.of());
+        }
+
+        private Table(Map<String, String> classes, Map<String, String> fields, Map<String, String> methods, Map<String, List<String>> supers) {
             this.classes = classes;
             this.fields = fields;
             this.methods = methods;
+            this.supers = supers;
         }
 
         /**
@@ -265,8 +300,45 @@ public final class StubJars {
 
         @Override
         public String mapMethodName(String owner, String name, String descriptor) {
-            String m = methods.get(owner + '.' + name + descriptor);
+            String key = name + descriptor;
+            String m = methods.get(owner + '.' + key);
+            if (m == null && !supers.isEmpty() && !name.startsWith("<")) m = inherited(owner, key, new java.util.HashSet<>());
             return m == null ? name : m;
+        }
+
+        /** The row of {@code name+descriptor} on the nearest supertype (superclass first, then interfaces) of {@code owner}. */
+        private String inherited(String owner, String key, Set<String> seen) {
+            for (String sup : supers.getOrDefault(owner, List.of())) {
+                if (!seen.add(sup)) continue;
+                String m = methods.get(sup + '.' + key);
+                if (m == null) m = inherited(sup, key, seen);
+                if (m != null) return m;
+            }
+            return null;
+        }
+
+        /**
+         * A copy that also finds a method row declared on a supertype, like a standard remapper's hierarchy lookup.
+         * {@code supers} maps a class to its superclass and interfaces, all in this table's {@code from} names.
+         */
+        public Table withHierarchy(Map<String, List<String>> supers) {
+            return new Table(classes, fields, methods, supers);
+        }
+
+        /** This table's class map applied to a hierarchy: both sides renamed, so it fits the next stage. */
+        public Map<String, List<String>> mapHierarchy(Map<String, List<String>> hierarchy) {
+            Map<String, List<String>> out = new HashMap<>();
+            for (Map.Entry<String, List<String>> e : hierarchy.entrySet()) {
+                List<String> list = new ArrayList<>(e.getValue().size());
+                for (String s : e.getValue()) list.add(map(s));
+                out.put(map(e.getKey()), list);
+            }
+            return out;
+        }
+
+        /** Whether {@code owner.name+descriptor} has a row, on the class or a supertype. */
+        public boolean mapsMethod(String owner, String name, String descriptor) {
+            return !mapMethodName(owner, name, descriptor).equals(name);
         }
 
         public int classCount() {
