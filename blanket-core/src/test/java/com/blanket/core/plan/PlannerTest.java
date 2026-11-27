@@ -58,6 +58,15 @@ class PlannerTest implements Opcodes {
                 "net/example/Matrix", simple("net/example/Matrix", "java/lang/Object", ACC_PUBLIC, m -> {
                     method(m, ACC_PUBLIC, "<init>", "()V");
                     method(m, ACC_PUBLIC, "get", "([F)[F");
+                }),
+                "net/example/Pos", simple("net/example/Pos", "java/lang/Object", ACC_PUBLIC, m -> method(m, ACC_PUBLIC, "<init>", "(III)V")),
+                "net/example/Pad", simple("net/example/Pad", "java/lang/Object", ACC_PUBLIC, m -> method(m, ACC_PUBLIC | ACC_STATIC, "down", "(I)Z")),
+                "net/example/Heading", simple("net/example/Heading", "java/lang/Enum", ACC_PUBLIC | ACC_FINAL | ACC_ENUM, m -> {
+                    m.visitField(ACC_PUBLIC | ACC_STATIC | ACC_FINAL | ACC_ENUM, "NORTH", "Lnet/example/Heading;", null, null).visitEnd();
+                    m.visitField(ACC_PUBLIC | ACC_STATIC | ACC_FINAL | ACC_ENUM, "SOUTH", "Lnet/example/Heading;", null, null).visitEnd();
+                }),
+                "net/example/Aabb", simple("net/example/Aabb", "java/lang/Object", ACC_PUBLIC, m -> {
+                    for (String a : List.of("getMinX", "getMinY", "getMinZ", "getMaxX", "getMaxY")) method(m, ACC_PUBLIC, a, "()D");
                 })));
         loader = jar("loader.jar", Map.of(
                 "net/loaderfx/TickEvent", simple("net/loaderfx/TickEvent", "java/lang/Object", ACC_PUBLIC,
@@ -263,13 +272,17 @@ class PlannerTest implements Opcodes {
     }
 
     private PlanSource source(Map<String, String> files) throws IOException {
+        return source(files, mod, List.of(), PlannerTest.class.getClassLoader());
+    }
+
+    private PlanSource source(Map<String, String> files, Path modJar, List<Path> embed, ClassLoader api) throws IOException {
         Path dir = Files.createTempDirectory(tmp, "bindings");
         for (Map.Entry<String, String> e : files.entrySet()) {
             Path p = dir.resolve(e.getKey());
             Files.createDirectories(p.getParent());
             Files.writeString(p, e.getValue(), StandardCharsets.UTF_8);
         }
-        return Planner.plan(mod, dir, data());
+        return Planner.plan(modJar, dir, embed, data(), api);
     }
 
     private Plan plan(String id) throws IOException {
@@ -319,8 +332,8 @@ class PlannerTest implements Opcodes {
         TargetSpec t = s.targets().stream().filter(x -> x.id().equals("fabric:26.1.2")).findFirst().orElseThrow();
         Plan p = s.plan(t);
         assertEquals(69, p.classVersionMax());
-        assertEquals(Map.of(), p.features());
-        assertEquals(Map.of(), p.adapters());
+        assertEquals(Map.of(), p.features(), "no features.json, no features");
+        assertEquals(Map.of(), p.adapters(), "adapters are RES2's");
         try (var h = s.hierarchy(t)) {
             assertEquals(Optional.empty(), h.get("net/example/Game"));
         }
@@ -406,5 +419,274 @@ class PlannerTest implements Opcodes {
         IllegalStateException e = assertThrows(IllegalStateException.class, () -> s.plan(s.targets().get(0)));
         assertTrue(e.getMessage().startsWith("UNRESOLVED fabric:26.1.2 Player.x ref official:net.example.Mob#getY()D"), e.getMessage());
         assertTrue(e.getMessage().contains("; next step: "), e.getMessage());
+    }
+
+    // ---------------------------------------------------------------------------------------- M2 RESOLVE: every lowering kind
+
+    private static final String TARGETS_26 = "fabric:26.1.2";
+
+    /** A mod class whose {@code init} runs {@code body}; it implements ClientMod so the plan has its entry. */
+    private Path modJar(String name, java.util.function.Consumer<MethodVisitor> body) throws IOException {
+        byte[] cls = simple("mod/Main", "java/lang/Object", ACC_PUBLIC, w -> {
+            MethodVisitor m = w.visitMethod(ACC_PUBLIC, "init", "()V", null, null);
+            m.visitCode();
+            body.accept(m);
+            m.visitInsn(RETURN);
+            m.visitMaxs(0, 0);
+            m.visitEnd();
+        }, "com/blanket/api/ClientMod");
+        return jar(name, Map.of("mod/Main", cls));
+    }
+
+    /** Classes only the API loader of a test has, such as an API enum ({@code ACC_ENUM}). */
+    private static ClassLoader apiClasses(Map<String, byte[]> extra) {
+        return new ClassLoader(PlannerTest.class.getClassLoader()) {
+            @Override
+            public java.io.InputStream getResourceAsStream(String name) {
+                byte[] b = extra.get(name);
+                return b != null ? new java.io.ByteArrayInputStream(b) : super.getResourceAsStream(name);
+            }
+        };
+    }
+
+    private Plan plan(Map<String, String> files, Path modJar, List<Path> embed, ClassLoader api, String id) throws IOException {
+        PlanSource s = source(files, modJar, embed, api);
+        for (TargetSpec t : s.targets()) if (t.id().equals(id)) return s.plan(t);
+        throw new AssertionError("no target " + id);
+    }
+
+    private static String apiType(String name, String alias, String members) {
+        return """
+                { "schema": 1, "api": "com.blanket.api.%s",
+                  "representation": [ { "when": {}, "alias": "%s" } ],
+                  "members": { %s } }""".formatted(name, alias, members);
+    }
+
+    private static String rule(String member, String lower) {
+        return "\"" + member + "\": [ { \"when\": {}, \"lower\": " + lower + " } ]";
+    }
+
+    @Test
+    void newWithArgumentsBecomesConstruct() throws IOException {
+        Map<String, String> f = files();
+        f.put("types/Cell.json", apiType("Cell", "official:net.example.Pos",
+                rule("of", "{ \"new\": \"official:net.example.Pos#<init>(III)V\" }")));
+        Path m = modJar("cell.jar", v -> {
+            for (int i = 0; i < 3; i++) v.visitInsn(ICONST_1);
+            v.visitMethodInsn(INVOKESTATIC, "com/blanket/api/Cell", "of", "(III)Lcom/blanket/api/Cell;", false);
+            v.visitInsn(POP);
+        });
+        Plan p = plan(f, m, List.of(), PlannerTest.class.getClassLoader(), TARGETS_26);
+        assertEquals(Map.of("com/blanket/api/Cell.of(III)Lcom/blanket/api/Cell;", new Lowered.Construct("net/example/Pos", "(III)V")), p.members());
+        assertEquals(Map.of("com/blanket/api/Cell", "net/example/Pos"), p.types());
+    }
+
+    @Test
+    void adapterRuleBecomesAdapter() throws IOException {
+        Map<String, String> f = files();
+        f.put("types/Player.json", apiType("Player", "official:net.example.Hero", rule("x", "{ \"adapter\": \"unobf:com.blanket.adapters.Boxes#x\" }")));
+        f.put("types/Cell.json", apiType("Cell", "official:net.example.Pos", rule("of", "{ \"adapter\": \"unobf:com.blanket.adapters.Cells#of\" }")));
+        Path m = modJar("adapter.jar", v -> {
+            v.visitInsn(ACONST_NULL);
+            v.visitMethodInsn(INVOKEVIRTUAL, "com/blanket/api/Player", "x", "()D", false);
+            v.visitInsn(POP2);
+            for (int i = 0; i < 3; i++) v.visitInsn(ICONST_1);
+            v.visitMethodInsn(INVOKESTATIC, "com/blanket/api/Cell", "of", "(III)Lcom/blanket/api/Cell;", false);
+            v.visitInsn(POP);
+        });
+        Plan p = plan(f, m, List.of(), PlannerTest.class.getClassLoader(), TARGETS_26);
+        assertEquals(Map.of(
+                "com/blanket/api/Player.x()D", new Lowered.Adapter("com/blanket/adapters/unobf/Boxes", "x", "(Lcom/blanket/api/Player;)D"),
+                "com/blanket/api/Cell.of(III)Lcom/blanket/api/Cell;", new Lowered.Adapter("com/blanket/adapters/unobf/Cells", "of", "(III)Lcom/blanket/api/Cell;")), p.members());
+
+        f.put("types/Player.json", apiType("Player", "official:net.example.Hero", rule("x", "{ \"adapter\": \"legacy:com.blanket.adapters.Boxes#x\" }")));
+        PlanSource s = source(f, m, List.of(), PlannerTest.class.getClassLoader());
+        IllegalStateException e = assertThrows(IllegalStateException.class, () -> s.plan(s.targets().get(0)));
+        assertTrue(e.getMessage().startsWith("UNRESOLVED fabric:26.1.2 Player.x ref legacy:com.blanket.adapters.Boxes#x"), e.getMessage());
+        assertTrue(e.getMessage().contains("adapter set legacy is not the set of 26.1.2, unobf"), e.getMessage());
+    }
+
+    static final String FEATURES = """
+            { "schema": 1, "features": {
+              "LATER": { "available": [ { "when": { "mc": "27.." } } ] },
+              "ANYWHERE": { "available": [ { "when": {} } ] },
+              "FABRIC_ONLY": { "available": [ { "when": { "loader": "fabric" } } ] } } }""";
+
+    private Map<String, String> filesWithFeatures() {
+        Map<String, String> f = files();
+        f.put("features.json", FEATURES);
+        return f;
+    }
+
+    @Test
+    void requiresAbsentFeatureIsUnsupported() throws IOException {
+        Map<String, String> f = filesWithFeatures();
+        // x needs a feature neither target has and names a method the jar lacks: no plan failure, FOLD judges the uses
+        f.put("types/Player.json", """
+                { "schema": 1, "api": "com.blanket.api.Player",
+                  "representation": [ { "when": {}, "alias": "official:net.example.Hero" } ],
+                  "members": {
+                    "x": [ { "when": {}, "requires": "LATER", "lower": { "invoke": "official:net.example.Mob#getY()D" } } ],
+                    "y": [ { "when": {}, "lower": { "unsupported": "no y in the fixture" } } ],
+                    "z": [ { "when": {}, "requires": "ANYWHERE", "lower": { "invoke": "official:net.example.Mob#getX()D" } } ] } }""");
+        Path m = modJar("requires.jar", v -> {
+            for (String axis : List.of("x", "y", "z")) {
+                v.visitInsn(ACONST_NULL);
+                v.visitMethodInsn(INVOKEVIRTUAL, "com/blanket/api/Player", axis, "()D", false);
+                v.visitInsn(POP2);
+            }
+        });
+        Plan p = plan(f, m, List.of(), PlannerTest.class.getClassLoader(), TARGETS_26);
+        assertEquals(Map.of(
+                "com/blanket/api/Player.x()D", new Lowered.Unsupported("Player.x requires the feature LATER, which fabric:26.1.2 does not have", "LATER"),
+                "com/blanket/api/Player.y()D", new Lowered.Unsupported("no y in the fixture", null),
+                "com/blanket/api/Player.z()D", new Lowered.Inline(List.of(Op.invoke(INVOKEVIRTUAL, "net/example/Mob", "getX", "()D", false)))), p.members());
+    }
+
+    @Test
+    void featuresPerTarget() throws IOException {
+        Plan fabric = plan(filesWithFeatures(), mod, List.of(), PlannerTest.class.getClassLoader(), TARGETS_26);
+        Plan neo = plan(filesWithFeatures(), mod, List.of(), PlannerTest.class.getClassLoader(), "neoforge:26.1.2");
+        assertEquals(Map.of("LATER", false, "ANYWHERE", true, "FABRIC_ONLY", true), fabric.features());
+        assertEquals(Map.of("LATER", false, "ANYWHERE", true, "FABRIC_ONLY", false), neo.features());
+    }
+
+    @Test
+    void classVersionMaxFromJava() throws IOException {
+        Map<Integer, Integer> expected = Map.of(8, 52, 16, 60, 17, 61, 21, 65, 25, 69);
+        for (Map.Entry<Integer, Integer> e : expected.entrySet()) {
+            Map<String, String> f = files();
+            f.put("targets.json", TARGETS.replace("\"java\": 25", "\"java\": " + e.getKey()));
+            assertEquals(e.getValue(), plan(f, mod, List.of(), PlannerTest.class.getClassLoader(), TARGETS_26).classVersionMax(), "java " + e.getKey());
+        }
+    }
+
+    @Test
+    void enumConstantFieldKey() throws IOException {
+        Map<String, String> f = files();
+        f.put("types/Facing.json", apiType("Facing", "official:net.example.Heading",
+                rule("NORTH", "{ \"get\": \"official:net.example.Heading#NORTH:Lnet/example/Heading;\" }") + ", "
+                        + rule("SOUTH", "{ \"get\": \"official:net.example.Heading#SOUTH:Lnet/example/Heading;\" }")));
+        Map<String, byte[]> apiOnly = Map.of("com/blanket/api/Facing.class",
+                simple("com/blanket/api/Facing", "java/lang/Enum", ACC_PUBLIC | ACC_FINAL | ACC_SUPER | ACC_ENUM, w -> { }));
+        Path m = modJar("enum.jar", v -> {
+            String facing = "com/blanket/api/Facing", self = "Lcom/blanket/api/Facing;";
+            v.visitFieldInsn(GETSTATIC, facing, "NORTH", self);
+            v.visitMethodInsn(INVOKEVIRTUAL, facing, "ordinal", "()I", false);
+            v.visitInsn(POP);
+            v.visitFieldInsn(GETSTATIC, facing, "SOUTH", self);
+            v.visitMethodInsn(INVOKEVIRTUAL, facing, "name", "()Ljava/lang/String;", false);
+            v.visitInsn(POP);
+            v.visitMethodInsn(INVOKESTATIC, facing, "values", "()[" + self, false);
+            v.visitInsn(POP);
+            v.visitLdcInsn("NORTH");
+            v.visitMethodInsn(INVOKESTATIC, facing, "valueOf", "(Ljava/lang/String;)" + self, false);
+            v.visitInsn(POP);
+            // Object members of an alias class pass through as well
+            v.visitInsn(ACONST_NULL);
+            v.visitMethodInsn(INVOKEVIRTUAL, "com/blanket/api/Player", "toString", "()Ljava/lang/String;", false);
+            v.visitInsn(POP);
+        });
+        Plan p = plan(f, m, List.of(), apiClasses(apiOnly), TARGETS_26);
+        assertEquals(Map.of(
+                "com/blanket/api/Facing.NORTH:Lcom/blanket/api/Facing;", new Lowered.Inline(List.of(Op.field(GETSTATIC, "net/example/Heading", "NORTH", "Lnet/example/Heading;"))),
+                "com/blanket/api/Facing.SOUTH:Lcom/blanket/api/Facing;", new Lowered.Inline(List.of(Op.field(GETSTATIC, "net/example/Heading", "SOUTH", "Lnet/example/Heading;")))), p.members());
+        assertEquals(Map.of("com/blanket/api/Facing", "net/example/Heading", "com/blanket/api/Player", "net/example/Hero"), p.types());
+
+        // an enum call that is no pass-through member and has no rule still fails
+        Path bad = modJar("enum-bad.jar", v -> {
+            v.visitFieldInsn(GETSTATIC, "com/blanket/api/Facing", "NORTH", "Lcom/blanket/api/Facing;");
+            v.visitMethodInsn(INVOKEVIRTUAL, "com/blanket/api/Facing", "opposite", "()Lcom/blanket/api/Facing;", false);
+            v.visitInsn(POP);
+        });
+        PlanSource s = source(f, bad, List.of(), apiClasses(apiOnly));
+        IllegalStateException e = assertThrows(IllegalStateException.class, () -> s.plan(s.targets().get(0)));
+        assertTrue(e.getMessage().startsWith("UNBOUND fabric:26.1.2 Facing.opposite"), e.getMessage());
+    }
+
+    @Test
+    void facadeMembersLowered() throws IOException {
+        Map<String, String> f = files();
+        f.put("types/Pads.json", """
+                { "schema": 1, "api": "com.blanket.api.Pads",
+                  "members": { "down": [ { "when": {}, "lower": { "invoke": "official:net.example.Pad#down(I)Z" } } ] } }""");
+        Path m = modJar("facade.jar", v -> {
+            v.visitInsn(ICONST_1);
+            v.visitMethodInsn(INVOKESTATIC, "com/blanket/api/Pads", "down", "(I)Z", false);
+            v.visitInsn(POP);
+        });
+        Plan p = plan(f, m, List.of(), PlannerTest.class.getClassLoader(), TARGETS_26);
+        assertEquals(Map.of("com/blanket/api/Pads.down(I)Z", new Lowered.Inline(List.of(invokeStatic("net/example/Pad", "down", "(I)Z")))), p.members());
+        assertEquals(Map.of(), p.types(), "a facade has no representation");
+    }
+
+    @Test
+    void aUsedMemberWithoutARuleStillFails() throws IOException {
+        Path m = modJar("norule.jar", v -> {
+            v.visitInsn(ACONST_NULL);
+            v.visitMethodInsn(INVOKEVIRTUAL, "com/blanket/api/Player", "z", "()D", false);
+            v.visitInsn(POP2);
+        });
+        PlanSource s = source(files(), m, List.of(), PlannerTest.class.getClassLoader());
+        IllegalStateException e = assertThrows(IllegalStateException.class, () -> s.plan(s.targets().get(0)));
+        assertTrue(e.getMessage().startsWith("UNBOUND fabric:26.1.2 Player.z"), e.getMessage());
+    }
+
+    /** A class whose {@code run} makes the given calls: {opcode, owner, name, desc}. */
+    private static byte[] caller(String name, Object[]... calls) {
+        return simple(name, "java/lang/Object", ACC_PUBLIC, w -> {
+            MethodVisitor m = w.visitMethod(ACC_PUBLIC | ACC_STATIC, "run", "()V", null, null);
+            m.visitCode();
+            for (Object[] c : calls) {
+                if ((int) c[0] == INVOKEVIRTUAL) m.visitInsn(ACONST_NULL);
+                m.visitMethodInsn((int) c[0], (String) c[1], (String) c[2], (String) c[3], false);
+                m.visitInsn(c[3].toString().endsWith(")V") ? NOP : ((String) c[3]).endsWith(")D") ? POP2 : POP);
+            }
+            m.visitInsn(RETURN);
+            m.visitMaxs(0, 0);
+            m.visitEnd();
+        });
+    }
+
+    private static Object[] box(String method) {
+        return new Object[] {INVOKEVIRTUAL, "com/blanket/api/Hitbox", method, "()D"};
+    }
+
+    @Test
+    void runtimeCallsJoinUsedSet() throws IOException {
+        Map<String, String> f = files();
+        String axes = String.join(", ", List.of("getMinX", "getMinY", "getMinZ", "getMaxX", "getMaxY").stream()
+                .map(a -> rule(a, "{ \"invoke\": \"official:net.example.Aabb#" + a + "()D\" }")).toList());
+        f.put("types/Hitbox.json", apiType("Hitbox", "official:net.example.Aabb", axes));
+        f.put("types/Extra.json", apiType("Extra", "official:net.example.Mob", ""));
+        f.put("types/Other.json", apiType("Other", "official:net.example.Hero", ""));
+        Path embed = jar("embed.jar", Map.of(
+                // reached from the root Dispatch, directly and through Helper
+                "com/blanket/runtime/Dispatch", caller("com/blanket/runtime/Dispatch", box("getMinX"),
+                        new Object[] {INVOKESTATIC, "com/blanket/runtime/Helper", "run", "()V"},
+                        new Object[] {INVOKESTATIC, "com/blanket/api/Shown", "make", "()V"}),
+                "com/blanket/runtime/Helper", caller("com/blanket/runtime/Helper", box("getMinY")),
+                // the chosen GL backend is a root; the other backend and a class nothing names are not reached
+                "com/blanket/runtime/Lwjgl3Gl", caller("com/blanket/runtime/Lwjgl3Gl", box("getMinZ")),
+                "com/blanket/runtime/Lwjgl2Gl", caller("com/blanket/runtime/Lwjgl2Gl", box("getMaxX")),
+                "com/blanket/runtime/Unused", caller("com/blanket/runtime/Unused", box("getMaxY")),
+                // an owned API class is shipped, so its descriptors count; the compile-time class of an alias type is not shipped
+                "com/blanket/api/Shown", simple("com/blanket/api/Shown", "java/lang/Object", ACC_PUBLIC, w -> {
+                    method(w, ACC_PUBLIC | ACC_STATIC, "make", "()V");
+                    method(w, ACC_PUBLIC | ACC_STATIC, "keep", "(Lcom/blanket/api/Extra;)V");
+                }),
+                "com/blanket/api/Hitbox", simple("com/blanket/api/Hitbox", "java/lang/Object", ACC_PUBLIC,
+                        w -> method(w, ACC_PUBLIC, "inflate", "(Lcom/blanket/api/Other;)V"))));
+        Plan p = plan(f, mod, List.of(embed), PlannerTest.class.getClassLoader(), TARGETS_26);
+        assertEquals(java.util.Set.of(
+                "com/blanket/api/Client.get()Lcom/blanket/api/Client;", "com/blanket/api/Client.player()Lcom/blanket/api/Player;", "com/blanket/api/Player.x()D",
+                "com/blanket/api/Hitbox.getMinX()D", "com/blanket/api/Hitbox.getMinY()D", "com/blanket/api/Hitbox.getMinZ()D"), p.members().keySet());
+        assertEquals(Map.of("com/blanket/api/Client", "net/example/Game", "com/blanket/api/Player", "net/example/Hero",
+                "com/blanket/api/Hitbox", "net/example/Aabb", "com/blanket/api/Extra", "net/example/Mob"), p.types());
+
+        // without the embedded classes the plan is the mod's alone
+        Plan alone = plan(f, mod, List.of(), PlannerTest.class.getClassLoader(), TARGETS_26);
+        assertEquals(java.util.Set.of("com/blanket/api/Client.get()Lcom/blanket/api/Client;", "com/blanket/api/Client.player()Lcom/blanket/api/Player;",
+                "com/blanket/api/Player.x()D"), alone.members().keySet());
     }
 }
