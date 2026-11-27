@@ -14,15 +14,20 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
+import java.util.TreeSet;
 
 /**
  * C4 adapters and C6 overrides (testing-strategy.md section 2) on one target. The adapter rules that apply on the
  * target must name {@code <set>:com.blanket.adapters.<Class>#<method>} of the target's set (targets.json
- * {@code "adapters"}); the built set ({@code build/adapters/<set>/}, written by {@code remapAdapters}) is then checked
- * with the planner's adapter closure ({@link AdapterTargetCheck}): every class and member it uses resolves and is in the
- * target's jars, every rule's method has the API member's descriptor (receiver first, alias types as their game
- * classes), and every overriding host method overrides a method of a supertype. A set that is not built is a warning
- * when adapter rules apply on the target (C4 and C6 did not run on it), and nothing otherwise.
+ * {@code "adapters"}); the closure those rules reach in the built set ({@code build/adapters/<set>/}, written by
+ * {@code remapAdapters}), which is what the target would ship, is then checked with the planner's adapter closure
+ * ({@link AdapterTargetCheck}): every class and member it uses resolves and is in the target's jars, every rule's method
+ * has the API member's descriptor (receiver first, alias types as their game classes), and every overriding host method
+ * overrides a method of a supertype. A class meant for another version of the set (a {@code @Stubs} host) is thus
+ * judged only where a rule reaches it. After every target, {@link #unused} warns about built classes no target reaches.
+ * A set that is not built is a warning when adapter rules apply on the target (C4 and C6 did not run on it), and
+ * nothing otherwise.
  */
 final class AdapterChecks {
     static final String C4 = "C4 adapters";
@@ -34,20 +39,25 @@ final class AdapterChecks {
     private final TargetSpec t;
     private final List<Diagnostic> errors;
     private final List<String> warnings;
+    private final Map<String, Set<String>> reached;
 
-    AdapterChecks(BindingSet bindings, TargetData data, ApiClasses api, TargetSpec target, List<Diagnostic> errors, List<String> warnings) {
+    /** @param reached set to the adapter classes some target's rules reach; this target's closure is added */
+    AdapterChecks(BindingSet bindings, TargetData data, ApiClasses api, TargetSpec target, List<Diagnostic> errors, List<String> warnings,
+                  Map<String, Set<String>> reached) {
         this.bindings = bindings;
         this.data = data;
         this.api = api;
         this.t = target;
         this.errors = errors;
         this.warnings = warnings;
+        this.reached = reached;
     }
 
     void run() throws IOException {
         Targets.VersionRow row = bindings.targets().versions().get(t.mc());
         if (row == null || row.adapters() == null) return;   // C9 reports a target without a versions row
         String set = row.adapters();
+        Set<String> mine = reached.computeIfAbsent(set, k -> new TreeSet<>());
         Map<String, Lowered.Adapter> adapters = rules(set);
         if (!AdapterTargetCheck.built(bindings.dir(), set)) {
             if (adapters.isEmpty()) return;   // nothing of the set is used on this target, and there is nothing to check
@@ -56,7 +66,28 @@ final class AdapterChecks {
                     + adapters.size() + " adapter rule(s) apply on this target); run `./gradlew :blanket-bindings:remapAdapters`");
             return;
         }
-        errors.addAll(AdapterTargetCheck.check(bindings, data, t, set, adapters));
+        if (adapters.isEmpty()) return;
+        AdapterTargetCheck.Result r = AdapterTargetCheck.check(bindings, data, t, adapters);
+        errors.addAll(r.errors());
+        mine.addAll(r.reached());
+    }
+
+    /**
+     * One warning per built class of a set some supported target uses that no target's selected rules reach: C4 and C6
+     * did not check it, and no jar ships it.
+     *
+     * @param reached from every target's {@link #run}: set to the classes reached
+     */
+    static void unused(BindingSet bindings, Map<String, Set<String>> reached, List<String> warnings) throws IOException {
+        for (Map.Entry<String, Set<String>> e : reached.entrySet()) {
+            String set = e.getKey();
+            if (!AdapterTargetCheck.built(bindings.dir(), set)) continue;
+            for (String cls : AdapterTargetCheck.builtClasses(bindings.dir(), set)) {
+                if (e.getValue().contains(cls)) continue;
+                warnings.add("adapter " + set + ":" + cls.substring(cls.lastIndexOf('/') + 1) + " is reached by no adapter rule on any supported target "
+                        + "(unused adapter): C4 and C6 did not check it");
+            }
+        }
     }
 
     /** The adapter calls of the rules that apply on the target, by API member key; malformed or wrong-set rules are errors here. */

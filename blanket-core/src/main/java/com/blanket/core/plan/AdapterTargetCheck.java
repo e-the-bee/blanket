@@ -16,14 +16,16 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Stream;
 
 /**
  * The adapter half of the bindings validator on one target (C4, C6; testing-strategy.md section 2), with the planner's
- * own {@link AdapterClosure}: the whole built set the target uses ({@code <bindings>/build/adapters/<set>/}) is closed
- * over, every game reference it makes is resolved and looked up in the target's jars, every adapter rule's method is
- * checked against the API member's descriptor, and every {@code overrides} entry is checked against the host's
- * supertypes.
+ * own {@link AdapterClosure}: the closure the target's selected adapter rules reach in the built set
+ * ({@code <bindings>/build/adapters/<set>/}), which is what the target's jars would ship, is loaded; every game
+ * reference it makes is resolved and looked up in the target's jars, every adapter rule's method is checked against
+ * the API member's descriptor, and every {@code overrides} entry of a reached host is checked against the host's
+ * supertypes. Classes no selected rule reaches are not checked here (a host meant for another version).
  */
 public final class AdapterTargetCheck {
     private AdapterTargetCheck() {}
@@ -38,19 +40,20 @@ public final class AdapterTargetCheck {
         return Files.isRegularFile(setDir(bindingsDir, set).resolve(AdapterClosure.REFS_FILE));
     }
 
+    /** What one target's check found: its diagnostics and the adapter classes its rules reach. */
+    public record Result(List<Diagnostic> errors, Set<String> reached) {}
+
     /**
-     * Checks the built set {@code set} on {@code t}. Closure problems come back with details starting
-     * {@code C4 adapters:}, override problems with {@code C6 overrides:}.
+     * Checks the closure of {@code adapters} in the built set on {@code t}. Closure problems come back with details
+     * starting {@code C4 adapters:}, override problems with {@code C6 overrides:}.
      *
      * @param adapters the adapter rules that apply on {@code t}: API member key ({@code owner.name+desc}) to its call
      */
-    public static List<Diagnostic> check(BindingSet bindings, TargetData data, TargetSpec t, String set,
-                                         Map<String, Lowered.Adapter> adapters) throws IOException {
+    public static Result check(BindingSet bindings, TargetData data, TargetSpec t, Map<String, Lowered.Adapter> adapters) throws IOException {
         String anchor = bindings.targets().anchor();
         Map<String, Lowered> members = new LinkedHashMap<>(adapters);
         try (Names names = new Names(t, bindings.targets().gameClasses())) {
-            AdapterClosure closure = AdapterClosure.gather(bindings.dir(), t, bindings.targets().gameClasses(), anchor, members,
-                    Map.of(set, classes(bindings.dir(), set)), names);
+            AdapterClosure closure = AdapterClosure.gather(bindings.dir(), t, bindings.targets().gameClasses(), anchor, members, names);
             Map<String, String[]> aliases = new LinkedHashMap<>();   // API class -> {anchor, alias reference}
             for (TypeBinding tb : bindings.types().values()) {
                 TypeBinding.Representation rep = firstRepresentation(tb, t);
@@ -80,7 +83,7 @@ public final class AdapterTargetCheck {
                 out.add(d.detail().startsWith("C6 ") ? d : new Diagnostic(d.code(), d.target(), d.member(), d.reference(), d.namespaceStep(),
                         "C4 adapters: " + d.detail(), d.nextStep()));
             }
-            return out;
+            return new Result(out, closure.reached());
         }
     }
 
@@ -93,7 +96,7 @@ public final class AdapterTargetCheck {
     }
 
     /** Every class file of the built set, as {@code com/blanket/adapters/<set>/...} internal names. */
-    private static List<String> classes(Path bindingsDir, String set) throws IOException {
+    public static List<String> builtClasses(Path bindingsDir, String set) throws IOException {
         Path root = setDir(bindingsDir, set);
         Path pkg = root.resolve(AdapterClosure.PACKAGE + set);
         if (!Files.isDirectory(pkg)) return List.of();

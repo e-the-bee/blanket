@@ -104,18 +104,16 @@ final class AdapterClosure {
      * @param members the plan's members (API member key to lowering), from the collecting pass
      */
     static AdapterClosure collect(Path bindingsDir, TargetSpec t, GameClasses game, String anchor, Map<String, Lowered> members, Names names) {
-        AdapterClosure c = gather(bindingsDir, t, game, anchor, members, Map.of(), names);
+        AdapterClosure c = gather(bindingsDir, t, game, anchor, members, names);
         if (!c.errors.isEmpty()) throw Planner.fail(c.errors);
         return c;
     }
 
     /**
-     * As {@link #collect}, with {@code extraRoots} (set to adapter classes) closed over too, and every problem left in
-     * {@link #errors()} instead of thrown; the game references of the sets that loaded are collected all the same.
-     * The bindings validator uses it (C4, C6).
+     * As {@link #collect}, with every problem left in {@link #errors()} instead of thrown; the game references of the
+     * sets that loaded are collected all the same. The bindings validator uses it (C4, C6).
      */
-    static AdapterClosure gather(Path bindingsDir, TargetSpec t, GameClasses game, String anchor, Map<String, Lowered> members,
-                                 Map<String, List<String>> extraRoots, Names names) {
+    static AdapterClosure gather(Path bindingsDir, TargetSpec t, GameClasses game, String anchor, Map<String, Lowered> members, Names names) {
         if (!names.dry()) throw new IllegalStateException("adapter references are collected before the names are resolved");
         AdapterClosure c = new AdapterClosure(t, game, anchor, members);
         Map<String, List<String>> roots = new TreeMap<>();   // set -> root classes, in member order
@@ -125,12 +123,6 @@ final class AdapterClosure {
             String set = setOf(a.owner());
             roots.computeIfAbsent(set, k -> new ArrayList<>()).add(a.owner());
             labelOf.putIfAbsent(a.owner(), label(e.getKey()));
-        }
-        for (Map.Entry<String, List<String>> e : extraRoots.entrySet()) {
-            for (String owner : e.getValue()) {
-                roots.computeIfAbsent(e.getKey(), k -> new ArrayList<>()).add(owner);
-                labelOf.putIfAbsent(owner, "adapter " + e.getKey() + ":" + simple(owner));
-            }
         }
         for (Map.Entry<String, List<String>> e : roots.entrySet()) {
             Loaded s = c.load(bindingsDir, e.getKey(), labelOf.get(e.getValue().get(0)));
@@ -146,6 +138,13 @@ final class AdapterClosure {
     /** The problems found so far ({@link #gather}, {@link #remapAll}, {@link #checkOverrides}). */
     List<Diagnostic> errors() {
         return errors;
+    }
+
+    /** The adapter classes loaded into the closure, every set together. */
+    Set<String> reached() {
+        Set<String> out = new java.util.TreeSet<>();
+        for (Loaded s : sets.values()) out.addAll(s.classes.keySet());
+        return out;
     }
 
     /** True when the plan names no adapter. */

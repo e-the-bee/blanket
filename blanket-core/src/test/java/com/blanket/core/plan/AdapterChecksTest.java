@@ -62,11 +62,21 @@ class AdapterChecksTest implements Opcodes {
         Files.createDirectories(bindings.resolve("types"));
         Files.writeString(bindings.resolve("targets.json"), TARGETS, StandardCharsets.UTF_8);
         client("modern:com.blanket.adapters.Screens#open", "modern:com.blanket.adapters.Screens#size");
-        put(SCREENS, ObfGameFixture.cls(SCREENS, "java/lang/Object", ACC_PUBLIC | ACC_FINAL, w -> {
-            // open(Game): game.setScreen(null)
+        put(SCREENS, screens("Screens", "Host"));
+        put(PKG + "Host", host("Host", "net/example/class_1", "method_10"));
+        refs(OVERRIDES);
+    }
+
+    // ---------------------------------------------------------------------------------------- fixtures
+
+    /** An adapter class with {@code open(Game)}: {@code game.setScreen(new <host>())}, and {@code size(Game)I}. */
+    private static byte[] screens(String simple, String host) {
+        return ObfGameFixture.cls(PKG + simple, "java/lang/Object", ACC_PUBLIC | ACC_FINAL, w -> {
             code(w, ACC_PUBLIC | ACC_STATIC, "open", "(Lnet/example/class_4;)V", m -> {
                 m.visitVarInsn(ALOAD, 0);
-                m.visitInsn(ACONST_NULL);
+                m.visitTypeInsn(NEW, PKG + host);
+                m.visitInsn(DUP);
+                m.visitMethodInsn(INVOKESPECIAL, PKG + host, "<init>", "()V", false);
                 m.visitMethodInsn(INVOKEVIRTUAL, "net/example/class_4", "method_12", "(Lnet/example/class_1;)V", false);
                 m.visitInsn(RETURN);
             });
@@ -74,12 +84,8 @@ class AdapterChecksTest implements Opcodes {
                 m.visitInsn(ICONST_0);
                 m.visitInsn(IRETURN);
             });
-        }));
-        put(PKG + "Host", host("Host", "net/example/class_1", "method_10"));
-        refs(OVERRIDES);
+        });
     }
-
-    // ---------------------------------------------------------------------------------------- fixtures
 
     private void client(String open, String size) throws IOException {
         Files.writeString(bindings.resolve("types/Client.json"), """
@@ -143,16 +149,22 @@ class AdapterChecksTest implements Opcodes {
     void aBuiltSetThatResolvesAndOverridesIsGreenOnBothTargets() throws IOException {
         Report r = run();
         assertTrue(r.ok(), r.format());
+        assertTrue(r.warnings().stream().noneMatch(w -> w.contains("unused adapter")), r.format());
     }
 
-    @Test
-    void aGameMemberMissingFromTheTargetIsC4EvenInAClassNoRuleNames() throws IOException {
-        put(PKG + "Broken", ObfGameFixture.cls(PKG + "Broken", "java/lang/Object", ACC_PUBLIC | ACC_FINAL, w ->
+    private byte[] broken() {
+        return ObfGameFixture.cls(PKG + "Broken", "java/lang/Object", ACC_PUBLIC | ACC_FINAL, w ->
                 code(w, ACC_PUBLIC | ACC_STATIC, "missing", "(Lnet/example/class_4;)V", m -> {
                     m.visitVarInsn(ALOAD, 0);
                     m.visitMethodInsn(INVOKEVIRTUAL, "net/example/class_4", "method_99", "()V", false);
                     m.visitInsn(RETURN);
-                })));
+                }));
+    }
+
+    @Test
+    void aGameMemberMissingFromTheTargetIsC4WhereARuleReachesIt() throws IOException {
+        put(PKG + "Broken", broken());
+        client("modern:com.blanket.adapters.Broken#missing", "modern:com.blanket.adapters.Screens#size");
         for (Diagnostic d : onBothTargets(run())) {
             assertEquals(ErrorCode.UNRESOLVED, d.code());
             assertEquals("adapter modern:Broken", d.member());
@@ -160,6 +172,39 @@ class AdapterChecksTest implements Opcodes {
             assertTrue(d.detail().startsWith("C4 adapters: "), d.detail());
             assertTrue(d.nextStep().contains("lookup --ref \"intermediary:net/example/class_4#method_99()V\""), d.nextStep());
         }
+    }
+
+    @Test
+    void aBuiltClassNoRuleReachesIsAnUnusedWarningNotAnError() throws IOException {
+        put(PKG + "Broken", broken());
+        Report r = run();
+        assertTrue(r.ok(), r.format());
+        assertEquals(List.of("adapter modern:Broken is reached by no adapter rule on any supported target (unused adapter): C4 and C6 did not check it"),
+                r.warnings().stream().filter(w -> w.contains("unused adapter")).toList(), r.format());
+    }
+
+    @Test
+    void aVersionSpecificHostIsJudgedOnlyWhereItsRuleReachesIt() throws IOException {
+        // as a @Stubs("1.20.1") pair: forge:1.20.1 opens through Screens1201/Host1201, whose override exists on no target
+        // of this game; fabric:1.21.1 opens through Screens/Host and must stay green
+        Files.writeString(bindings.resolve("types/Client.json"), """
+                { "schema": 1, "api": "com.blanket.api.Client",
+                  "representation": [ { "when": {}, "alias": "intermediary:net/example/class_4" } ],
+                  "members": {
+                    "open": [ { "when": { "loader": "forge" }, "lower": { "adapter": "modern:com.blanket.adapters.Screens1201#open" } },
+                              { "when": {}, "lower": { "adapter": "modern:com.blanket.adapters.Screens#open" } } ],
+                    "size": [ { "when": {}, "lower": { "adapter": "modern:com.blanket.adapters.Screens#size" } } ] } }""", StandardCharsets.UTF_8);
+        put(PKG + "Screens1201", screens("Screens1201", "Host1201"));
+        put(PKG + "Host1201", host("Host1201", "net/example/class_1", "method_77"));
+        refs(OVERRIDES + ", \"com/blanket/adapters/modern/Host1201#method_77(Lnet/example/class_2;)V\": \"net/example/class_1\"");
+        Report r = run();
+        assertEquals(1, r.errors().size(), r.format());
+        Diagnostic d = r.errors().get(0);
+        assertEquals("forge:1.20.1", d.target());
+        assertEquals(ErrorCode.UNRESOLVED, d.code());
+        assertEquals("adapter modern:Host1201", d.member());
+        assertTrue(d.detail().startsWith("C6 overrides: Host1201.method_77(Lnet/example/class_2;)V overrides "), d.detail());
+        assertTrue(r.warnings().stream().noneMatch(w -> w.contains("unused adapter")), r.format());
     }
 
     @Test
