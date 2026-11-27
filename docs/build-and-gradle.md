@@ -9,7 +9,7 @@ The CLI is the generator's front door; the Gradle plugin calls the same `blanket
 | Command | What it does |
 |---|---|
 | `blanket generate --mod <mod.jar> --config <blanket.json> --targets <t,...> [--libs blanket-libs.json] [--lock blanket.lock] [--out <dir>]` | all six stages ([architecture.md](architecture.md) §3); writes one jar per target and the support report; exit code 1 on any error |
-| `blanket check …same options…` | scan + resolve only, prints the support report; for CI and editors |
+| `blanket check …same options…` | scan + resolve, plus the feature folding and reachability check of LOWER ([lowering-and-adapters.md](lowering-and-adapters.md) §4.7), so a use of an unsupported member fails only where it is reachable; prints the support report; for CI and editors |
 | `blanket explain <ApiType.member> --target <t>` | prints the rule chosen, every resolution step (namespace by namespace), the runtime name, and, on failure, members of the expected owner with the same descriptor |
 | `blanket explain --symbol <ref> --target <t>` | the same for a raw symbol reference (binding authors) |
 | `blanket lock [--target <t>]` | resolves every library and input for the targets and rewrites `blanket.lock` |

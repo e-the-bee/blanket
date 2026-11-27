@@ -155,28 +155,6 @@ final class TargetPlan implements Opcodes {
         return tb.representation().isEmpty() && !tb.members().isEmpty();
     }
 
-    /**
-     * The labels ({@code Player.offHandItem}) of the members whose first matching rule on {@code t} needs a feature the
-     * target lacks. Their references need not resolve there: the plan holds {@link Lowered.Unsupported} for them
-     * (binding-format.md section 4.4, example 4).
-     */
-    static java.util.Set<String> unmetLabels(BindingSet b, TargetSpec t) {
-        java.util.Set<String> out = new java.util.TreeSet<>();
-        Version v = Version.parse(t.mc());
-        for (TypeBinding tb : b.types().values()) {
-            for (Map.Entry<String, List<TypeBinding.MemberRule>> e : tb.members().entrySet()) {
-                for (TypeBinding.MemberRule r : e.getValue()) {
-                    if (!r.when().matches(t.loader(), v)) continue;
-                    if (r.requires() != null && b.features().names().contains(r.requires()) && !b.features().available(r.requires(), t)) {
-                        out.add(simple(tb.api()) + "." + e.getKey());
-                    }
-                    break;
-                }
-            }
-        }
-        return out;
-    }
-
     /** Members of {@code java.lang.Object}, then of {@code java.lang.Enum}, as {@code name+descriptor}: the pass-through members. */
     private static final java.util.Set<String> OBJECT_MEMBERS = declared(Object.class), ENUM_MEMBERS = declared(Enum.class);
 

@@ -89,12 +89,21 @@ final class TargetChecks {
             }
             for (Map.Entry<String, List<TypeBinding.MemberRule>> m : tb.members().entrySet()) {
                 int i = Rules.first(m.getValue(), TypeBinding.MemberRule::when, t);
-                if (i < 0) continue;
+                if (i < 0 || unmet(m.getValue().get(i))) continue;
                 List<String> refs = new ArrayList<>();
                 loweringRefs(m.getValue().get(i).lower(), refs);
                 for (String r : refs) use(simple + "." + m.getKey(), file + " member \"" + m.getKey() + "\"", C2, r, anchor);
             }
         }
+    }
+
+    /**
+     * Whether the rule needs a feature this target lacks: the member is unsupported here (binding-format.md section 4.3,
+     * example 4), so its references need not exist on the target and are not resolved.
+     */
+    private boolean unmet(TypeBinding.MemberRule rule) {
+        String feature = rule.requires();
+        return feature != null && bindings.features().names().contains(feature) && !bindings.features().available(feature, t);
     }
 
     private void collectHooks(Map<String, Hooks.Rule> selected) {
@@ -293,7 +302,7 @@ final class TargetChecks {
                 List<TypeBinding.MemberRule> rules = tb.members().get(key);
                 if (rules == null) continue;
                 int i = Rules.first(rules, TypeBinding.MemberRule::when, t);
-                if (i < 0) continue;
+                if (i < 0 || unmet(rules.get(i))) continue;
                 Lowering l = rules.get(i).lower();
                 String label = Rules.simple(tb.api()) + "." + key;
                 String problem = shapes.check(m, Rules.internal(tb.api()), l, text -> jarNames.resolved(anchor, text), reason -> {

@@ -157,7 +157,8 @@ class CliTest {
     private static List<Diagnostic> check(Path dir, Path bindingsDir, Path jar) throws IOException {
         BindingSet set = BindingSet.load(bindingsDir);
         TargetSpec t = Matrix.spec(set.targets(), "fabric:1.21.1");
-        return ModCheck.run(set, new FixtureData(clientJar(dir)), ApiClasses.of(CliTest.class.getClassLoader()), ModScanner.scan(jar), List.of(t)).errors();
+        return ModCheck.run(set, new FixtureData(clientJar(dir)), ApiClasses.of(CliTest.class.getClassLoader()), ModScanner.scan(jar),
+                ModScanner.classes(jar), List.of(t)).errors();
     }
 
     private record Run(int exit, String out, String err) {}
@@ -238,7 +239,8 @@ class CliTest {
             j.write(new byte[0]);
             j.closeEntry();
         }
-        List<Diagnostic> ds = ModCheck.run(set, new FixtureData(empty), ApiClasses.of(CliTest.class.getClassLoader()), ModScanner.scan(jar), List.of(t)).errors();
+        List<Diagnostic> ds = ModCheck.run(set, new FixtureData(empty), ApiClasses.of(CliTest.class.getClassLoader()), ModScanner.scan(jar),
+                ModScanner.classes(jar), List.of(t)).errors();
         assertTrue(!ds.isEmpty(), ds.toString());
         for (Diagnostic d : ds) {
             assertEquals(ErrorCode.UNRESOLVED, d.code(), d.format());

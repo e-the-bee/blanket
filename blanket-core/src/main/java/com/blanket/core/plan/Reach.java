@@ -29,11 +29,12 @@ import java.util.stream.Stream;
  * Class-level reachability over the embedded classes (architecture.md section 3.2, pseudocode.md P-03): which classes of
  * the embedded runtime and owned API a target's jar can run, starting from the mod's classes and the fixed roots. Only
  * these classes join the used set; the rest of the embedded classes (the other GL backend, runtime code nothing calls)
- * must not make RESOLVE bind members that no code of the jar reaches.
+ * must not make RESOLVE bind members that no code of the jar reaches. EMIT ships the same closure
+ * (lowering-and-adapters.md section 8, class-level shrink).
  */
-final class Reach {
+public final class Reach {
     /** Roots every jar runs besides the mod: the dispatcher and the boot class. The GL backend of the target is the third. */
-    static final List<String> ROOTS = List.of("com/blanket/runtime/Dispatch", "com/blanket/runtime/Boot");
+    public static final List<String> ROOTS = List.of("com/blanket/runtime/Dispatch", "com/blanket/runtime/Boot");
 
     private Reach() {}
 
@@ -65,7 +66,7 @@ final class Reach {
      * The embedded classes reachable from {@code mod} and {@code roots}: every class they name that {@code embed} has,
      * transitively. {@code stubs} are never entered: the compile-time API classes of aliased types are not shipped.
      */
-    static Set<String> closure(Map<String, byte[]> mod, Map<String, byte[]> embed, Collection<String> roots, Set<String> stubs) {
+    public static Set<String> closure(Map<String, byte[]> mod, Map<String, byte[]> embed, Collection<String> roots, Set<String> stubs) {
         Set<String> seen = new HashSet<>(stubs);   // a class already "seen" is never queued
         Deque<String> work = new ArrayDeque<>();
         for (String root : roots) if (embed.containsKey(root) && seen.add(root)) work.add(root);
