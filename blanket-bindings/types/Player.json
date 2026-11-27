@@ -2,64 +2,465 @@
   "schema": 1,
   "api": "com.blanket.api.Player",
   "representation": [
-    { "when": { "mc": "..1.13.2" }, "alias": "lf:net/minecraft/class_518" },
-    { "when": { "mc": "26.1.." },    "alias": "official:net.minecraft.client.player.LocalPlayer" },
-    { "when": {},                    "alias": "net.minecraft.client.player.LocalPlayer" }
+    {
+      "when": {
+        "mc": "..1.13.2"
+      },
+      "alias": "lf:net/minecraft/class_518"
+    },
+    {
+      "when": {
+        "mc": "26.1.."
+      },
+      "alias": "official:net.minecraft.client.player.LocalPlayer"
+    },
+    {
+      "when": {},
+      "alias": "net.minecraft.client.player.LocalPlayer"
+    }
   ],
   "members": {
     "x": [
-      { "when": { "mc": "..1.13.2" }, "lower": { "get": "lf:net/minecraft/class_864#field_3252:D" } },
-      { "when": { "mc": "26.1.." },    "lower": { "invoke": "official:net.minecraft.world.entity.Entity#getX()D" } },
-      { "when": {},                    "lower": { "invoke": "net.minecraft.world.entity.Entity#getX()D" } }
+      {
+        "when": {
+          "mc": "..1.13.2"
+        },
+        "lower": {
+          "get": "lf:net/minecraft/class_864#field_3252:D"
+        }
+      },
+      {
+        "when": {
+          "mc": "26.1.."
+        },
+        "lower": {
+          "invoke": "official:net.minecraft.world.entity.Entity#getX()D"
+        }
+      },
+      {
+        "when": {},
+        "lower": {
+          "invoke": "net.minecraft.world.entity.Entity#getX()D"
+        }
+      }
     ],
     "y": [
-      { "when": { "mc": "..1.13.2" }, "lower": { "get": "lf:net/minecraft/class_864#field_3253:D" } },
-      { "when": { "mc": "26.1.." },    "lower": { "invoke": "official:net.minecraft.world.entity.Entity#getY()D" } },
-      { "when": {},                    "lower": { "invoke": "net.minecraft.world.entity.Entity#getY()D" } }
+      {
+        "when": {
+          "mc": "..1.13.2"
+        },
+        "lower": {
+          "get": "lf:net/minecraft/class_864#field_3253:D"
+        }
+      },
+      {
+        "when": {
+          "mc": "26.1.."
+        },
+        "lower": {
+          "invoke": "official:net.minecraft.world.entity.Entity#getY()D"
+        }
+      },
+      {
+        "when": {},
+        "lower": {
+          "invoke": "net.minecraft.world.entity.Entity#getY()D"
+        }
+      }
     ],
     "z": [
-      { "when": { "mc": "..1.13.2" }, "lower": { "get": "lf:net/minecraft/class_864#field_3254:D" } },
-      { "when": { "mc": "26.1.." },    "lower": { "invoke": "official:net.minecraft.world.entity.Entity#getZ()D" } },
-      { "when": {},                    "lower": { "invoke": "net.minecraft.world.entity.Entity#getZ()D" } }
+      {
+        "when": {
+          "mc": "..1.13.2"
+        },
+        "lower": {
+          "get": "lf:net/minecraft/class_864#field_3254:D"
+        }
+      },
+      {
+        "when": {
+          "mc": "26.1.."
+        },
+        "lower": {
+          "invoke": "official:net.minecraft.world.entity.Entity#getZ()D"
+        }
+      },
+      {
+        "when": {},
+        "lower": {
+          "invoke": "net.minecraft.world.entity.Entity#getZ()D"
+        }
+      }
     ],
     "position": [
-      { "when": {}, "lower": { "unsupported": "TODO M2 T7: bind Player.position on every target; try `lookup --ref net.minecraft.client.player.LocalPlayer#position`" } }
+      {
+        "when": {
+          "mc": "..1.13.2"
+        },
+        "lower": {
+          "invoke": "lf:net/minecraft/class_1061#method_10787()Lnet/minecraft/class_236;"
+        }
+      },
+      {
+        "when": {
+          "mc": "26.1.."
+        },
+        "lower": {
+          "invoke": "official:net.minecraft.world.entity.Entity#position()Lnet/minecraft/world/phys/Vec3;"
+        }
+      },
+      {
+        "when": {},
+        "lower": {
+          "invoke": "net.minecraft.world.entity.Entity#position()Lnet/minecraft/world/phys/Vec3;"
+        }
+      }
     ],
     "yaw": [
-      { "when": {}, "lower": { "unsupported": "TODO M2 T7: bind Player.yaw on every target; try `lookup --ref net.minecraft.client.player.LocalPlayer#yaw`" } }
+      {
+        "when": {
+          "mc": "..1.13.2"
+        },
+        "lower": {
+          "get": "lf:net/minecraft/class_864#field_3258:F"
+        }
+      },
+      {
+        "when": {
+          "mc": "26.1.."
+        },
+        "lower": {
+          "invoke": "official:net.minecraft.world.entity.Entity#getYRot()F"
+        }
+      },
+      {
+        "when": {},
+        "lower": {
+          "invoke": "net.minecraft.world.entity.Entity#getYRot()F"
+        }
+      }
     ],
     "pitch": [
-      { "when": {}, "lower": { "unsupported": "TODO M2 T7: bind Player.pitch on every target; try `lookup --ref net.minecraft.client.player.LocalPlayer#pitch`" } }
+      {
+        "when": {
+          "mc": "..1.13.2"
+        },
+        "lower": {
+          "get": "lf:net/minecraft/class_864#field_3193:F"
+        }
+      },
+      {
+        "when": {
+          "mc": "26.1.."
+        },
+        "lower": {
+          "invoke": "official:net.minecraft.world.entity.Entity#getXRot()F"
+        }
+      },
+      {
+        "when": {},
+        "lower": {
+          "invoke": "net.minecraft.world.entity.Entity#getXRot()F"
+        }
+      }
     ],
     "onGround": [
-      { "when": {}, "lower": { "unsupported": "TODO M2 T7: bind Player.onGround on every target; try `lookup --ref net.minecraft.client.player.LocalPlayer#onGround`" } }
+      {
+        "when": {
+          "mc": "..1.13.2"
+        },
+        "lower": {
+          "get": "lf:net/minecraft/class_864#field_3197:Z"
+        }
+      },
+      {
+        "when": {
+          "mc": "26.1.."
+        },
+        "lower": {
+          "invoke": "official:net.minecraft.world.entity.Entity#onGround()Z"
+        }
+      },
+      {
+        "when": {},
+        "lower": {
+          "invoke": "net.minecraft.world.entity.Entity#onGround()Z"
+        }
+      }
     ],
     "health": [
-      { "when": {}, "lower": { "unsupported": "TODO M2 T7: bind Player.health on every target; try `lookup --ref net.minecraft.client.player.LocalPlayer#health`" } }
+      {
+        "when": {
+          "mc": "..1.13.2"
+        },
+        "lower": {
+          "invoke": "lf:net/minecraft/class_1699#method_6122()F"
+        }
+      },
+      {
+        "when": {
+          "mc": "26.1.."
+        },
+        "lower": {
+          "invoke": "official:net.minecraft.world.entity.LivingEntity#getHealth()F"
+        }
+      },
+      {
+        "when": {},
+        "lower": {
+          "invoke": "net.minecraft.world.entity.LivingEntity#getHealth()F"
+        }
+      }
     ],
     "maxHealth": [
-      { "when": {}, "lower": { "unsupported": "TODO M2 T7: bind Player.maxHealth on every target; try `lookup --ref net.minecraft.client.player.LocalPlayer#maxHealth`" } }
+      {
+        "when": {
+          "mc": "..1.13.2"
+        },
+        "lower": {
+          "invoke": "lf:net/minecraft/class_1699#method_6125()F"
+        }
+      },
+      {
+        "when": {
+          "mc": "26.1.."
+        },
+        "lower": {
+          "invoke": "official:net.minecraft.world.entity.LivingEntity#getMaxHealth()F"
+        }
+      },
+      {
+        "when": {},
+        "lower": {
+          "invoke": "net.minecraft.world.entity.LivingEntity#getMaxHealth()F"
+        }
+      }
     ],
     "foodLevel": [
-      { "when": {}, "lower": { "unsupported": "TODO M2 T7: bind Player.foodLevel on every target; try `lookup --ref net.minecraft.client.player.LocalPlayer#foodLevel`" } }
+      {
+        "when": {
+          "mc": "..1.13.2"
+        },
+        "lower": {
+          "chain": [
+            {
+              "invoke": "lf:net/minecraft/class_988#method_3188()Lnet/minecraft/class_1001;"
+            },
+            {
+              "invoke": "lf:net/minecraft/class_1001#method_3238()I"
+            }
+          ]
+        }
+      },
+      {
+        "when": {
+          "mc": "26.1.."
+        },
+        "lower": {
+          "chain": [
+            {
+              "invoke": "official:net.minecraft.world.entity.player.Player#getFoodData()Lnet/minecraft/world/food/FoodData;"
+            },
+            {
+              "invoke": "official:net.minecraft.world.food.FoodData#getFoodLevel()I"
+            }
+          ]
+        }
+      },
+      {
+        "when": {},
+        "lower": {
+          "chain": [
+            {
+              "invoke": "net.minecraft.world.entity.player.Player#getFoodData()Lnet/minecraft/world/food/FoodData;"
+            },
+            {
+              "invoke": "net.minecraft.world.food.FoodData#getFoodLevel()I"
+            }
+          ]
+        }
+      }
     ],
     "saturation": [
-      { "when": {}, "lower": { "unsupported": "TODO M2 T7: bind Player.saturation on every target; try `lookup --ref net.minecraft.client.player.LocalPlayer#saturation`" } }
+      {
+        "when": {
+          "mc": "..1.13.2"
+        },
+        "lower": {
+          "chain": [
+            {
+              "invoke": "lf:net/minecraft/class_988#method_3188()Lnet/minecraft/class_1001;"
+            },
+            {
+              "invoke": "lf:net/minecraft/class_1001#method_3249()F"
+            }
+          ]
+        }
+      },
+      {
+        "when": {
+          "mc": "26.1.."
+        },
+        "lower": {
+          "chain": [
+            {
+              "invoke": "official:net.minecraft.world.entity.player.Player#getFoodData()Lnet/minecraft/world/food/FoodData;"
+            },
+            {
+              "invoke": "official:net.minecraft.world.food.FoodData#getSaturationLevel()F"
+            }
+          ]
+        }
+      },
+      {
+        "when": {},
+        "lower": {
+          "chain": [
+            {
+              "invoke": "net.minecraft.world.entity.player.Player#getFoodData()Lnet/minecraft/world/food/FoodData;"
+            },
+            {
+              "invoke": "net.minecraft.world.food.FoodData#getSaturationLevel()F"
+            }
+          ]
+        }
+      }
     ],
     "mainHandItem": [
-      { "when": {}, "lower": { "unsupported": "TODO M2 T7: bind Player.mainHandItem on every target; try `lookup --ref net.minecraft.client.player.LocalPlayer#mainHandItem`" } }
+      {
+        "when": {
+          "mc": "..1.10.2"
+        },
+        "lower": {
+          "adapter": "legacy:com.blanket.adapters.Stacks#mainHand"
+        }
+      },
+      {
+        "when": {
+          "mc": "26.1.."
+        },
+        "lower": {
+          "invoke": "official:net.minecraft.world.entity.LivingEntity#getMainHandItem()Lnet/minecraft/world/item/ItemStack;"
+        }
+      },
+      {
+        "when": {},
+        "lower": {
+          "invoke": "net.minecraft.world.entity.LivingEntity#getMainHandItem()Lnet/minecraft/world/item/ItemStack;"
+        }
+      }
     ],
     "offHandItem": [
-      { "when": {}, "lower": { "unsupported": "TODO M2 T7: bind Player.offHandItem on every target; try `lookup --ref net.minecraft.client.player.LocalPlayer#offHandItem`" }, "note": "needs Feature.OFFHAND (api-surface 3.3): the real rules carry \"requires\": \"OFFHAND\"" }
+      {
+        "when": {
+          "mc": "26.1.."
+        },
+        "requires": "OFFHAND",
+        "lower": {
+          "invoke": "official:net.minecraft.world.entity.LivingEntity#getOffhandItem()Lnet/minecraft/world/item/ItemStack;"
+        }
+      },
+      {
+        "when": {},
+        "requires": "OFFHAND",
+        "lower": {
+          "invoke": "net.minecraft.world.entity.LivingEntity#getOffhandItem()Lnet/minecraft/world/item/ItemStack;"
+        }
+      }
     ],
     "selectedSlot": [
-      { "when": {}, "lower": { "unsupported": "TODO M2 T7: bind Player.selectedSlot on every target; try `lookup --ref net.minecraft.client.player.LocalPlayer#selectedSlot`" } }
+      {
+        "when": {
+          "mc": "..1.13.2"
+        },
+        "lower": {
+          "chain": [
+            {
+              "get": "lf:net/minecraft/class_988#field_3999:Lnet/minecraft/class_987;"
+            },
+            {
+              "get": "lf:net/minecraft/class_987#field_3966:I"
+            }
+          ]
+        }
+      },
+      {
+        "when": {
+          "mc": "26.1.."
+        },
+        "lower": {
+          "chain": [
+            {
+              "invoke": "official:net.minecraft.world.entity.player.Player#getInventory()Lnet/minecraft/world/entity/player/Inventory;"
+            },
+            {
+              "invoke": "official:net.minecraft.world.entity.player.Inventory#getSelectedSlot()I"
+            }
+          ]
+        }
+      },
+      {
+        "when": {},
+        "lower": {
+          "chain": [
+            {
+              "invoke": "net.minecraft.world.entity.player.Player#getInventory()Lnet/minecraft/world/entity/player/Inventory;"
+            },
+            {
+              "get": "net.minecraft.world.entity.player.Inventory#selected:I"
+            }
+          ]
+        }
+      }
     ],
     "inventoryItem": [
-      { "when": {}, "lower": { "unsupported": "TODO M2 T7: bind Player.inventoryItem on every target; try `lookup --ref net.minecraft.client.player.LocalPlayer#inventoryItem`" } }
+      {
+        "when": {
+          "mc": "..1.13.2"
+        },
+        "lower": {
+          "adapter": "legacy:com.blanket.adapters.Inventory#inventoryItem"
+        }
+      },
+      {
+        "when": {
+          "mc": "26.1.."
+        },
+        "lower": {
+          "adapter": "unobf:com.blanket.adapters.Inventory#inventoryItem"
+        }
+      },
+      {
+        "when": {},
+        "lower": {
+          "adapter": "modern:com.blanket.adapters.Inventory#inventoryItem"
+        }
+      }
     ],
     "boundingBox": [
-      { "when": {}, "lower": { "unsupported": "TODO M2 T7: bind Player.boundingBox on every target; try `lookup --ref net.minecraft.client.player.LocalPlayer#boundingBox`" } }
+      {
+        "when": {
+          "mc": "..1.13.2"
+        },
+        "lower": {
+          "invoke": "lf:net/minecraft/class_864#method_10945()Lnet/minecraft/class_231;"
+        }
+      },
+      {
+        "when": {
+          "mc": "26.1.."
+        },
+        "lower": {
+          "invoke": "official:net.minecraft.world.entity.Entity#getBoundingBox()Lnet/minecraft/world/phys/AABB;"
+        }
+      },
+      {
+        "when": {},
+        "lower": {
+          "invoke": "net.minecraft.world.level.entity.EntityAccess#getBoundingBox()Lnet/minecraft/world/phys/AABB;"
+        },
+        "note": "Entity.getBoundingBox implements EntityAccess.getBoundingBox; Fabric intermediary has the row only on the interface"
+      }
     ]
   },
   "note": "Gen.java lowers Player.x/y/z on the entity class. The entity owner is written on the declaring class, as binding-format.md 2.3 requires."

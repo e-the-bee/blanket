@@ -2,29 +2,121 @@
   "schema": 1,
   "api": "com.blanket.api.ItemStack",
   "representation": [
-    { "when": { "mc": "..1.13.2" }, "alias": "lf:net/minecraft/class_1071" },
-    { "when": { "mc": "26.1.." },    "alias": "official:net.minecraft.world.item.ItemStack" },
-    { "when": {},                    "alias": "net.minecraft.world.item.ItemStack" }
+    {
+      "when": {
+        "mc": "..1.13.2"
+      },
+      "alias": "lf:net/minecraft/class_1071"
+    },
+    {
+      "when": {
+        "mc": "26.1.."
+      },
+      "alias": "official:net.minecraft.world.item.ItemStack"
+    },
+    {
+      "when": {},
+      "alias": "net.minecraft.world.item.ItemStack"
+    }
   ],
   "note": "empty-stack normalization on 1.10.2 and older is an adapter concern (api-surface 3.6)",
   "members": {
     "isEmpty": [
-      { "when": { "loader": "legacy-fabric", "mc": "1.8.9" }, "lower": { "unsupported": "TODO M2 T7: legacy-fabric:1.8.9: write the lf: rule" } },
-      { "when": { "loader": "forge", "mc": "1.8.9" }, "lower": { "unsupported": "TODO M2 T7: forge:1.8.9: write the lf: rule" } },
-      { "when": { "loader": "fabric", "mc": "26.1.2" }, "lower": { "unsupported": "TODO M2 T7: fabric:26.1.2: write the official: rule" } },
-      { "when": {}, "lower": { "invoke": "net.minecraft.world.item.ItemStack#isEmpty()Z" } }
+      {
+        "when": {
+          "mc": "..1.13.2"
+        },
+        "lower": {
+          "adapter": "legacy:com.blanket.adapters.Stacks#isEmpty"
+        }
+      },
+      {
+        "when": {
+          "mc": "26.1.."
+        },
+        "lower": {
+          "invoke": "official:net.minecraft.world.item.ItemStack#isEmpty()Z"
+        }
+      },
+      {
+        "when": {},
+        "lower": {
+          "invoke": "net.minecraft.world.item.ItemStack#isEmpty()Z"
+        }
+      }
     ],
     "count": [
-      { "when": { "loader": "legacy-fabric", "mc": "1.8.9" }, "lower": { "unsupported": "TODO M2 T7: legacy-fabric:1.8.9: write the lf: rule" } },
-      { "when": { "loader": "forge", "mc": "1.8.9" }, "lower": { "unsupported": "TODO M2 T7: forge:1.8.9: write the lf: rule" } },
-      { "when": { "loader": "fabric", "mc": "26.1.2" }, "lower": { "unsupported": "TODO M2 T7: fabric:26.1.2: write the official: rule" } },
-      { "when": {}, "lower": { "invoke": "net.minecraft.world.item.ItemStack#getCount()I" } }
+      {
+        "when": {
+          "mc": "..1.13.2"
+        },
+        "lower": {
+          "adapter": "legacy:com.blanket.adapters.Stacks#count"
+        }
+      },
+      {
+        "when": {
+          "mc": "26.1.."
+        },
+        "lower": {
+          "invoke": "official:net.minecraft.world.item.ItemStack#getCount()I"
+        }
+      },
+      {
+        "when": {},
+        "lower": {
+          "invoke": "net.minecraft.world.item.ItemStack#getCount()I"
+        }
+      }
     ],
     "itemId": [
-      { "when": {}, "lower": { "unsupported": "TODO M2 T7: bind ItemStack.itemId on every target; try `lookup --ref net.minecraft.world.item.ItemStack#itemId`" } }
+      {
+        "when": {
+          "mc": "..1.13.2"
+        },
+        "lower": {
+          "adapter": "legacy:com.blanket.adapters.Stacks#itemId"
+        }
+      },
+      {
+        "when": {
+          "mc": "26.1.."
+        },
+        "lower": {
+          "adapter": "unobf:com.blanket.adapters.Stacks#itemId"
+        }
+      },
+      {
+        "when": {},
+        "lower": {
+          "adapter": "modern:com.blanket.adapters.Stacks#itemId"
+        }
+      }
     ],
     "displayName": [
-      { "when": {}, "lower": { "unsupported": "TODO M2 T7: bind ItemStack.displayName on every target; try `lookup --ref net.minecraft.world.item.ItemStack#displayName`" } }
+      {
+        "when": {
+          "mc": "..1.13.2"
+        },
+        "lower": {
+          "adapter": "legacy:com.blanket.adapters.Stacks#displayName"
+        }
+      },
+      {
+        "when": {
+          "mc": "26.1.."
+        },
+        "lower": {
+          "adapter": "unobf:com.blanket.adapters.Stacks#displayName"
+        }
+      },
+      {
+        "when": {},
+        "lower": {
+          "adapter": "modern:com.blanket.adapters.Stacks#displayName"
+        },
+        "note": "Component.getString is brigadier's Message.getString: intermediary has no row and no loader jar exists to check a loader: reference, so an adapter calls it"
+      }
     ]
   }
 }
