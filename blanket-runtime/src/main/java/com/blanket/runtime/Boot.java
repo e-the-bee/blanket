@@ -10,10 +10,13 @@ public final class Boot {
     public static void init(String modId, Gl gl, ClientMod mod) {
         Executor.gl = gl;
         System.out.println("[blanket] " + modId + ": runtime up (" + gl.getClass().getSimpleName() + ")");
+        KeyQueue.begin(modId);
         try {
             mod.init();
         } catch (Throwable t) {
             throw new RuntimeException("mod " + modId + " failed in init()", t);
+        } finally {
+            KeyQueue.seal();
         }
     }
 }
