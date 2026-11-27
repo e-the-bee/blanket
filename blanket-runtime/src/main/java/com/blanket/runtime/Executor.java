@@ -8,9 +8,34 @@ import java.nio.ByteOrder;
 import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
 
-/** Draws a recorded triangle list with raw GL inside a state guard (rendering-api.md section 3.4). */
-final class Executor {
+/**
+ * Draws a recorded triangle list with raw GL inside a state guard (rendering-api.md section 3.4). A {@link Tap} (the
+ * testkit, in test builds only) sees each frame's world transform and reads pixels back after the HUD is drawn.
+ */
+public final class Executor {
     private Executor() {}
+
+    /**
+     * Frame access for the testkit. {@link #world} gets each WORLD_RENDER dispatch's transform; {@link #hud} runs after
+     * Blanket's HUD drawing of a frame (immediate and deferred eras), with the framebuffer Blanket drew into bound for
+     * reading and its viewport. Exceptions a tap throws are logged and do not disable drawing.
+     */
+    public interface Tap {
+        /** Column-major projection times view of camera-relative coordinates, and the camera in world coordinates. */
+        void world(float[] mvp, double camX, double camY, double camZ);
+
+        /** Whether the next {@link #hud} call is wanted: Blanket binds the HUD framebuffer even with nothing to draw. */
+        boolean wantsHud();
+
+        void hud(Gl gl, boolean core, int x, int y, int width, int height);
+    }
+
+    private static Tap tap;
+
+    /** Installs the testkit's tap (null removes it). Client thread only. */
+    public static void tap(Tap t) {
+        tap = t;
+    }
 
     static Gl gl;
 
@@ -31,24 +56,41 @@ final class Executor {
     private static final IntBuffer ints = direct(4).asIntBuffer();
 
     static void drawHud(Recorder r) {
-        if (r.vertexCount() == 0) return;
+        Tap t = tap;
+        boolean read = t != null && t.wantsHud();
+        if (r.vertexCount() == 0 && !read) return;
         float[] mvp;
         if (GlueFrame.fbo() == -1) {
             mvp = mul(read(PROJECTION_MATRIX), read(MODELVIEW_MATRIX));
         } else {
             mvp = ortho(GlueFrame.guiWidth(), GlueFrame.guiHeight());
         }
-        run(r, mvp, false);
+        run(r, mvp, false, read ? t : null);
     }
 
     static void drawWorld(Recorder r, float[] projection, float[] view) {
-        if (r.vertexCount() == 0) return;
+        Tap t = tap;
+        if (r.vertexCount() == 0 && t == null) return;
         float[] p = projection != null ? projection : read(PROJECTION_MATRIX);
         float[] v = projection != null ? view : read(MODELVIEW_MATRIX);
-        run(r, v == null ? p : mul(p, v), true);
+        float[] mvp = v == null ? p : mul(p, v);
+        if (t != null) {
+            try {
+                t.world(mvp, r.camX, r.camY, r.camZ);
+            } catch (Throwable e) {
+                tapFailed(e);
+            }
+        }
+        if (r.vertexCount() > 0) run(r, mvp, true, null);
     }
 
-    private static void run(Recorder r, float[] mvp, boolean depth) {
+    private static void tapFailed(Throwable e) {
+        System.err.println("[blanket] testkit tap failed: " + e);
+        e.printStackTrace();
+    }
+
+    /** Draws {@code r} (when it has vertices) into the target framebuffer, then lets {@code readback} read it there. */
+    private static void run(Recorder r, float[] mvp, boolean depth, Tap readback) {
         if (failed) return;
         try {
             if (!ready) setup();
@@ -85,26 +127,37 @@ final class Executor {
                 gl.uniformMatrix4(mvpLocation, matrix);
                 if (core) gl.bindVertexArray(vao);
                 gl.bindBuffer(ARRAY_BUFFER, vbo);
-                if (vertices.capacity() < r.floats) vertices = direct(r.floats).asFloatBuffer();
-                vertices.clear();
-                vertices.put(r.data, 0, r.floats).flip();
-                gl.bufferData(ARRAY_BUFFER, vertices, 0x88E0 /* STREAM_DRAW */);
-                gl.vertexAttribPointer(0, 3, 0x1406 /* FLOAT */, false, 28, 0);
-                gl.vertexAttribPointer(1, 4, 0x1406, false, 28, 12);
-                gl.enableVertexAttribArray(0);
-                gl.enableVertexAttribArray(1);
-                gl.setEnabled(BLEND, true);
-                gl.blendFuncSeparate(0x0302, 0x0303, 1, 0x0303); // SRC_ALPHA, ONE_MINUS_SRC_ALPHA, ONE, ONE_MINUS_SRC_ALPHA
-                gl.blendEquationSeparate(0x8006, 0x8006);        // FUNC_ADD
-                gl.setEnabled(CULL_FACE, false);
-                gl.setEnabled(SCISSOR_TEST, false);
-                gl.setEnabled(DEPTH_TEST, depth);
-                if (depth) gl.depthFunc(0x0203);                // LEQUAL
-                gl.depthMask(false);
-                gl.drawArrays(4 /* TRIANGLES */, 0, r.vertexCount());
+                if (r.vertexCount() > 0) {
+                    if (vertices.capacity() < r.floats) vertices = direct(r.floats).asFloatBuffer();
+                    vertices.clear();
+                    vertices.put(r.data, 0, r.floats).flip();
+                    gl.bufferData(ARRAY_BUFFER, vertices, 0x88E0 /* STREAM_DRAW */);
+                    gl.vertexAttribPointer(0, 3, 0x1406 /* FLOAT */, false, 28, 0);
+                    gl.vertexAttribPointer(1, 4, 0x1406, false, 28, 12);
+                    gl.enableVertexAttribArray(0);
+                    gl.enableVertexAttribArray(1);
+                    gl.setEnabled(BLEND, true);
+                    gl.blendFuncSeparate(0x0302, 0x0303, 1, 0x0303); // SRC_ALPHA, ONE_MINUS_SRC_ALPHA, ONE, ONE_MINUS_SRC_ALPHA
+                    gl.blendEquationSeparate(0x8006, 0x8006);        // FUNC_ADD
+                    gl.setEnabled(CULL_FACE, false);
+                    gl.setEnabled(SCISSOR_TEST, false);
+                    gl.setEnabled(DEPTH_TEST, depth);
+                    if (depth) gl.depthFunc(0x0203);                // LEQUAL
+                    gl.depthMask(false);
+                    gl.drawArrays(4 /* TRIANGLES */, 0, r.vertexCount());
+                }
                 if (!core) {
                     gl.disableVertexAttribArray(0);
                     gl.disableVertexAttribArray(1);
+                }
+                if (readback != null) {
+                    ints.clear();
+                    gl.getIntegers(VIEWPORT, ints);
+                    try {
+                        readback.hud(gl, core, ints.get(0), ints.get(1), ints.get(2), ints.get(3));
+                    } catch (Throwable e) {
+                        tapFailed(e);
+                    }
                 }
             } finally {
                 // ---- restore

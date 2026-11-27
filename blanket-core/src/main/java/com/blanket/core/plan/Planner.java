@@ -39,36 +39,55 @@ import java.util.function.Predicate;
  * plus the embedded classes {@link Reach} says the target's jar can run. Before planning a target, that used set is
  * checked like {@code blanket check} ({@link ModCheck}: C1, C2, C3, C7); any failure there or in planning throws an
  * {@link IllegalStateException} whose message is the {@link Diagnostic} lines. The adapter classes the plan names are
- * closed over and resolved in the same round as the plan's own references ({@link AdapterClosure}).
+ * closed over and resolved in the same round as the plan's own references ({@link AdapterClosure}). A {@code testkit}
+ * plan adds {@link #TESTKIT} to the roots (testing-strategy.md section 4).
  */
 public final class Planner {
     private Planner() {}
 
+    /** The in-game testkit: a root of {@code --testkit} builds only, so its event subscriptions are wired. */
+    public static final String TESTKIT = "com/blanket/runtime/testkit/Testkit";
+
     /**
      * Plans with game data from the Blanket cache, downloaded on first use.
      *
-     * @param embed jars or class folders of the classes every generated jar embeds (blanket-api and blanket-runtime)
+     * @param embed   jars or class folders of the classes every generated jar embeds (blanket-api and blanket-runtime)
+     * @param testkit plan a {@code --testkit} build
      */
-    public static PlanSource plan(Path modJar, Path bindingsDir, List<Path> embed) throws IOException {
+    public static PlanSource plan(Path modJar, Path bindingsDir, List<Path> embed, boolean testkit) throws IOException {
         BindingSet bindings = BindingSet.load(bindingsDir);
         MappingDownloads downloads = new MappingDownloads(new ArtifactFetcher(ArtifactFetcher.defaultCacheRoot(), false));
-        return plan(modJar, embed, bindings, new DownloadedTargetData(downloads, bindings.targets(), bindingsDir), Planner.class.getClassLoader());
+        return plan(modJar, embed, bindings, new DownloadedTargetData(downloads, bindings.targets(), bindingsDir), Planner.class.getClassLoader(), testkit);
+    }
+
+    /** A release build: {@code plan(modJar, bindingsDir, embed, false)}. */
+    public static PlanSource plan(Path modJar, Path bindingsDir, List<Path> embed) throws IOException {
+        return plan(modJar, bindingsDir, embed, false);
     }
 
     /** Plans with the given game data (tests, offline fixtures). */
     public static PlanSource plan(Path modJar, Path bindingsDir, List<Path> embed, TargetData data) throws IOException {
-        return plan(modJar, embed, BindingSet.load(bindingsDir), data, Planner.class.getClassLoader());
+        return plan(modJar, embed, BindingSet.load(bindingsDir), data, Planner.class.getClassLoader(), false);
     }
 
     /** As above, reading the API classes (glue stubs, {@code Dispatch}, enum-ness of API types) through {@code apiLoader}. */
     static PlanSource plan(Path modJar, Path bindingsDir, List<Path> embed, TargetData data, ClassLoader apiLoader) throws IOException {
-        return plan(modJar, embed, BindingSet.load(bindingsDir), data, apiLoader);
+        return plan(modJar, bindingsDir, embed, data, apiLoader, false);
     }
 
-    private static PlanSource plan(Path modJar, List<Path> embedPaths, BindingSet bindings, TargetData data, ClassLoader apiLoader) throws IOException {
+    static PlanSource plan(Path modJar, Path bindingsDir, List<Path> embed, TargetData data, ClassLoader apiLoader, boolean testkit) throws IOException {
+        return plan(modJar, embed, BindingSet.load(bindingsDir), data, apiLoader, testkit);
+    }
+
+    private static PlanSource plan(Path modJar, List<Path> embedPaths, BindingSet bindings, TargetData data, ClassLoader apiLoader,
+                                   boolean testkit) throws IOException {
         Map<String, byte[]> mod = Reach.read(modJar);
         Map<String, byte[]> embed = new TreeMap<>();
         for (Path p : embedPaths) embed.putAll(Reach.read(p));
+        if (testkit && !embed.containsKey(TESTKIT)) {
+            throw new IllegalArgumentException("a --testkit build needs " + TESTKIT + " in the embedded classes (blanket-runtime), which "
+                    + embedPaths + " lack");
+        }
         ApiClasses api = ApiClasses.of(apiLoader);
         List<TargetSpec> targets = List.copyOf(Matrix.supported(bindings.targets()));
         Map<String, Planned> plans = new HashMap<>();
@@ -76,6 +95,11 @@ public final class Planner {
             @Override
             public List<TargetSpec> targets() {
                 return targets;
+            }
+
+            @Override
+            public boolean testkit() {
+                return testkit;
             }
 
             @Override
@@ -87,7 +111,7 @@ public final class Planner {
                 if (!targets.contains(target)) throw new IllegalArgumentException(target.id() + " is not a supported target");
                 return plans.computeIfAbsent(target.id(), id -> {
                     try {
-                        return planOne(bindings, data, api, apiLoader, mod, embed, target);
+                        return planOne(bindings, data, api, apiLoader, mod, embed, target, testkit);
                     } catch (IOException e) {
                         throw new UncheckedIOException("cannot obtain the game data of " + target.id() + ": " + e.getMessage(), e);
                     }
@@ -106,9 +130,10 @@ public final class Planner {
     private record Planned(Plan plan, Map<String, String> runtimeToJar) {}
 
     private static Planned planOne(BindingSet bindings, TargetData data, ApiClasses api, ClassLoader apiLoader, Map<String, byte[]> mod,
-                                   Map<String, byte[]> embed, TargetSpec t) throws IOException {
+                                   Map<String, byte[]> embed, TargetSpec t, boolean testkit) throws IOException {
         List<String> roots = new ArrayList<>(Reach.ROOTS);
         roots.add(TargetPlan.glImpl(t));
+        if (testkit) roots.add(TESTKIT);
         Scan scan = Reach.scan(mod, embed, roots, stubClasses(bindings));
         Report check = ModCheck.run(bindings, data, api, scan, List.of(t));
         List<Diagnostic> errors = new ArrayList<>();
@@ -121,7 +146,7 @@ public final class Planner {
             TargetPlan builder = new TargetPlan(bindings, scan, api, t, names, enums);
             Plan collecting = builder.build();   // collects every reference
             AdapterClosure adapters = AdapterClosure.collect(bindings.dir(), t, bindings.targets().gameClasses(), bindings.targets().anchor(),
-                    collecting.members(), names);   // and the adapter closure's, in the same round
+                    collecting.adapterCalls(), names);   // and the adapter closure's, in the same round (glue adapters included)
             names.resolve(data);
             Plan plan = builder.build();         // the plan in resolved names
             Map<String, String> runtimeToJar = names.runtimeToJar();

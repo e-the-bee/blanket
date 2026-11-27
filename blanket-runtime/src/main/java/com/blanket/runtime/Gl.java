@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: GPL-3.0-only
 package com.blanket.runtime;
 
+import java.nio.ByteBuffer;
 import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
 
-/** The GL calls the executor makes. LWJGL 2 and 3 differ in a few names, so each has an implementation. */
+/** The GL calls the executor and the testkit's readback make. LWJGL 2 and 3 differ in a few names, so each has an implementation. */
 public interface Gl {
     int getInteger(int pname);
     void getIntegers(int pname, IntBuffer out);
@@ -43,4 +44,5 @@ public interface Gl {
     void framebufferTexture2D(int target, int attachment, int texTarget, int texture, int level);
     int checkFramebufferStatus(int target);
     void drawArrays(int mode, int first, int count);
+    void readPixels(int x, int y, int w, int h, int format, int type, ByteBuffer out);
 }
