@@ -66,7 +66,7 @@ abstract class ScaffoldTask : BlanketTool() {
     abstract val sig: Property<String>
 
     @get:Input @get:Optional @get:Option(option = "name", description = "Name of the new type, event or feature.")
-    abstract val name: Property<String>
+    abstract val newName: Property<String>   // not `name`: that would clash with Task.getName()
 
     @get:Input @get:Optional @get:Option(option = "alias", description = "Mojang class a new type aliases.")
     abstract val alias: Property<String>
@@ -83,7 +83,7 @@ abstract class ScaffoldTask : BlanketTool() {
     override fun toolArgs(): List<String> {
         val args = mutableListOf("--kind", kind.orNull ?: throw GradleException("scaffold needs --kind member|type|event|feature|target"))
         fun option(flag: String, value: Property<String>) { if (value.isPresent) args += listOf(flag, value.get()) }
-        option("--type", type); option("--sig", sig); option("--name", name); option("--alias", alias)
+        option("--type", type); option("--sig", sig); option("--name", newName); option("--alias", alias)
         option("--mc", mc); option("--java", javaLevel)
         if (owned.getOrElse(false)) args += "--owned"
         return args
