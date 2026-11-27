@@ -3,6 +3,7 @@ package com.blanket.api;
 
 import com.blanket.api.render.Draw3D;
 
+@Owned
 public final class WorldRender {
     private final Draw3D draw;
     private float partialTick;

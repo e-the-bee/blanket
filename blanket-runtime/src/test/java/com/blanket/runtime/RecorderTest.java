@@ -28,7 +28,7 @@ class RecorderTest {
     void boxFillIsTwelveTrianglesRelativeToCamera() {
         Recorder r = new Recorder();
         r.camX = 1; r.camY = 2; r.camZ = 3;
-        r.boxFill(1, 2, 3, 2, 3, 4, GREEN);
+        r.box(1, 2, 3, 2, 3, 4, GREEN);
         assertEquals(36, r.vertexCount());
         // The first corner is the box minimum minus the camera, so it sits at the origin.
         assertEquals(0f, r.data[0], 0f);

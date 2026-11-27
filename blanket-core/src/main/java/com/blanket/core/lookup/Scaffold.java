@@ -191,7 +191,7 @@ public final class Scaffold {
         boolean ownLine = text.substring(lineStart, close).isBlank();
         int at = ownLine ? lineStart : close;
         String ins = (ownLine ? "" : "\n") + "\n    /** TODO: describe {@code " + s.name + "}. */\n    " + s.declaration()
-                + " { throw new UnsupportedOperationException(\"compile-time stub\"); }\n";
+                + " { throw new AssertionError(\"blanket stub\"); }\n";
         return text.substring(0, at) + ins.replace("\n", nl) + text.substring(at);
     }
 

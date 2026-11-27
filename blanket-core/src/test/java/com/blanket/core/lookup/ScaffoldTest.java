@@ -84,7 +84,7 @@ class ScaffoldTest {
         List<Path> files = scaffold().member("Player", "int armor()");
 
         assertEquals(List.of(api.resolve("Player.java"), typeFile), files);
-        assertTrue(read(api.resolve("Player.java")).contains("public int armor()"));
+        assertTrue(read(api.resolve("Player.java")).contains("public int armor() { throw new AssertionError(\"blanket stub\"); }"));
         String after = read(typeFile);
         assertTrue(after.startsWith(PLAYER_JSON.substring(0, PLAYER_JSON.lastIndexOf("\n  }"))), "existing lines are untouched");
 

@@ -1,0 +1,23 @@
+{
+  "schema": 1,
+  "api": "com.blanket.api.KeyBinding",
+  "representation": [
+    { "when": { "mc": "..1.13.2" }, "alias": "lf:net/minecraft/class_327" },
+    { "when": { "mc": "26.1.." },    "alias": "official:net.minecraft.client.KeyMapping" },
+    { "when": {},                    "alias": "net.minecraft.client.KeyMapping" }
+  ],
+  "members": {
+    "register": [
+      { "when": {}, "lower": { "unsupported": "TODO M2 T7: bind KeyBinding.register on every target; try `lookup --ref net.minecraft.client.KeyMapping#register`" } }
+    ],
+    "consumePress": [
+      { "when": {}, "lower": { "unsupported": "TODO M2 T7: bind KeyBinding.consumePress on every target; try `lookup --ref net.minecraft.client.KeyMapping#consumePress`" } }
+    ],
+    "isDown": [
+      { "when": { "loader": "legacy-fabric", "mc": "1.8.9" }, "lower": { "unsupported": "TODO M2 T7: legacy-fabric:1.8.9: write the lf: rule" } },
+      { "when": { "loader": "forge", "mc": "1.8.9" }, "lower": { "unsupported": "TODO M2 T7: forge:1.8.9: write the lf: rule" } },
+      { "when": { "loader": "fabric", "mc": "26.1.2" }, "lower": { "unsupported": "TODO M2 T7: fabric:26.1.2: write the official: rule" } },
+      { "when": {}, "lower": { "invoke": "net.minecraft.client.KeyMapping#isDown()Z" } }
+    ]
+  }
+}

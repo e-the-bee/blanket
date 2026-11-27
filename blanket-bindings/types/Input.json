@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "api": "com.blanket.api.Input",
+  "note": "Owned facade: no representation; its members are bound like alias members (key translation is an adapter per era).",
+  "members": {
+    "isKeyDown": [
+      { "when": {}, "lower": { "unsupported": "TODO M2 T7: bind Input.isKeyDown on every target; try `lookup --ref <Class>#<member>`" } }
+    ]
+  }
+}

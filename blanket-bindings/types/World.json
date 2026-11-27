@@ -1,0 +1,21 @@
+{
+  "schema": 1,
+  "api": "com.blanket.api.World",
+  "representation": [
+    { "when": { "mc": "..1.13.2" }, "alias": "lf:net/minecraft/class_478" },
+    { "when": { "mc": "26.1.." },    "alias": "official:net.minecraft.client.multiplayer.ClientLevel" },
+    { "when": {},                    "alias": "net.minecraft.client.multiplayer.ClientLevel" }
+  ],
+  "note": "alias of the client world handle",
+  "members": {
+    "blockState": [
+      { "when": {}, "lower": { "unsupported": "TODO M2 T7: bind World.blockState on every target; try `lookup --ref net.minecraft.client.multiplayer.ClientLevel#blockState`" } }
+    ],
+    "gameTime": [
+      { "when": {}, "lower": { "unsupported": "TODO M2 T7: bind World.gameTime on every target; try `lookup --ref net.minecraft.client.multiplayer.ClientLevel#gameTime`" } }
+    ],
+    "dimension": [
+      { "when": {}, "lower": { "unsupported": "TODO M2 T7: bind World.dimension on every target; try `lookup --ref net.minecraft.client.multiplayer.ClientLevel#dimension`" } }
+    ]
+  }
+}

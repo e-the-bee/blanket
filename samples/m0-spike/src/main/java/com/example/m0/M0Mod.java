@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-only
 package com.example.m0;
 
+import com.blanket.api.Box;
 import com.blanket.api.Client;
 import com.blanket.api.ClientMod;
 import com.blanket.api.Events;
@@ -36,7 +37,7 @@ public class M0Mod implements ClientMod {
         Events.HUD_RENDER.register(e -> e.canvas().fillRect(10, 10, 60, 30, 0xFFFF00FF));
         Events.WORLD_RENDER.register(e -> {
             if (anchored) {
-                e.draw().boxFill(ax, ay, az, ax + 1, ay + 1, az + 1, 0xC000FF00);
+                e.draw().boxFill(Box.of(ax, ay, az, ax + 1, ay + 1, az + 1), 0xC000FF00);
             }
         });
     }

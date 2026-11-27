@@ -1,0 +1,62 @@
+{
+  "schema": 1,
+  "api": "com.blanket.api.Box",
+  "representation": [
+    { "when": { "mc": "..1.13.2" }, "alias": "lf:net/minecraft/class_231" },
+    { "when": { "mc": "26.1.." },    "alias": "official:net.minecraft.world.phys.AABB" },
+    { "when": {},                    "alias": "net.minecraft.world.phys.AABB" }
+  ],
+  "members": {
+    "of": [
+      { "when": {}, "lower": { "unsupported": "TODO M2 T7: bind Box.of on every target; try `lookup --ref net.minecraft.world.phys.AABB#of`" } }
+    ],
+    "minX": [
+      { "when": { "loader": "legacy-fabric", "mc": "1.8.9" }, "lower": { "unsupported": "TODO M2 T7: legacy-fabric:1.8.9: write the lf: rule" } },
+      { "when": { "loader": "forge", "mc": "1.8.9" }, "lower": { "unsupported": "TODO M2 T7: forge:1.8.9: write the lf: rule" } },
+      { "when": { "loader": "fabric", "mc": "26.1.2" }, "lower": { "unsupported": "TODO M2 T7: fabric:26.1.2: write the official: rule" } },
+      { "when": {}, "lower": { "get": "net.minecraft.world.phys.AABB#minX:D" } }
+    ],
+    "minY": [
+      { "when": { "loader": "legacy-fabric", "mc": "1.8.9" }, "lower": { "unsupported": "TODO M2 T7: legacy-fabric:1.8.9: write the lf: rule" } },
+      { "when": { "loader": "forge", "mc": "1.8.9" }, "lower": { "unsupported": "TODO M2 T7: forge:1.8.9: write the lf: rule" } },
+      { "when": { "loader": "fabric", "mc": "26.1.2" }, "lower": { "unsupported": "TODO M2 T7: fabric:26.1.2: write the official: rule" } },
+      { "when": {}, "lower": { "get": "net.minecraft.world.phys.AABB#minY:D" } }
+    ],
+    "minZ": [
+      { "when": { "loader": "legacy-fabric", "mc": "1.8.9" }, "lower": { "unsupported": "TODO M2 T7: legacy-fabric:1.8.9: write the lf: rule" } },
+      { "when": { "loader": "forge", "mc": "1.8.9" }, "lower": { "unsupported": "TODO M2 T7: forge:1.8.9: write the lf: rule" } },
+      { "when": { "loader": "fabric", "mc": "26.1.2" }, "lower": { "unsupported": "TODO M2 T7: fabric:26.1.2: write the official: rule" } },
+      { "when": {}, "lower": { "get": "net.minecraft.world.phys.AABB#minZ:D" } }
+    ],
+    "maxX": [
+      { "when": { "loader": "legacy-fabric", "mc": "1.8.9" }, "lower": { "unsupported": "TODO M2 T7: legacy-fabric:1.8.9: write the lf: rule" } },
+      { "when": { "loader": "forge", "mc": "1.8.9" }, "lower": { "unsupported": "TODO M2 T7: forge:1.8.9: write the lf: rule" } },
+      { "when": { "loader": "fabric", "mc": "26.1.2" }, "lower": { "unsupported": "TODO M2 T7: fabric:26.1.2: write the official: rule" } },
+      { "when": {}, "lower": { "get": "net.minecraft.world.phys.AABB#maxX:D" } }
+    ],
+    "maxY": [
+      { "when": { "loader": "legacy-fabric", "mc": "1.8.9" }, "lower": { "unsupported": "TODO M2 T7: legacy-fabric:1.8.9: write the lf: rule" } },
+      { "when": { "loader": "forge", "mc": "1.8.9" }, "lower": { "unsupported": "TODO M2 T7: forge:1.8.9: write the lf: rule" } },
+      { "when": { "loader": "fabric", "mc": "26.1.2" }, "lower": { "unsupported": "TODO M2 T7: fabric:26.1.2: write the official: rule" } },
+      { "when": {}, "lower": { "get": "net.minecraft.world.phys.AABB#maxY:D" } }
+    ],
+    "maxZ": [
+      { "when": { "loader": "legacy-fabric", "mc": "1.8.9" }, "lower": { "unsupported": "TODO M2 T7: legacy-fabric:1.8.9: write the lf: rule" } },
+      { "when": { "loader": "forge", "mc": "1.8.9" }, "lower": { "unsupported": "TODO M2 T7: forge:1.8.9: write the lf: rule" } },
+      { "when": { "loader": "fabric", "mc": "26.1.2" }, "lower": { "unsupported": "TODO M2 T7: fabric:26.1.2: write the official: rule" } },
+      { "when": {}, "lower": { "get": "net.minecraft.world.phys.AABB#maxZ:D" } }
+    ],
+    "inflate": [
+      { "when": { "loader": "legacy-fabric", "mc": "1.8.9" }, "lower": { "unsupported": "TODO M2 T7: legacy-fabric:1.8.9: write the lf: rule" } },
+      { "when": { "loader": "forge", "mc": "1.8.9" }, "lower": { "unsupported": "TODO M2 T7: forge:1.8.9: write the lf: rule" } },
+      { "when": { "loader": "fabric", "mc": "26.1.2" }, "lower": { "unsupported": "TODO M2 T7: fabric:26.1.2: write the official: rule" } },
+      { "when": {}, "lower": { "invoke": "net.minecraft.world.phys.AABB#inflate(D)Lnet/minecraft/world/phys/AABB;" } }
+    ],
+    "center": [
+      { "when": { "loader": "legacy-fabric", "mc": "1.8.9" }, "lower": { "unsupported": "TODO M2 T7: legacy-fabric:1.8.9: write the lf: rule" } },
+      { "when": { "loader": "forge", "mc": "1.8.9" }, "lower": { "unsupported": "TODO M2 T7: forge:1.8.9: write the lf: rule" } },
+      { "when": { "loader": "fabric", "mc": "26.1.2" }, "lower": { "unsupported": "TODO M2 T7: fabric:26.1.2: write the official: rule" } },
+      { "when": {}, "lower": { "invoke": "net.minecraft.world.phys.AABB#getCenter()Lnet/minecraft/world/phys/Vec3;" } }
+    ]
+  }
+}
