@@ -2,6 +2,7 @@
 package com.blanket.core.lookup;
 
 import com.blanket.core.bindings.BindingFiles;
+import com.blanket.core.mapping.MappingDownloads;
 import com.blanket.core.bindings.Targets;
 import com.blanket.core.tool.Args;
 
@@ -12,8 +13,9 @@ import java.util.Set;
 
 /**
  * {@code ./gradlew lookup --ref "Entity#getX()D" [--target forge:1.20.1]...}: prints the runtime name of a reference on
- * every supported target, or the step where it fails with candidates. Options: {@code --bindings <dir>} (default the
- * working directory, which holds targets.json), {@code --cache <dir>}, {@code --offline}.
+ * every supported target, or the step where it fails with candidates. A {@code loader:} reference is looked up in the
+ * loader artifact that {@code loader-artifacts.json} of the bindings folder lists for the target. Options:
+ * {@code --bindings <dir>} (default the working directory, which holds targets.json), {@code --cache <dir>}, {@code --offline}.
  */
 public final class LookupMain {
     private LookupMain() {}
@@ -30,11 +32,18 @@ public final class LookupMain {
     public static int run(String[] argv, PrintStream out, PrintStream err) {
         try {
             Args args = Args.parse(argv, Set.of("offline"));
-            Targets targets = BindingFiles.readTargets(Path.of(args.get("bindings", ".")).resolve("targets.json"));
-            Lookup lookup = new Lookup(targets, MappingSources.files(args.downloads(), targets));
-            List<String> named = args.all("target");
-            List<Lookup.Result> results = lookup.lookup(args.require("ref"), named);
-            return report(results, !named.isEmpty(), out, err);
+            Path bindings = Path.of(args.get("bindings", "."));
+            Targets targets = BindingFiles.readTargets(bindings.resolve("targets.json"));
+            MappingDownloads downloads = args.downloads();
+            Lookup lookup = new Lookup(targets, MappingSources.files(downloads, targets),
+                    LoaderJars.fromFile(downloads, bindings.resolve("loader-artifacts.json")));
+            try {
+                List<String> named = args.all("target");
+                List<Lookup.Result> results = lookup.lookup(args.require("ref"), named);
+                return report(results, !named.isEmpty(), out, err);
+            } finally {
+                lookup.close();
+            }
         } catch (RuntimeException e) {
             err.println("lookup: " + Lookup.describe(e));
             return 2;

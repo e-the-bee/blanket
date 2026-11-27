@@ -45,10 +45,23 @@ public final class Lookup {
 
     private final Targets targets;
     private final Resolver.MappingFiles files;
+    private final LoaderIndexes loaders;
 
+    /** A lookup with no loader artifacts: a {@code loader:} reference answers that the target has none. */
     public Lookup(Targets targets, Resolver.MappingFiles files) {
+        this(targets, files, LoaderJars.NONE);
+    }
+
+    /** A lookup that resolves {@code loader:} references in the loader artifact {@code loaderJars} gives per target. */
+    public Lookup(Targets targets, Resolver.MappingFiles files, LoaderJars loaderJars) {
         this.targets = targets;
         this.files = files;
+        this.loaders = new LoaderIndexes(loaderJars);
+    }
+
+    /** Closes the loader jars opened by lookups. The lookup can still be used; it reopens them. */
+    public void close() {
+        loaders.close();
     }
 
     /**
@@ -64,7 +77,7 @@ public final class Lookup {
             for (String id : targetIds) specs.add(Matrix.spec(targets, id));
         }
         List<Result> out = new ArrayList<>();
-        for (Object o : expand(query.trim())) {
+        for (Object o : expand(query.trim(), specs)) {
             if (o instanceof Result r) {
                 out.add(r);
                 continue;
@@ -80,6 +93,9 @@ public final class Lookup {
 
     /** Resolves one parsed reference on one target. */
     public Row resolve(TargetSpec t, Ref ref) {
+        if (ref.ns().equals("loader") && !loaders.hasJar(t)) {
+            return Row.fail(t.id(), LoaderIndexes.NO_JAR_STEP, LoaderIndexes.noJarMessage(t), List.of());
+        }
         String route = Routes.problem(t, ref, targets.gameClasses());
         if (route != null) return Row.fail(t.id(), Routes.STEP, route, List.of());
         List<Resolver.Problem> problems = new ArrayList<>();
@@ -93,13 +109,14 @@ public final class Lookup {
             Resolver.Problem p = problems.get(0);
             return Row.fail(t.id(), p.step(), p.message(), candidatesFor(ref, p));
         }
-        return Row.ok(t.id(), out.get(ref.text()));
+        Resolver.Resolved resolved = out.get(ref.text());
+        return ref.ns().equals("loader") ? loaders.check(t, resolved) : Row.ok(t.id(), resolved);
     }
 
     // ---------------------------------------------------------------------------------------- query expansion
 
     /** A list of reference texts to resolve, and ready-made failures ({@link Result}) for parts that cannot be. */
-    private List<Object> expand(String query) {
+    private List<Object> expand(String query, List<TargetSpec> specs) {
         String prefix = "";
         String rest = query;
         String ns = "mojang";
@@ -153,15 +170,23 @@ public final class Lookup {
             } else if (member.indexOf('(') >= 0 || member.indexOf(':') >= 0) {
                 out.add(prefix + owner + "#" + member);
             } else {
-                expandName(out, prefix, ns, version, owner, member);
+                expandName(out, prefix, ns, version, owner, member, specs);
             }
         }
         return out;
     }
 
     /** A bare member name: every overload of that name on the owner, from the source mapping file. */
-    private void expandName(List<Object> out, String prefix, String ns, String version, String owner, String name) {
+    private void expandName(List<Object> out, String prefix, String ns, String version, String owner, String name, List<TargetSpec> specs) {
         String query = prefix + owner + "#" + name;
+        if (ns.equals("loader")) {
+            List<String> descs = loaders.overloads(specs, owner, name);
+            if (descs.isEmpty()) {
+                out.add(new Result(query, specs.stream().map(t -> loaders.noMember(t, owner, name)).toList()));
+            }
+            for (String d : descs) out.add(prefix + owner + "#" + name + d);
+            return;
+        }
         if (!ns.equals("mojang")) {
             out.add(failure(query, "query", "member reference needs a descriptor (name(args)ret or name:type) in the " + ns + " namespace: " + query,
                     List.of()));
