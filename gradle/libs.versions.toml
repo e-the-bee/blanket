@@ -5,11 +5,15 @@ mapping-io = "0.9.2"
 gson = "2.15.0"
 junit = "5.14.4"
 lwjgl = "3.3.3"
+japicmp = "0.27.0"
 
 [libraries]
 asm = { module = "org.ow2.asm:asm", version.ref = "asm" }
 asm-tree = { module = "org.ow2.asm:asm-tree", version.ref = "asm" }
 asm-commons = { module = "org.ow2.asm:asm-commons", version.ref = "asm" }
+asm-analysis = { module = "org.ow2.asm:asm-analysis", version.ref = "asm" }
+asm-util = { module = "org.ow2.asm:asm-util", version.ref = "asm" }
+japicmp = { module = "com.github.siom79.japicmp:japicmp", version.ref = "japicmp" }
 mapping-io = { module = "net.fabricmc:mapping-io", version.ref = "mapping-io" }
 gson = { module = "com.google.code.gson:gson", version.ref = "gson" }
 junit-bom = { module = "org.junit:junit-bom", version.ref = "junit" }

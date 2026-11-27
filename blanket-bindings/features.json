@@ -1,0 +1,9 @@
+{
+  "schema": 1,
+  "features": {
+    "OFFHAND": {
+      "available": [ { "when": { "mc": "1.9.." } } ],
+      "note": "off-hand slot added in 1.9"
+    }
+  }
+}

@@ -154,7 +154,7 @@ public final class ModCheck {
             }
             glue.put(e.getKey(), only(e.getValue(), keys));
         }
-        return new BindingSet(all.dir(), all.targets(), types, glue, hooks, events);
+        return new BindingSet(all.dir(), all.targets(), types, glue, hooks, events, all.features());
     }
 
     /** {@code type} keeping only the rule lists in {@code keys} (new key to old key). */

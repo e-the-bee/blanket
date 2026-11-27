@@ -308,9 +308,22 @@ class PlannerTest implements Opcodes {
     void membersGetStaticVirtualAndFieldOpcodesFromTheJar() throws IOException {
         Plan p = plan("fabric:26.1.2");
         assertEquals(Map.of(
-                "com/blanket/api/Client.get()Lcom/blanket/api/Client;", List.of(invokeStatic("net/example/Game", "instance", "()Lnet/example/Game;")),
-                "com/blanket/api/Client.player()Lcom/blanket/api/Player;", List.of(Op.field(GETFIELD, "net/example/Game", "hero", "Lnet/example/Hero;")),
-                "com/blanket/api/Player.x()D", List.of(Op.invoke(INVOKEVIRTUAL, "net/example/Mob", "getX", "()D", false))), p.members());
+                "com/blanket/api/Client.get()Lcom/blanket/api/Client;", new Lowered.Inline(List.of(invokeStatic("net/example/Game", "instance", "()Lnet/example/Game;"))),
+                "com/blanket/api/Client.player()Lcom/blanket/api/Player;", new Lowered.Inline(List.of(Op.field(GETFIELD, "net/example/Game", "hero", "Lnet/example/Hero;"))),
+                "com/blanket/api/Player.x()D", new Lowered.Inline(List.of(Op.invoke(INVOKEVIRTUAL, "net/example/Mob", "getX", "()D", false)))), p.members());
+    }
+
+    @Test
+    void classVersionMaxFollowsTheJavaLevelAndTheContractFieldsAreEmpty() throws IOException {
+        PlanSource s = source(files());
+        TargetSpec t = s.targets().stream().filter(x -> x.id().equals("fabric:26.1.2")).findFirst().orElseThrow();
+        Plan p = s.plan(t);
+        assertEquals(69, p.classVersionMax());
+        assertEquals(Map.of(), p.features());
+        assertEquals(Map.of(), p.adapters());
+        try (var h = s.hierarchy(t)) {
+            assertEquals(Optional.empty(), h.get("net/example/Game"));
+        }
     }
 
     @Test

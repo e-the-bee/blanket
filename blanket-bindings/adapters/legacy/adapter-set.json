@@ -1,0 +1,9 @@
+{
+  "schema": 1,
+  "name": "legacy",
+  "stubs": "1.8.9",
+  "authoring": "yarn-legacy",
+  "authoringMappings": "net.legacyfabric:yarn:1.8.9+build.604",
+  "shipping": "lf",
+  "covers": { "mc": "1.8.9" }
+}

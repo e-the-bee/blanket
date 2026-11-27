@@ -1,0 +1,8 @@
+{
+  "schema": 1,
+  "name": "modern",
+  "stubs": "1.21.1",
+  "authoring": "mojang",
+  "shipping": "intermediary",
+  "covers": { "mc": "1.20.1..1.21.1" }
+}

@@ -8,6 +8,8 @@ dependencies {
     implementation(libs.asm)
     implementation(libs.asm.tree)
     implementation(libs.asm.commons)
+    implementation(libs.asm.analysis)
     implementation(libs.mapping.io)
     implementation(libs.gson)
+    testImplementation(libs.asm.util)
 }
