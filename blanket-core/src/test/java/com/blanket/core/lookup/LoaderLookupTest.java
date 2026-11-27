@@ -10,7 +10,6 @@ import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.Opcodes;
 
 import java.io.IOException;
-import java.io.OutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
@@ -154,7 +153,4 @@ class LoaderLookupTest {
         assertTrue(LoaderJars.fromFile(null, dir.resolve("absent.json")).jars(
                 com.blanket.core.lookup.Matrix.spec(LookupFixture.targets(), "neoforge:1.21.1")).isEmpty());
     }
-
-    @SuppressWarnings("unused")
-    private static void unused(OutputStream o) {}
 }
