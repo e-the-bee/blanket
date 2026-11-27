@@ -93,7 +93,7 @@ class DeadCodeTest implements Opcodes {
         DeadCode.remove(n);
         MethodNode g = n.methods.get(1);
         assertEquals(1, g.tryCatchBlocks.size(), "only the live entry stays");
-        assertEquals(List.of(GOTO, NOP, NOP, NOP, NOP, NOP, NOP, NOP, ATHROW, ICONST_1, IRETURN, POP, ICONST_4, IRETURN), opcodes(g));
+        assertEquals(List.of(GOTO, NOP, NOP, NOP, NOP, NOP, NOP, ATHROW, ICONST_1, IRETURN, POP, ICONST_4, IRETURN), opcodes(g));
 
         n.version = V21;
         byte[] bytes = FoldTestSupport.write(n);
