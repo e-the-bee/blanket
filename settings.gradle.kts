@@ -9,6 +9,7 @@ include("samples:m0-spike")
 // The M2 sample mod (api-tour); gate sources arrive with the TOUR slice.
 include("samples:api-tour")
 include("samples:hud-box")
+include("blanket-testkit")
 
 // blanket-emit is a separate, private git repository nested in this one (D-035, D-048).
 if (file("blanket-emit").isDirectory) {

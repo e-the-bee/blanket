@@ -1,0 +1,135 @@
+# SPDX-License-Identifier: GPL-3.0-only
+# Blanket CI (docs/testing-strategy.md §1 and §5). Written in M3, not run yet: there is no remote repository.
+#   L1  every push and pull request: the full Gradle build of the public modules.
+#   L4  the core six in-game, one job per target (Linux, Xvfb, Mesa llvmpipe): nightly, on demand, and on pull requests
+#       from this repository that touch bindings, runtime, testkit or the hud-box sample. It needs the private
+#       blanket-emit module (D-035): repository in the variable BLANKET_EMIT_REPOSITORY (owner/name), read-only deploy
+#       key in the secret BLANKET_EMIT_DEPLOY_KEY. Fork pull requests cannot read the key and run L1 only (P-19).
+name: ci
+
+on:
+  push:
+  pull_request:
+  schedule:
+    - cron: "17 3 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  l1:
+    name: L1 build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          # the last one is JAVA_HOME; Gradle runs on it and it is the modules' Java 21 toolchain
+          java-version: |
+            8
+            21
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Build
+        run: |
+          export BLANKET_JDK8="$JAVA_HOME_8_X64"
+          bash gradlew build --no-daemon --console=plain
+
+  changes:
+    name: L4 needed?
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-24.04
+    outputs:
+      l4: ${{ steps.diff.outputs.l4 }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - id: diff
+        run: |
+          if git diff --name-only "origin/${{ github.base_ref }}...HEAD" \
+              | grep -qE '^(blanket-bindings|blanket-runtime|blanket-testkit|samples/hud-box)/'; then
+            echo "l4=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "l4=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  l4:
+    name: L4 ${{ matrix.target }}
+    needs: [l1, changes]
+    if: >-
+      always() && needs.l1.result == 'success' && (
+        github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' ||
+        (github.event_name == 'pull_request' && needs.changes.outputs.l4 == 'true' &&
+         github.event.pull_request.head.repo.full_name == github.repository))
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        target:
+          - legacy-fabric:1.8.9
+          - forge:1.8.9
+          - fabric:1.21.1
+          - neoforge:1.21.1
+          - forge:1.20.1
+          - fabric:26.1.2
+    env:
+      TARGET: ${{ matrix.target }}
+      LIBGL_ALWAYS_SOFTWARE: "true"
+      BLANKET_TESTKIT_HOME: ${{ github.workspace }}/.testkit
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: ${{ vars.BLANKET_EMIT_REPOSITORY }}
+          ssh-key: ${{ secrets.BLANKET_EMIT_DEPLOY_KEY }}
+          path: blanket-emit
+      - name: X server, Mesa and the libraries LWJGL loads
+        # the package list of blanket-emit/m0-spike/tools/linux-setup.sh (no JDKs: setup-java below)
+        run: |
+          sudo apt-get update -q
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -q xvfb mesa-utils libgl1-mesa-dri \
+            x11-xserver-utils x11-apps imagemagick libxrandr2 libxcursor1 libxi6 libxinerama1 libxxf86vm1 libxtst6
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          # game JDKs per Minecraft version (8: 1.8.9, 17: 1.20.1, 21: 1.21.1, 25: 26.1.2); 21 last = JAVA_HOME
+          java-version: |
+            8
+            17
+            25
+            21
+      - name: JDKs for the harness
+        run: |
+          for v in 8 17 21 25; do
+            var="JAVA_HOME_${v}_X64"
+            echo "BLANKET_JDK${v}=${!var}" >> "$GITHUB_ENV"
+          done
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Game files cache (libraries, assets, loaders, server world)
+        uses: actions/cache@v4
+        with:
+          path: .testkit
+          key: testkit-${{ matrix.target }}-v1
+      - name: Build hud-box (--testkit) and the harness
+        run: bash gradlew :blanket-emit:emitHudBox :blanket-testkit:installDist --no-daemon --console=plain
+      - name: Run hud-box in the game
+        run: |
+          mc="${TARGET#*:}"; loader="${TARGET%%:*}"
+          jars=(blanket-emit/build/hud-box-jars/*+"$mc"-"${loader//-/}".jar)
+          if [ "${#jars[@]}" -ne 1 ] || [ ! -f "${jars[0]}" ]; then
+            echo "expected one hud-box jar for $TARGET, found: ${jars[*]}"; exit 1
+          fi
+          xvfb-run -a -s "-screen 0 854x480x24" blanket-testkit/build/install/blanket-testkit/bin/blanket-testkit \
+            run "$TARGET" --jar "${jars[0]}" --probes samples/hud-box/testkit-probes.json \
+            --out "build/l4/${TARGET/:/-}" --timeout 360
+      - name: Keep logs, result and screenshot
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: l4-${{ strategy.job-index }}
+          path: build/l4/
+          if-no-files-found: warn
