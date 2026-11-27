@@ -10,14 +10,19 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * {@code validateBindings}: checks C1, C2, C3, C7 and C8 (testing-strategy.md section 2) on every target of
- * {@code targets.json}, and reports every failure for every target at once (binding-format.md section 2.5).
+ * {@code validateBindings}: checks C1 to C8 (testing-strategy.md section 2) on every target of {@code targets.json},
+ * and reports every failure for every target at once (binding-format.md section 2.5).
  *
  * <p>Each check reports with one of the section 2.5 codes, and its message begins with the check name:
  * <ul>
  *   <li>C1 coverage: {@link ErrorCode#UNBOUND}</li>
  *   <li>C2 resolution: {@link ErrorCode#UNRESOLVED} (the namespace step that failed, or {@code jar})</li>
  *   <li>C3 shape: {@link ErrorCode#SHAPE}</li>
+ *   <li>C4 adapters: {@link ErrorCode#UNRESOLVED} for an adapter reference or game reference of the built set that does
+ *       not resolve or is not in the jars; {@link ErrorCode#SHAPE} for an adapter method whose descriptor is not the API
+ *       member's (a set that is not built is a warning)</li>
+ *   <li>C5 enum order: {@link ErrorCode#ORDER}</li>
+ *   <li>C6 overrides: {@link ErrorCode#UNRESOLVED} for an overriding adapter method that overrides nothing</li>
  *   <li>C7 hooks: {@link ErrorCode#UNRESOLVED} for a hook target, call-site count or native event class that is missing;
  *       {@link ErrorCode#UNSUPPORTED} for a Mixin recipe on an era without Mixin</li>
  *   <li>C8 mapping terms: {@link ErrorCode#UNSUPPORTED} (the mapping source can no longer be used under Blanket's conditions)</li>
@@ -49,7 +54,11 @@ public final class Validator {
         }
         try {
             new Coverage(bindings, specs, api, errors, warnings).run();
-            for (TargetSpec t : specs) new TargetChecks(bindings, data, api, t, errors, warnings).run();
+            for (TargetSpec t : specs) {
+                new TargetChecks(bindings, data, api, t, errors, warnings).run();
+                new AdapterChecks(bindings, data, api, t, errors, warnings).run();
+                new EnumOrder(bindings, data, api, t, errors).run();
+            }
             MappingTerms.check(bindings.targets(), specs, data, errors);
         } catch (IOException e) {
             throw new UncheckedIOException(e);

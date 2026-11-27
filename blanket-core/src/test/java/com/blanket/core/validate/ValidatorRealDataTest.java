@@ -15,7 +15,7 @@ import java.util.Optional;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-/** C1, C2, C3, C7 and C8 on the real {@code blanket-bindings} and the real downloaded game data (skipped offline). */
+/** C1 to C8 on the real {@code blanket-bindings} and the real downloaded game data (skipped offline). */
 class ValidatorRealDataTest {
     private static final Path BINDINGS = Path.of("..", "blanket-bindings");
 
@@ -29,7 +29,7 @@ class ValidatorRealDataTest {
         TargetData data = new DownloadedTargetData(downloads(), bindings.targets(), BINDINGS);
         Report report;
         try {
-            report = new Validator(bindings, data, ApiClasses.of(ValidatorRealDataTest.class.getClassLoader())).run();
+            report = new Validator(bindings, data, ApiClasses.withApiJar(ValidatorRealDataTest.class.getClassLoader())).run();
         } catch (UncheckedIOException e) {
             throw RealData.skipIfOffline(e);
         }
