@@ -6,16 +6,22 @@
     { "when": { "mc": "26.1.." },    "alias": "official:net.minecraft.world.level.block.state.BlockState" },
     { "when": {},                    "alias": "net.minecraft.world.level.block.state.BlockState" }
   ],
-  "note": "1.8.9 aliases IBlockState, an interface (invoke opcode chosen per target)",
+  "note": "1.8.9 aliases IBlockState, an interface (invoke opcode chosen per target). On 1.8.9 some blocks keep part of their state in metadata that is not a property; propertyValue reports only properties (api-surface 3.5, binding-format example 9).",
   "members": {
     "blockId": [
-      { "when": {}, "lower": { "unsupported": "TODO M2 T7: bind BlockState.blockId on every target; try `lookup --ref net.minecraft.world.level.block.state.BlockState#blockId`" } }
+      { "when": { "mc": "..1.13.2" }, "lower": { "adapter": "legacy:com.blanket.adapters.States#blockId" } },
+      { "when": { "mc": "26.1.." },    "lower": { "adapter": "unobf:com.blanket.adapters.States#blockId" } },
+      { "when": {},                    "lower": { "adapter": "modern:com.blanket.adapters.States#blockId" } }
     ],
     "isAir": [
-      { "when": {}, "lower": { "unsupported": "TODO M2 T7: bind BlockState.isAir on every target; try `lookup --ref net.minecraft.world.level.block.state.BlockState#isAir`" } }
+      { "when": { "mc": "..1.13.2" }, "lower": { "adapter": "legacy:com.blanket.adapters.States#isAir" } },
+      { "when": { "mc": "26.1.." },    "lower": { "invoke": "official:net.minecraft.world.level.block.state.BlockBehaviour$BlockStateBase#isAir()Z" } },
+      { "when": {},                    "lower": { "invoke": "net.minecraft.world.level.block.state.BlockBehaviour$BlockStateBase#isAir()Z" } }
     ],
     "propertyValue": [
-      { "when": {}, "lower": { "unsupported": "TODO M2 T7: bind BlockState.propertyValue on every target; try `lookup --ref net.minecraft.world.level.block.state.BlockState#propertyValue`" } }
+      { "when": { "mc": "..1.13.2" }, "lower": { "adapter": "legacy:com.blanket.adapters.States#propertyValue" } },
+      { "when": { "mc": "26.1.." },    "lower": { "adapter": "unobf:com.blanket.adapters.States#propertyValue" } },
+      { "when": {},                    "lower": { "adapter": "modern:com.blanket.adapters.States#propertyValue" } }
     ]
   }
 }

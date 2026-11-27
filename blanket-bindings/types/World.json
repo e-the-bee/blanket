@@ -9,13 +9,19 @@
   "note": "alias of the client world handle",
   "members": {
     "blockState": [
-      { "when": {}, "lower": { "unsupported": "TODO M2 T7: bind World.blockState on every target; try `lookup --ref net.minecraft.client.multiplayer.ClientLevel#blockState`" } }
+      { "when": { "mc": "..1.13.2" }, "lower": { "invoke": "lf:net/minecraft/class_1158#method_8580(Lnet/minecraft/class_2552;)Lnet/minecraft/class_2232;" }, "note": "1.8.9: the row is on the BlockView interface (INVOKEINTERFACE)" },
+      { "when": { "mc": "26.1.." },    "lower": { "invoke": "official:net.minecraft.world.level.Level#getBlockState(Lnet/minecraft/core/BlockPos;)Lnet/minecraft/world/level/block/state/BlockState;" } },
+      { "when": {},                    "lower": { "invoke": "net.minecraft.world.level.BlockGetter#getBlockState(Lnet/minecraft/core/BlockPos;)Lnet/minecraft/world/level/block/state/BlockState;" }, "note": "intermediary has the row on BlockGetter, not Level" }
     ],
     "gameTime": [
-      { "when": {}, "lower": { "unsupported": "TODO M2 T7: bind World.gameTime on every target; try `lookup --ref net.minecraft.client.multiplayer.ClientLevel#gameTime`" } }
+      { "when": { "mc": "..1.13.2" }, "lower": { "invoke": "lf:net/minecraft/class_1150#method_4678()J" }, "note": "World.getLastUpdateTime(): total world ticks" },
+      { "when": { "mc": "26.1.." },    "lower": { "invoke": "official:net.minecraft.world.level.LevelAccessor#getGameTime()J" } },
+      { "when": {},                    "lower": { "invoke": "net.minecraft.world.level.Level#getGameTime()J" } }
     ],
     "dimension": [
-      { "when": {}, "lower": { "unsupported": "TODO M2 T7: bind World.dimension on every target; try `lookup --ref net.minecraft.client.multiplayer.ClientLevel#dimension`" } }
+      { "when": { "mc": "..1.13.2" }, "lower": { "adapter": "legacy:com.blanket.adapters.Worlds#dimension" }, "note": "1.8.9 knows dimensions by number: 0, -1, 1 become minecraft ids" },
+      { "when": { "mc": "26.1.." },    "lower": { "adapter": "unobf:com.blanket.adapters.Worlds#dimension" } },
+      { "when": {},                    "lower": { "adapter": "modern:com.blanket.adapters.Worlds#dimension" } }
     ]
   }
 }
