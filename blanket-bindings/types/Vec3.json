@@ -2,61 +2,55 @@
   "schema": 1,
   "api": "com.blanket.api.Vec3",
   "representation": [
-    { "when": { "mc": "..1.13.2" }, "alias": "lf:net/minecraft/class_236" },
-    { "when": { "mc": "26.1.." },    "alias": "official:net.minecraft.world.phys.Vec3" },
-    { "when": {},                    "alias": "net.minecraft.world.phys.Vec3" }
+    {"when": {"mc": "..1.13.2"}, "alias": "lf:net/minecraft/class_236"},
+    {"when": {"mc": "26.1.."}, "alias": "official:net.minecraft.world.phys.Vec3"},
+    {"when": {}, "alias": "net.minecraft.world.phys.Vec3"}
   ],
   "members": {
     "of": [
-      { "when": {}, "lower": { "unsupported": "TODO M2 T7: bind Vec3.of on every target; try `lookup --ref net.minecraft.world.phys.Vec3#of`" } }
+      {"when": {"mc": "..1.13.2"}, "lower": {"new": "lf:net/minecraft/class_236#<init>(DDD)V"}},
+      {"when": {"mc": "26.1.."}, "lower": {"new": "official:net.minecraft.world.phys.Vec3#<init>(DDD)V"}},
+      {"when": {}, "lower": {"new": "net.minecraft.world.phys.Vec3#<init>(DDD)V"}}
     ],
     "x": [
-      { "when": { "loader": "legacy-fabric", "mc": "1.8.9" }, "lower": { "unsupported": "TODO M2 T7: legacy-fabric:1.8.9: write the lf: rule" } },
-      { "when": { "loader": "forge", "mc": "1.8.9" }, "lower": { "unsupported": "TODO M2 T7: forge:1.8.9: write the lf: rule" } },
-      { "when": { "loader": "fabric", "mc": "26.1.2" }, "lower": { "unsupported": "TODO M2 T7: fabric:26.1.2: write the official: rule" } },
-      { "when": {}, "lower": { "get": "net.minecraft.world.phys.Vec3#x:D" } }
+      {"when": {"mc": "..1.13.2"}, "lower": {"get": "lf:net/minecraft/class_236#field_605:D"}},
+      {"when": {"mc": "26.1.."}, "lower": {"get": "official:net.minecraft.world.phys.Vec3#x:D"}},
+      {"when": {}, "lower": {"get": "net.minecraft.world.phys.Vec3#x:D"}}
     ],
     "y": [
-      { "when": { "loader": "legacy-fabric", "mc": "1.8.9" }, "lower": { "unsupported": "TODO M2 T7: legacy-fabric:1.8.9: write the lf: rule" } },
-      { "when": { "loader": "forge", "mc": "1.8.9" }, "lower": { "unsupported": "TODO M2 T7: forge:1.8.9: write the lf: rule" } },
-      { "when": { "loader": "fabric", "mc": "26.1.2" }, "lower": { "unsupported": "TODO M2 T7: fabric:26.1.2: write the official: rule" } },
-      { "when": {}, "lower": { "get": "net.minecraft.world.phys.Vec3#y:D" } }
+      {"when": {"mc": "..1.13.2"}, "lower": {"get": "lf:net/minecraft/class_236#field_606:D"}},
+      {"when": {"mc": "26.1.."}, "lower": {"get": "official:net.minecraft.world.phys.Vec3#y:D"}},
+      {"when": {}, "lower": {"get": "net.minecraft.world.phys.Vec3#y:D"}}
     ],
     "z": [
-      { "when": { "loader": "legacy-fabric", "mc": "1.8.9" }, "lower": { "unsupported": "TODO M2 T7: legacy-fabric:1.8.9: write the lf: rule" } },
-      { "when": { "loader": "forge", "mc": "1.8.9" }, "lower": { "unsupported": "TODO M2 T7: forge:1.8.9: write the lf: rule" } },
-      { "when": { "loader": "fabric", "mc": "26.1.2" }, "lower": { "unsupported": "TODO M2 T7: fabric:26.1.2: write the official: rule" } },
-      { "when": {}, "lower": { "get": "net.minecraft.world.phys.Vec3#z:D" } }
+      {"when": {"mc": "..1.13.2"}, "lower": {"get": "lf:net/minecraft/class_236#field_607:D"}},
+      {"when": {"mc": "26.1.."}, "lower": {"get": "official:net.minecraft.world.phys.Vec3#z:D"}},
+      {"when": {}, "lower": {"get": "net.minecraft.world.phys.Vec3#z:D"}}
     ],
     "add": [
-      { "when": { "loader": "legacy-fabric", "mc": "1.8.9" }, "lower": { "unsupported": "TODO M2 T7: legacy-fabric:1.8.9: write the lf: rule" } },
-      { "when": { "loader": "forge", "mc": "1.8.9" }, "lower": { "unsupported": "TODO M2 T7: forge:1.8.9: write the lf: rule" } },
-      { "when": { "loader": "fabric", "mc": "26.1.2" }, "lower": { "unsupported": "TODO M2 T7: fabric:26.1.2: write the official: rule" } },
-      { "when": {}, "lower": { "invoke": "net.minecraft.world.phys.Vec3#add(Lnet/minecraft/world/phys/Vec3;)Lnet/minecraft/world/phys/Vec3;" } }
+      {"when": {"mc": "..1.13.2"}, "lower": {"invoke": "lf:net/minecraft/class_236#method_9349(Lnet/minecraft/class_236;)Lnet/minecraft/class_236;"}},
+      {"when": {"mc": "26.1.."}, "lower": {"invoke": "official:net.minecraft.world.phys.Vec3#add(Lnet/minecraft/world/phys/Vec3;)Lnet/minecraft/world/phys/Vec3;"}},
+      {"when": {}, "lower": {"invoke": "net.minecraft.world.phys.Vec3#add(Lnet/minecraft/world/phys/Vec3;)Lnet/minecraft/world/phys/Vec3;"}}
     ],
     "subtract": [
-      { "when": { "loader": "legacy-fabric", "mc": "1.8.9" }, "lower": { "unsupported": "TODO M2 T7: legacy-fabric:1.8.9: write the lf: rule" } },
-      { "when": { "loader": "forge", "mc": "1.8.9" }, "lower": { "unsupported": "TODO M2 T7: forge:1.8.9: write the lf: rule" } },
-      { "when": { "loader": "fabric", "mc": "26.1.2" }, "lower": { "unsupported": "TODO M2 T7: fabric:26.1.2: write the official: rule" } },
-      { "when": {}, "lower": { "invoke": "net.minecraft.world.phys.Vec3#subtract(Lnet/minecraft/world/phys/Vec3;)Lnet/minecraft/world/phys/Vec3;" } }
+      {"when": {"mc": "..1.13.2"}, "lower": {"invoke": "lf:net/minecraft/class_236#method_9348(Lnet/minecraft/class_236;)Lnet/minecraft/class_236;"}},
+      {"when": {"mc": "26.1.."}, "lower": {"invoke": "official:net.minecraft.world.phys.Vec3#subtract(Lnet/minecraft/world/phys/Vec3;)Lnet/minecraft/world/phys/Vec3;"}},
+      {"when": {}, "lower": {"invoke": "net.minecraft.world.phys.Vec3#subtract(Lnet/minecraft/world/phys/Vec3;)Lnet/minecraft/world/phys/Vec3;"}}
     ],
     "scale": [
-      { "when": { "loader": "legacy-fabric", "mc": "1.8.9" }, "lower": { "unsupported": "TODO M2 T7: legacy-fabric:1.8.9: write the lf: rule" } },
-      { "when": { "loader": "forge", "mc": "1.8.9" }, "lower": { "unsupported": "TODO M2 T7: forge:1.8.9: write the lf: rule" } },
-      { "when": { "loader": "fabric", "mc": "26.1.2" }, "lower": { "unsupported": "TODO M2 T7: fabric:26.1.2: write the official: rule" } },
-      { "when": {}, "lower": { "invoke": "net.minecraft.world.phys.Vec3#scale(D)Lnet/minecraft/world/phys/Vec3;" } }
+      {"when": {"mc": "..1.13.2"}, "lower": {"unsupported": "no direct lowering on 1.8.9: Legacy Yarn Vec3d (class_236) has no scale(D); needs an adapter (Boxes) once adapters exist"}},
+      {"when": {"mc": "26.1.."}, "lower": {"invoke": "official:net.minecraft.world.phys.Vec3#scale(D)Lnet/minecraft/world/phys/Vec3;"}},
+      {"when": {}, "lower": {"invoke": "net.minecraft.world.phys.Vec3#scale(D)Lnet/minecraft/world/phys/Vec3;"}}
     ],
     "length": [
-      { "when": { "loader": "legacy-fabric", "mc": "1.8.9" }, "lower": { "unsupported": "TODO M2 T7: legacy-fabric:1.8.9: write the lf: rule" } },
-      { "when": { "loader": "forge", "mc": "1.8.9" }, "lower": { "unsupported": "TODO M2 T7: forge:1.8.9: write the lf: rule" } },
-      { "when": { "loader": "fabric", "mc": "26.1.2" }, "lower": { "unsupported": "TODO M2 T7: fabric:26.1.2: write the official: rule" } },
-      { "when": {}, "lower": { "invoke": "net.minecraft.world.phys.Vec3#length()D" } }
+      {"when": {"mc": "..1.13.2"}, "lower": {"invoke": "lf:net/minecraft/class_236#method_612()D"}},
+      {"when": {"mc": "26.1.."}, "lower": {"invoke": "official:net.minecraft.world.phys.Vec3#length()D"}},
+      {"when": {}, "lower": {"invoke": "net.minecraft.world.phys.Vec3#length()D"}}
     ],
     "distanceTo": [
-      { "when": { "loader": "legacy-fabric", "mc": "1.8.9" }, "lower": { "unsupported": "TODO M2 T7: legacy-fabric:1.8.9: write the lf: rule" } },
-      { "when": { "loader": "forge", "mc": "1.8.9" }, "lower": { "unsupported": "TODO M2 T7: forge:1.8.9: write the lf: rule" } },
-      { "when": { "loader": "fabric", "mc": "26.1.2" }, "lower": { "unsupported": "TODO M2 T7: fabric:26.1.2: write the official: rule" } },
-      { "when": {}, "lower": { "invoke": "net.minecraft.world.phys.Vec3#distanceTo(Lnet/minecraft/world/phys/Vec3;)D" } }
+      {"when": {"mc": "..1.13.2"}, "lower": {"invoke": "lf:net/minecraft/class_236#method_618(Lnet/minecraft/class_236;)D"}},
+      {"when": {"mc": "26.1.."}, "lower": {"invoke": "official:net.minecraft.world.phys.Vec3#distanceTo(Lnet/minecraft/world/phys/Vec3;)D"}},
+      {"when": {}, "lower": {"invoke": "net.minecraft.world.phys.Vec3#distanceTo(Lnet/minecraft/world/phys/Vec3;)D"}}
     ]
   }
 }
