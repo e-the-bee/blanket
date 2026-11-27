@@ -42,12 +42,6 @@
       {"when": {"mc": "..1.13.2"}, "lower": {"get": "lf:net/minecraft/class_1354#field_5204:Lnet/minecraft/class_1354;"}},
       {"when": {"mc": "26.1.."}, "lower": {"get": "official:net.minecraft.core.Direction#EAST:Lnet/minecraft/core/Direction;"}},
       {"when": {}, "lower": {"get": "net.minecraft.core.Direction#EAST:Lnet/minecraft/core/Direction;"}}
-    ],
-    "values": [
-      {"when": {}, "lower": {"unsupported": "TODO M2 T7: Enum.values has no intermediary row on fabric:1.21.1 and forge:1.20.1; pass-through (plan 3): C1 exempts it, then delete this key"}}
-    ],
-    "valueOf": [
-      {"when": {}, "lower": {"unsupported": "TODO M2 T7: Enum.valueOf has no intermediary row on fabric:1.21.1 and forge:1.20.1; pass-through (plan 3): C1 exempts it, then delete this key"}}
     ]
   }
 }
