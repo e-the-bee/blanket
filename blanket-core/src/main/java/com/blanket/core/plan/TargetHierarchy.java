@@ -25,8 +25,9 @@ import java.util.Set;
 /**
  * The class hierarchy of one target's game, its libraries and the JDK, asked and answered in runtime names
  * (lowering-and-adapters.md section 6). The jars are in the target's jar names (obfuscated before 26.x), so a class is
- * translated runtime to jar name, read from the client jar, the loader jar, the JDK or (lazily) the library jar the
- * version json lists for its package, and its supertypes are translated back.
+ * translated runtime to jar name, read from the client jar, the loader jar, the JDK or (lazily) the library jar that
+ * provides its package: a library of the version json, or one of the loader's own libraries (NeoForge's event bus, whose
+ * classes generated listeners name), and its supertypes are translated back.
  *
  * <p>Translation starts from the class pairs the plan's resolution already produced; any other class goes through the
  * class rows of the one mapping file between the jar and the runtime namespace (the resolver's last step,

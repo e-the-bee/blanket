@@ -22,6 +22,7 @@ import java.util.Map;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * {@link TargetHierarchy} on the real client jars (downloaded into the Blanket cache; skipped offline). Expected values
@@ -92,6 +93,26 @@ class TargetHierarchyRealDataTest {
             assertEquals(Optional.of(new Hierarchy.Facts("net/minecraft/class_1631", List.of(), false)), get(h, "net/minecraft/class_518"));
             assertEquals("net/minecraft/class_988", get(h, "net/minecraft/class_1631").orElseThrow().superName());
             assertEquals("net/minecraft/class_1631", commonSuper(h, "net/minecraft/class_518", "net/minecraft/class_519"));
+        }
+    }
+
+    /**
+     * NeoForge's {@code Event} is in its {@code bus} library (installer version.json {@code net.neoforged:bus:8.0.5}), not
+     * in the universal jar; generated listeners name it, so the hierarchy must find it. A class no jar has stays unknown.
+     */
+    @Test
+    void neoforge1211FindsTheLoaderBusLibrary() throws Exception {
+        try (TargetHierarchy h = open("neoforge:1.21.1")) {
+            assertTrue(get(h, "net/neoforged/bus/api/Event").isPresent());
+            assertEquals(Optional.empty(), get(h, "net/neoforged/bus/api/NoSuchEvent"));
+        }
+    }
+
+    /** Forge 1.20.1's {@code Dist} is in {@code mergetool-1.1.5-api.jar} of the installer's version.json ({@code unzip -l}). */
+    @Test
+    void forge1201FindsDistInALoaderLibrary() throws Exception {
+        try (TargetHierarchy h = open("forge:1.20.1")) {
+            assertEquals("java/lang/Enum", get(h, "net/minecraftforge/api/distmarker/Dist").orElseThrow().superName());
         }
     }
 }
