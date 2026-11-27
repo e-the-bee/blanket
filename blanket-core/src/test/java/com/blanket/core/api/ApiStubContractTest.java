@@ -230,6 +230,18 @@ class ApiStubContractTest {
                 "attach(IILjava/lang/Runnable;)V",
                 "title()Ljava/lang/String;",
                 "runInit()V"));
+        OWNED_TYPES.put("ScreenKind", Set.of(
+                "field NONE",
+                "field TITLE",
+                "field PAUSE",
+                "field CHAT",
+                "field INVENTORY",
+                "field CONTAINER",
+                "field OTHER"));
+        OWNED_TYPES.put("ScreenOpen", Set.of(
+                "kind()Lcom/blanket/api/ScreenKind;",
+                "isModScreen()Z",
+                "set(Lcom/blanket/api/ScreenKind;Z)Lcom/blanket/api/ScreenOpen;"));
     }
 
     @Test
