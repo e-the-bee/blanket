@@ -45,4 +45,17 @@ class LookupMainTest {
     void noRowsAtAllExitsOne() {
         assertEquals(1, LookupMain.exitCode(List.of(), false));
     }
+
+    @Test
+    void aMemberWithoutADescriptorExitsOneAndSaysWhy() {
+        var out = new java.io.ByteArrayOutputStream();
+        var err = new java.io.ByteArrayOutputStream();
+        int code = LookupMain.report(lookup.lookup("lf:class_15#method_17", List.of()), false,
+                new java.io.PrintStream(out), new java.io.PrintStream(err));
+        assertEquals(1, code);
+        String line = err.toString().strip();
+        assertTrue(line.startsWith("lookup: member reference needs a descriptor"), line);
+        assertTrue(line.endsWith("lf:class_15#method_17"), line);
+        assertEquals(1, line.lines().count());
+    }
 }
