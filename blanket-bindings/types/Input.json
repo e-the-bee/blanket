@@ -4,7 +4,9 @@
   "note": "Owned facade: no representation; its members are bound like alias members (key translation is an adapter per era).",
   "members": {
     "isKeyDown": [
-      { "when": {}, "lower": { "unsupported": "TODO M2 T7: bind Input.isKeyDown on every target; try `lookup --ref <Class>#<member>`" } }
+      { "when": { "mc": "..1.13.2" }, "lower": { "adapter": "legacy:com.blanket.adapters.Keys#isKeyDown" } },
+      { "when": { "mc": "26.1.." },    "lower": { "adapter": "unobf:com.blanket.adapters.Keys#isKeyDown" } },
+      { "when": {},                    "lower": { "adapter": "modern:com.blanket.adapters.Keys#isKeyDown" } }
     ]
   }
 }
