@@ -11,7 +11,7 @@ import com.blanket.api.Player;
 
 /**
  * The M3 hud-box sample (testing-strategy section 4): a magenta 40x40 HUD rectangle at (10, 10) and an opaque green
- * world box three blocks south of where the player first appeared after a join. Key {@code H} ("toggle") hides and
+ * world box three blocks south of where the player first stood on the ground after a join. Key {@code H} ("toggle") hides and
  * shows the rectangle. Every log line starts with {@code [hudbox]}. There is no text: Canvas2D has no text until M4.
  */
 public class HudBox implements ClientMod {
@@ -39,8 +39,10 @@ public class HudBox implements ClientMod {
             if (p == null) {
                 return;
             }
-            if (joined && !anchored) {
-                // The box sits 3 blocks south of where the player first appeared (a new player faces south).
+            if (joined && !anchored && p.onGround()) {
+                // The box sits 3 blocks south of where the player first stood (a new player faces south). On the
+                // ground only: on 1.8.9 the first tick after a join can show the position from before the server's
+                // position packet (M3 gate round 2).
                 ax = Math.floor(p.x());
                 ay = Math.floor(p.y());
                 az = Math.floor(p.z()) + 3;

@@ -89,9 +89,13 @@ public final class Testkit {
             this.out = out;
         }
 
+        /**
+         * Null until the player stands on the ground: on 1.8.9 the first tick after a join can still show the
+         * position from before the server's position packet (M3 gate round 2: anchored at 8 65 8, then moved).
+         */
         public double[] player() {
             Player p = Client.get().player();
-            return p == null ? null : new double[] {p.x(), p.y(), p.z()};
+            return p == null || !p.onGround() ? null : new double[] {p.x(), p.y(), p.z()};
         }
 
         public boolean pressFirstKey() {

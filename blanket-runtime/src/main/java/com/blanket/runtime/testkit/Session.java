@@ -6,14 +6,14 @@ import java.util.List;
 
 /**
  * One testkit run (M3 plan section 3.3), without game types: counts the events, anchors at the first CLIENT_TICK_END
- * after WORLD_JOIN with a player, waits {@code waitTicks}, reads the probes in the next frame's HUD readback, presses
+ * after WORLD_JOIN with a player on the ground, waits {@code waitTicks}, reads the probes in the next frame's HUD readback, presses
  * the first registered key and re-reads the key probe after {@code afterTicks}, then writes the result at a
  * CLIENT_TICK_END and quits. {@link Testkit} feeds it from the events and the executor's tap.
  */
 final class Session {
     /** What the session asks of the game. */
     interface Game {
-        /** The player's position, or null without a player. */
+        /** The player's position once it stands on the ground, or null (no player, or still in the air). */
         double[] player();
 
         /** Presses the first key mapping the mod registered; false when it registered none. */

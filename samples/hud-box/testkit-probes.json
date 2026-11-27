@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "waitTicks": 100,
-  "anchor": "first CLIENT_TICK_END after WORLD_JOIN with a non-null player; origin = (floor(x), floor(y), floor(z))",
+  "anchor": "first CLIENT_TICK_END after WORLD_JOIN with a player on the ground; origin = (floor(x), floor(y), floor(z))",
   "probes": [
     { "name": "hud", "gui": [30, 30], "rgb": "#FF00FF", "tolerance": 8 },
     { "name": "box", "world": [0.5, 0.5, 3.5], "dominant": "green" }
