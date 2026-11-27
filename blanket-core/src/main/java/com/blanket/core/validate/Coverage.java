@@ -171,6 +171,7 @@ final class Coverage {
             String file = e.getKey();
             EventBinding eb = e.getValue();
             String label = "event " + eb.event();
+            if (eb.usedBy() != null) usedBy(file, label, eb.usedBy());
             boolean[] reached = new boolean[eb.recipes().size()];
             for (TargetSpec t : specs) {
                 int i = Rules.first(eb.recipes(), EventBinding.Recipe::when, t);
@@ -198,6 +199,18 @@ final class Coverage {
                     for (EventBinding.Source s : in.before()) glueSource(file, label, s, glueKeys, seen);
                 }
             }
+        }
+    }
+
+    /** A hand-over's {@code usedBy} names a public method of an API class, or no mod could ever wire it. */
+    private void usedBy(String file, String label, String usedBy) {
+        int hash = usedBy.indexOf('#');
+        String owner = Rules.internal(usedBy.substring(0, hash)), name = usedBy.substring(hash + 1);
+        boolean found = api.methods(owner).orElse(List.of()).stream().anyMatch(m -> m.name().equals(name));
+        if (!found) {
+            errors.add(new Diagnostic(ErrorCode.UNBOUND, "*", label, usedBy, null,
+                    "C1 coverage: " + file + " is used by " + usedBy + ", which is not a public method of the API",
+                    "name an API method in \"usedBy\" of " + file + " (binding-format.md section 7)"));
         }
     }
 

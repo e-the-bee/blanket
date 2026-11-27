@@ -1,0 +1,20 @@
+{
+  "schema": 1,
+  "event": "KEY_HANDOVER",
+  "usedBy": "com.blanket.api.KeyBinding#register",
+  "recipes": [
+    { "when": { "loader": "legacy-fabric", "mc": "..1.13.2" },
+      "mixin": { "hook": "keys.options", "dispatch": "keysOptions", "payload": { "options": { "arg": 0 } } } },
+    { "when": { "loader": "fabric" },
+      "mixin": { "hook": "keys.options", "dispatch": "keysOptions", "payload": { "options": { "arg": 0 } } } },
+    { "when": { "loader": "forge", "mc": "1.8.9" },
+      "native": { "event": "loader:net.minecraftforge.fml.common.event.FMLInitializationEvent", "bus": "fml", "dispatch": "keysOptions",
+        "payload": { "options": { "glue": "GlueKeys#options" } } } },
+    { "when": { "loader": "forge", "mc": "1.20.1" },
+      "native": { "event": "loader:net.minecraftforge.client.event.RegisterKeyMappingsEvent", "bus": "mod", "dispatch": "keysRegister",
+        "payload": { "event": { "arg": 1 } } } },
+    { "when": { "loader": "neoforge", "mc": "1.21.1" },
+      "native": { "event": "loader:net.neoforged.neoforge.client.event.RegisterKeyMappingsEvent", "bus": "mod", "dispatch": "keysRegister",
+        "payload": { "event": { "arg": 1 } } } }
+  ]
+}

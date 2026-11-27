@@ -90,4 +90,21 @@ public final class Dispatch {
                 GlueWorld.lastPy() + (GlueWorld.py() - GlueWorld.lastPy()) * partialTick,
                 GlueWorld.lastPz() + (GlueWorld.pz() - GlueWorld.lastPz()) * partialTick);
     }
+
+    /**
+     * Key hand-over into the options' key array (events-and-hooks 4.7): Fabric and Legacy Fabric at the head of the
+     * options' load (the options are {@code this} there, before {@code options.txt} is read), Forge 1.8.9 at
+     * {@code FMLInitializationEvent} (FML reloads {@code options.txt} after mod init). Once: the queue is drained.
+     */
+    public static void keysOptions(Object options) {
+        java.util.List<Object> queued = KeyQueue.drain();
+        if (queued.isEmpty()) return;
+        com.blanket.runtime.glue.GlueKeys.setMappings(options,
+                KeyHandover.append((Object[]) com.blanket.runtime.glue.GlueKeys.mappings(options), queued));
+    }
+
+    /** Key hand-over through the loader's {@code RegisterKeyMappingsEvent} (Forge 1.20.1, NeoForge), on the mod bus. */
+    public static void keysRegister(Object event) {
+        for (Object mapping : KeyQueue.drain()) com.blanket.runtime.glue.GlueKeys.register(event, mapping);
+    }
 }

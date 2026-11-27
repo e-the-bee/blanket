@@ -47,8 +47,11 @@ final class TargetPlan implements Opcodes {
     /** A value a payload source leaves on the stack: the instructions and the value's type descriptor. */
     private record Value(List<Op> ops, String desc) {}
 
-    /** Where a hook body runs: a Mixin handler (target method arguments) or a native listener (the event in slot 1). */
-    private record Site(String label, Type[] mixinArgs) {
+    /**
+     * Where a hook body runs: a Mixin handler (target method arguments; {@code self} is the hooked class) or a native
+     * listener (the event in slot 1; {@code self} is the event class). {@code self} is null in the dry pass.
+     */
+    private record Site(String label, Type[] mixinArgs, String self) {
         boolean mixin() {
             return mixinArgs != null;
         }
@@ -469,7 +472,7 @@ final class TargetPlan implements Opcodes {
      */
     private List<Hook> hooks() {
         Map<String, EventRecipes.Wired> wired = new LinkedHashMap<>();
-        for (String event : scan.events()) {
+        for (String event : EventRecipes.used(b.events(), scan)) {
             List<Diagnostic> errors = new ArrayList<>();
             EventRecipes.Wired w = EventRecipes.wire(b.events(), event, t, errors);
             if (w == null) throw Planner.fail(errors.get(0));
@@ -507,15 +510,20 @@ final class TargetPlan implements Opcodes {
         StringBuilder handler = new StringBuilder("(");
         for (Type arg : args) handler.append(arg.getDescriptor());
         handler.append(")V");
-        Site site = new Site(label, args);
+        Site site = new Site(label, args, method.owner());
         ApiClasses.Method dispatch = dispatch(in.dispatch(), label);
+        List<Hook.Field> mutable = new ArrayList<>();
+        for (String f : rule.mutable()) {
+            Resolver.Resolved r = n.named(anchor, f, hookLabel);
+            mutable.add(new Hook.Field(r.owner(), r.name(), r.desc()));
+        }
         return new Hook(event, dispatch.name(), dispatch.desc(), true, method.owner(), method.name() + method.desc(), at, handler.toString(),
-                null, null, List.of(), before(in, site), payload(in, dispatch, site), in.hook());
+                null, null, List.of(), before(in, site), payload(in, dispatch, site), in.hook(), Collections.unmodifiableList(mutable));
     }
 
     private Hook listener(String event, EventBinding.Injection in, String label) {
         String eventClass = n.named(anchor, in.nativeEvent(), label).owner();
-        Site site = new Site(label, null);
+        Site site = new Site(label, null, eventClass);
         List<Filter> filters = new ArrayList<>();
         for (Map.Entry<String, String> f : in.filter().entrySet()) {
             Value got = getter(f.getKey(), label);
@@ -586,18 +594,28 @@ final class TargetPlan implements Opcodes {
         return gotRef && wantRef || got.equals(want);
     }
 
+    /**
+     * An {@code arg} source: in a Mixin handler, argument {@code index} of the hooked method from 1, and 0 for the hooked
+     * object ({@code this}); in a native listener, 1 for the event (the listener's one argument).
+     */
     private Value arg(int index, Site site) {
         if (!site.mixin()) {
-            throw Planner.fail(new Diagnostic(ErrorCode.SHAPE, t.id(), site.label(), null, null,
-                    "an arg source needs a hooked method; a native listener has only the event (use a getter)",
-                    "read the value with a getter on the event"));
+            if (index != 1) {
+                throw Planner.fail(new Diagnostic(ErrorCode.SHAPE, t.id(), site.label(), null, null,
+                        "arg " + index + " does not exist: a native listener has one argument, the event (arg 1)",
+                        "pass the event as {\"arg\": 1}, or read a value from it with a getter"));
+            }
+            return new Value(List.of(Op.load(ALOAD, 1)), site.self() == null ? "Ljava/lang/Object;" : "L" + site.self() + ";");
+        }
+        if (index == 0) {
+            return new Value(List.of(Op.load(ALOAD, 0)), site.self() == null ? "Ljava/lang/Object;" : "L" + site.self() + ";");
         }
         Type[] args = site.mixinArgs();
-        if (index < 1 || index > args.length) {
+        if (index > args.length) {
             if (n.dry()) return new Value(List.of(), "Ljava/lang/Object;");
             throw Planner.fail(new Diagnostic(ErrorCode.SHAPE, t.id(), site.label(), null, null,
                     "arg " + index + " does not exist: the hooked method takes " + args.length + " arguments",
-                    "number the hooked method's arguments from 1"));
+                    "number the hooked method's arguments from 1 (0 is the hooked object)"));
         }
         int slot = 1;
         for (int i = 0; i < index - 1; i++) slot += args[i].getSize();

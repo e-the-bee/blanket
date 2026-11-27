@@ -167,17 +167,25 @@ Not an event, but it has the same timing problem. `ScreenHost.render` (adapter,
 ### 4.7 Key binding registration (`KeyBinding.register`)
 
 Registration must happen before the game builds its key list. `register` may only be called inside
-`ClientMod.init()`; the runtime queues the bindings and a per-loader recipe adds them:
+`ClientMod.init()`; the runtime queues the bindings and a per-loader recipe hands them over. The recipe is the
+hand-over `KEY_HANDOVER` (`events/KeyHandover.json`, `usedBy` `KeyBinding#register`, [binding-format.md](binding-format.md)
+§7), wired only into mods that call `register`:
 
 | Loader-era | Recipe | Status |
 |---|---|---|
-| Fabric 1.14–26.x, Legacy Fabric | Mixin on the options class (`Options` / `GameOptions`) at the point where `keyMappings` is assigned, appending the queued bindings to the array | **ASSUMED** (Fabric API's `KeyBindingRegistryImpl` does this; target method per era to verify, spike S-07) |
-| NeoForge | native `RegisterKeyMappingsEvent` on the mod bus | **ASSUMED** (S-07) |
-| Forge 1.8.9–1.12.2 | call `net.minecraftforge.fml.client.registry.ClientRegistry.registerKeyBinding(KeyBinding)` from the generated entry class | **ASSUMED** (S-07) |
+| Fabric 1.21.1, 26.x | Mixin `Options#load()V` HEAD (hook `keys.options`) → `Dispatch.keysOptions(this)`: appends the queued bindings to `keyMappings`, which the Mixin shadows `@Mutable` (it is `public final`) | verified by `javap` (S-07, M3 KEYS) |
+| Legacy Fabric 1.8.9 | same, `GameOptions#load` (`lf:class_347#method_865`), on `allKeys` (not final) | verified by `javap` (S-07, M3 KEYS) |
+| NeoForge 1.21.1, Forge 1.20.1 | native `RegisterKeyMappingsEvent` on the mod bus → `Dispatch.keysRegister(event)` → `event.register(mapping)` per binding | verified by `javap` (S-07, M3 KEYS) |
+| Forge 1.8.9 | in the entry's `FMLInitializationEvent` method after `Boot.init` (`bus: "fml"`) → `Dispatch.keysOptions(options)`: the same append to `GameSettings.keyBindings` that `ClientRegistry.registerKeyBinding` does (its whole body), because a `loader:` reference cannot name a 1.8.9 Minecraft class in its descriptor (P-09 resolves descriptor classes through the Mojang anchor) | verified by `javap` (S-07, M3 KEYS) |
 
-On every target, `init()` runs before the options are loaded for the Fabric recipe to work. Where the
-entry point runs later than options creation, the recipe must instead also reload the binding's saved
-key from `options.txt`; S-07 settles which case each loader-era is in.
+Order per loader, from `javap` of the real jars (S-07): Fabric Loader 0.20.1 runs the client entrypoint inside
+the `Minecraft` constructor before `Thread.currentThread()` on 1.19.4+ (before `new Options`), and on 1.8.9 four
+method calls before the `LWJGL Version: ` log in `initializeGame`, which is at the `new GameOptions` call; so
+`init()` runs before the options exist and the options' own `load()` reads the saved key. Forge 1.20.1 and NeoForge
+construct mods in `ClientModLoader.begin`, after `Options` was created and loaded, fire `RegisterKeyMappingsEvent`
+from `initClientHooks` after that, and call `options.load(true)` when mod loading finishes, which reads the
+`key_` entries again. Forge 1.8.9 fires `FMLInitializationEvent` in `FMLClientHandler.finishMinecraftLoading`, which
+ends with `gameSettings.loadOptions()`. No loader needs Blanket to re-read `options.txt`.
 
 ### 4.9 Forge 1.13.2–1.20.4 and NeoForge 1.20.1 (SRG eras, D-033)
 

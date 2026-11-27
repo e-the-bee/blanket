@@ -260,9 +260,13 @@ final class Shapes {
 
     // ---------------------------------------------------------------------------------------- hierarchy
 
-    /** True when {@code a} is {@code b} or a class or interface that extends or implements it; only object types have subtypes. */
+    /**
+     * True when {@code a} is {@code b} or a class or interface that extends or implements it, or an array and {@code b} is
+     * {@code Object} (the JVM assigns every array to {@code Object}); only object and array types have supertypes.
+     */
     boolean isSubtype(String a, String b) {
         if (a.equals(b)) return true;
+        if (a.startsWith("[") && b.equals("Ljava/lang/Object;")) return true;
         if (!a.startsWith("L") || !b.startsWith("L")) return false;
         String target = b.substring(1, b.length() - 1);
         if (target.equals("java/lang/Object")) return true;

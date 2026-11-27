@@ -152,10 +152,12 @@ public final class ModCheck {
             types.put(e.getKey(), only(all.types().get(e.getKey()), e.getValue()));
         }
 
-        // a used event's file, and the file of every event one of its recipes goes via (binding-format.md section 7)
-        Set<String> wanted = new TreeSet<>(scan.events());
+        // a used event's file (an Events read or a usedBy hand-over), and the file of every event one of its recipes goes
+        // via (binding-format.md section 7)
+        Set<String> used = EventRecipes.used(all.events(), scan);
+        Set<String> wanted = new TreeSet<>(used);
         for (EventBinding eb : all.events().values()) {
-            if (!scan.events().contains(eb.event())) continue;
+            if (!used.contains(eb.event())) continue;
             for (EventBinding.Recipe r : eb.recipes()) if (r.via() != null) wanted.add(r.via());
         }
         Map<String, EventBinding> events = new LinkedHashMap<>();
@@ -279,7 +281,7 @@ public final class ModCheck {
                 unsupported.put(n.memberKey(), new Lowered.Unsupported(rule.lower().ref(), null));
             }
         }
-        for (String event : scan.events()) {
+        for (String event : EventRecipes.used(narrowed.events(), scan)) {
             EventRecipes.Wired w = EventRecipes.wire(narrowed.events(), event, t, errors);
             if (w == null) continue;
             String label = "event " + event;

@@ -366,7 +366,7 @@ different eras point at different sets, each rule names its own set.
   "schema": 1,
   "hooks": {
     "<hook id>": [
-      { "when": {...}, "method": "<method ref>", "at": <at>, "note": "..." }
+      { "when": {...}, "method": "<method ref>", "at": <at>, "mutable": ["<field ref>", ...]?, "note": "..." }
     ]
   }
 }
@@ -380,12 +380,25 @@ R-EVT-09, R-EXP-06; D-051). Every hook becomes a
 Mixin injector with `require = 1` and `expect = 1`
 ([events-and-hooks.md](events-and-hooks.md) §3). Raw bytecode offsets are not expressible.
 
+`mutable` (optional, non-empty) lists fields of the hooked class, written in the namespace of `method`, that code run
+by the hook assigns although the jar declares them `final`. The generated Mixin class shadows each with `@Shadow @Final
+@Mutable`, which makes Mixin remove `final` from the target field (sponge-mixin `MixinApplicatorStandard`, the
+`isDecoratedMutable` branch). The key hand-over needs it on Fabric, where `Options#keyMappings` is `public final`
+(M3 KEYS):
+
+```json
+"keys.options": [
+  { "when": { "loader": "fabric", "mc": "1.21.1" }, "method": "net.minecraft.client.Options#load()V", "at": "HEAD",
+    "mutable": [ "net.minecraft.client.Options#keyMappings:[Lnet/minecraft/client/KeyMapping;" ] } ]
+```
+
 `events/<Event>.json`:
 
 ```json
 {
   "schema": 1,
   "event": "HUD_RENDER",
+  "usedBy": "<API method>"?,
   "recipes": [
     { "when": {...}, "mixin":  { "hook": "<hook id>", "dispatch": "<Dispatch method>", "before": [<glue source>, ...]?, "payload": { "<name>": <source>, ... } } },
     { "when": {...}, "mixin":  [ { "hook": ..., "dispatch": ..., ... }, { "hook": ..., "dispatch": ... } ] },
@@ -427,6 +440,25 @@ An event is used, and its recipe wired, only where the mod or an embedded class 
 reads its `Events` constant ([events-and-hooks.md](events-and-hooks.md) §1 principle 5): `Dispatch` reads every event to
 fire it, which is no subscription.
 
+`usedBy` (optional) makes an events file a **hand-over** instead of an API event: `event` is then a name of its own (not
+an `Events` constant), and its recipe is wired where the mod calls the named API method (`com.blanket.api.<Type>#<method>`,
+any descriptor). The one hand-over is `KEY_HANDOVER`, used by `com.blanket.api.KeyBinding#register`: it hands the
+mappings queued during `init()` to the game ([events-and-hooks.md](events-and-hooks.md) §4.7). A hand-over's recipes are
+`mixin` or `native`, never `via`:
+
+```json
+{ "schema": 1, "event": "KEY_HANDOVER", "usedBy": "com.blanket.api.KeyBinding#register", "recipes": [
+  { "when": { "loader": "fabric" }, "mixin": { "hook": "keys.options", "dispatch": "keysOptions", "payload": { "options": { "arg": 0 } } } },
+  { "when": { "loader": "neoforge", "mc": "1.21.1" }, "native": { "event": "loader:net.neoforged.neoforge.client.event.RegisterKeyMappingsEvent",
+    "bus": "mod", "dispatch": "keysRegister", "payload": { "event": { "arg": 1 } } } } ] }
+```
+
+`bus` names where a native body listens: `game` (the loader's game event bus), `mod` (the mod's own event bus:
+NeoForge's constructor `IEventBus`, Forge's `FMLJavaModLoadingContext` bus; legacy Forge has none), or `fml`: a
+lifecycle event the generated entry class receives itself. On legacy Forge the `fml` event is
+`FMLInitializationEvent`, and the body runs in the entry's init method right after `Boot.init`, with the event in the
+same slot as in a listener.
+
 `filter` (native only, D-057) maps a getter or field reference on the event object to a static field reference,
 for example `{"loader:...TickEvent#phase:L.../TickEvent$Phase;": "loader:...TickEvent$Phase#END:L.../TickEvent$Phase;"}`.
 The generated listener reads each key and returns early unless the value is identical (`==`) to the static field;
@@ -439,7 +471,8 @@ validator indexes to check native event classes and their getter, field and filt
 (Forge: `net.minecraftforge:forge:<v>:universal`; NeoForge: `net.neoforged:neoforge:<v>:universal`). A supported
 target whose binding uses a `loader:` reference and has no entry is `UNRESOLVED` at step `loader-jar` (D-059).
 
-Payload sources: `{"arg": n}` (n-th argument of the hooked method), `{"this": "<field ref>"}`,
+Payload sources: `{"arg": n}` (in a Mixin, the n-th argument of the hooked method from 1, and `0` for the hooked object
+itself, `this`; in a native body, `1` is the event, the listener's one argument), `{"this": "<field ref>"}`,
 `{"getter": "<method or field ref>"}` (on the native event object: a method without parameters is called, a field
 `Owner#name:T` is read with GETFIELD, D-057), `{"adapter": "..."}`,
 `{"const": v}` (`v` may be `null` for a reference parameter, D-056), and `{"glue": "<GlueType>#<member>", "args": [<source>, ...]}` (D-054). A glue source calls a

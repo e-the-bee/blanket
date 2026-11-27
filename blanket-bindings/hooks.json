@@ -49,6 +49,16 @@
         "method": "lf:net/minecraft/class_524#method_9776(IFJ)V",
         "at": { "invokeString": "lf:net/minecraft/class_839#method_2360(Ljava/lang/String;)V", "ldc": "hand" },
         "note": "the 1.8.9 world point: Profiler#swap(\"hand\") (R-EVT-09, R-EXP-06)" }
+    ],
+    "keys.options": [
+      { "when": { "loader": "legacy-fabric", "mc": "..1.13.2" }, "method": "lf:net/minecraft/class_347#method_865()V", "at": "HEAD",
+        "note": "GameOptions.load, called last in GameOptions.<init> (javap avh 1185) after allKeys is set (1070); the client entrypoint ran before (S-07)" },
+      { "when": { "loader": "fabric", "mc": "1.21.1" }, "method": "net.minecraft.client.Options#load()V", "at": "HEAD",
+        "mutable": [ "net.minecraft.client.Options#keyMappings:[Lnet/minecraft/client/KeyMapping;" ],
+        "note": "Options.load, called last in Options.<init> (javap fgs 3499) after keyMappings is set (2709); keyMappings is public final" },
+      { "when": { "loader": "fabric", "mc": "26.1.." }, "method": "official:net.minecraft.client.Options#load()V", "at": "HEAD",
+        "mutable": [ "official:net.minecraft.client.Options#keyMappings:[Lnet/minecraft/client/KeyMapping;" ],
+        "note": "Options.load, called last in Options.<init> (javap 4959) after keyMappings is set (4081); keyMappings is public final" }
     ]
   }
 }
