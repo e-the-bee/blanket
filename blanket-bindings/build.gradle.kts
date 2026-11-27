@@ -110,9 +110,11 @@ tasks.register<ScaffoldTask>("scaffold") {
 }
 
 // validateBindings checks C1, C2, C3, C7 and C8 on every supported target. It downloads about 60 MB per target on
-// first use. `check` depends on it, so the real bindings must stay green.
+// first use. `check` depends on it, so the real bindings must stay green. It runs after remapAdapters, whose output
+// (build/adapters) the plans of the checked bindings read.
 tasks.register<ValidateTask>("validateBindings") {
     configureTool("com.blanket.core.validate.ValidateMain", "Checks the bindings against every supported target's game data (C1, C2, C3, C7, C8).")
+    dependsOn("remapAdapters")
 }
 
 // stubJars (build-and-gradle.md section 6, lowering-and-adapters.md section 5.1): per adapter set the era stub jar
@@ -148,6 +150,43 @@ abstract class StubJarsTask : BlanketTool() {
 tasks.register<StubJarsTask>("stubJars") {
     configureTool("com.blanket.core.adapters.StubJarsMain", "Builds the era stub jars, the API view jars and the library lists of every adapter set into build/stubs.")
     apiJars.from(apiClasses)
+    // the jars depend on the set files, the alias rules of the type files and targets.json; downloads are versioned
+    inputs.files(fileTree("adapters") { include("*/adapter-set.json") }, fileTree("types"), file("targets.json"))
+        .withPropertyName("bindings").withPathSensitivity(PathSensitivity.RELATIVE)
+    outputs.dir(layout.buildDirectory.dir("stubs"))
+}
+
+// compileAdapters and remapAdapters (build-and-gradle.md section 6, lowering-and-adapters.md section 5.2).
+// compileAdapters: javac --release 8 per set, adapters/<set>/src against build/stubs (stub jar, API view jar,
+// libraries) into build/adapter-classes/<set>; adapters/common/src (the compile-only @Stubs annotation) into
+// build/adapter-classes/common. A class annotated @Stubs("<version>") gets its own javac run against that version's
+// stub jar, built on first use into build/stubs-extra.
+// remapAdapters: authoring names to the set's shipping names, package com/blanket/adapters/ to
+// com/blanket/adapters/<set>/, into build/adapters/<set>/ with adapter-refs.json beside the classes. The generator
+// and validateBindings read build/adapters (they are not packed into this project's jar, M2 plan section 3).
+abstract class AdapterTask : BlanketTool() {
+    @get:Input @get:Optional @get:Option(option = "set", description = "An adapter set (legacy, modern, unobf); repeat for several. Default: every set.")
+    abstract val set: ListProperty<String>
+
+    override fun toolArgs(): List<String> = set.getOrElse(emptyList()).flatMap { listOf("--set", it) }
+}
+
+tasks.register<AdapterTask>("compileAdapters") {
+    configureTool("com.blanket.core.adapters.CompileAdaptersMain", "Compiles every adapter set against its era stub jar into build/adapter-classes.")
+    dependsOn("stubJars")
+    inputs.files(fileTree("adapters")).withPropertyName("sources").withPathSensitivity(PathSensitivity.RELATIVE)
+    inputs.files(layout.buildDirectory.dir("stubs")).withPropertyName("stubs").withPathSensitivity(PathSensitivity.RELATIVE)
+    outputs.dir(layout.buildDirectory.dir("adapter-classes"))
+    outputs.dir(layout.buildDirectory.dir("stubs-extra"))
+}
+
+tasks.register<AdapterTask>("remapAdapters") {
+    configureTool("com.blanket.core.adapters.RemapAdaptersMain", "Remaps the compiled adapters to their shipping names into build/adapters, with adapter-refs.json.")
+    dependsOn("compileAdapters")
+    inputs.files(fileTree("adapters") { include("*/adapter-set.json") }).withPropertyName("sets").withPathSensitivity(PathSensitivity.RELATIVE)
+    inputs.files(layout.buildDirectory.dir("adapter-classes"), layout.buildDirectory.dir("stubs"), layout.buildDirectory.dir("stubs-extra"))
+        .withPropertyName("classes").withPathSensitivity(PathSensitivity.RELATIVE)
+    outputs.dir(layout.buildDirectory.dir("adapters"))
 }
 
 tasks.named("check") { dependsOn("validateBindings") }
