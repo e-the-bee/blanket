@@ -1,6 +1,18 @@
 {
   "schema": 1,
   "hooks": {
+    "tick.start": [
+      { "when": { "loader": "legacy-fabric", "mc": "..1.13.2" }, "method": "lf:net/minecraft/class_1600#method_2954()V", "at": "HEAD" },
+      { "when": { "loader": "fabric", "mc": "1.14..1.21.11" }, "method": "net.minecraft.client.Minecraft#tick()V", "at": "HEAD",
+        "note": "the tick.end method, at its start (events-and-hooks.md 4.1)" },
+      { "when": { "loader": "fabric", "mc": "26.1.." }, "method": "official:net.minecraft.client.Minecraft#tick()V", "at": "HEAD" }
+    ],
+    "screen.open": [
+      { "when": { "loader": "legacy-fabric", "mc": "..1.13.2" }, "method": "lf:net/minecraft/class_1600#method_2928(Lnet/minecraft/class_388;)V", "at": "HEAD" },
+      { "when": { "loader": "fabric", "mc": "1.14..1.21.11" }, "method": "net.minecraft.client.Minecraft#setScreen(Lnet/minecraft/client/gui/screens/Screen;)V", "at": "HEAD" },
+      { "when": { "loader": "fabric", "mc": "26.1..26.1.2" }, "method": "official:net.minecraft.client.Minecraft#setScreen(Lnet/minecraft/client/gui/screens/Screen;)V", "at": "HEAD",
+        "note": "setScreen moves to Gui in 26.2 (events-and-hooks.md 4.5), so the rule ends at 26.1.2" }
+    ],
     "tick.end": [
       { "when": { "loader": "legacy-fabric", "mc": "..1.13.2" }, "method": "lf:net/minecraft/class_1600#method_2954()V", "at": "RETURN" },
       { "when": { "loader": "fabric", "mc": "1.14..1.21.11" }, "method": "net.minecraft.client.Minecraft#tick()V", "at": "RETURN",

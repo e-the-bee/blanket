@@ -1,0 +1,23 @@
+{
+  "schema": 1,
+  "api": "com.blanket.runtime.glue.GlueTestkit",
+  "members": {
+    "press": [
+      { "when": { "mc": "..1.13.2" }, "lower": { "adapter": "legacy:com.blanket.adapters.KeyPress#press" }, "note": "KeyBinding.onKeyPressed(getCode()): the static click the game's keyboard handler runs" },
+      { "when": { "mc": "26.1.." },    "lower": { "adapter": "unobf:com.blanket.adapters.KeyPress#press" } },
+      { "when": {},                    "lower": { "adapter": "modern:com.blanket.adapters.KeyPress#press" }, "note": "KeyMapping.click(InputConstants.getKey(saveString())): the static click the game's keyboard handler runs" }
+    ],
+    "quit": [
+      { "when": { "mc": "..1.13.2" }, "lower": { "chain": [
+        { "invoke": "lf:net/minecraft/class_1600#method_2965()Lnet/minecraft/class_1600;" },
+        { "invoke": "lf:net/minecraft/class_1600#method_2949()V" } ] }, "note": "MinecraftClient.scheduleStop(): running = false" },
+      { "when": { "mc": "26.1.." }, "lower": { "chain": [
+        { "invoke": "official:net.minecraft.client.Minecraft#getInstance()Lnet/minecraft/client/Minecraft;" },
+        { "invoke": "official:net.minecraft.client.Minecraft#stop()V" } ] } },
+      { "when": {}, "lower": { "chain": [
+        { "invoke": "net.minecraft.client.Minecraft#getInstance()Lnet/minecraft/client/Minecraft;" },
+        { "invoke": "net.minecraft.client.Minecraft#stop()V" } ] }, "note": "Minecraft.stop(): running = false" }
+    ]
+  },
+  "note": "M3 TKIT. Used only by com.blanket.runtime.testkit.Testkit, which only --testkit builds ship. Names from the mapping files and javap on the client jars (M3 TKIT report)."
+}

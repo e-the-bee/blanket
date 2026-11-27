@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-only
 package com.blanket.runtime;
 
+import java.nio.ByteBuffer;
 import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
 import org.lwjgl.opengl.GL11;
@@ -47,4 +48,5 @@ public final class Lwjgl2Gl implements Gl {
     public void framebufferTexture2D(int t, int a, int tt, int tex, int l) { GL30.glFramebufferTexture2D(t, a, tt, tex, l); }
     public int checkFramebufferStatus(int target) { return GL30.glCheckFramebufferStatus(target); }
     public void drawArrays(int mode, int first, int count) { GL11.glDrawArrays(mode, first, count); }
+    public void readPixels(int x, int y, int w, int h, int format, int type, ByteBuffer out) { GL11.glReadPixels(x, y, w, h, format, type, out); }
 }

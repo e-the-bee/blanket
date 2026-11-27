@@ -92,7 +92,7 @@ and only rows for wanted symbols are kept ([mappings-and-versions.md](mappings-a
 | `lf` | target ≤ 1.13.2: target LF intermediary file: id → target-obf. Other targets: unresolvable |
 | `srg` | SRG ids are never written in bindings; they are only a runtime namespace (below) |
 | `official` | target 26.x: used as is. Other targets: unresolvable |
-| `loader` | owner and member name used as is on every target; Minecraft classes inside the descriptor are written in Mojang anchor names and resolved like any class reference ([pseudocode.md](pseudocode.md) P-09) |
+| `loader` | owner and member name used as is on every target; Minecraft classes inside the descriptor are written in Mojang anchor names and resolved like any class reference ([pseudocode.md](pseudocode.md) P-09). On a target in the Legacy Fabric range (1.8.9 has no Mojang names to route through) a Minecraft class is written as its `lf` id, `net/minecraft/class_388`, and resolved like an `lf` class (M3: `GuiOpenEvent#gui` on Forge 1.8.9) |
 
 Then target-obf → runtime name by the target's runtime namespace ([loader-emitters.md](loader-emitters.md)):
 
