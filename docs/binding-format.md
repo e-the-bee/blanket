@@ -122,6 +122,9 @@ is an `UNRESOLVED` error, never a silent pass.
 | `SHAPE` | a direct lowering's stack effect differs from the API member's (§4.3) | both descriptors |
 | `UNSUPPORTED` | a feature-gated member is reachable on a target without the feature (§6) | member, feature, target, the calling mod method |
 | `ORDER` | an aliased enum's constants are in a different order than the API's | enum, target |
+| `VERSION` | a class's major version is above the target's Java baseline (lowering §7; D-061) | class, major version, target's baseline |
+| `COLLISION` | two mod methods have the same name and descriptor after remapping (lowering §4.8; D-061) | both methods, target |
+| `FORBIDDEN` | a pattern the generator rejects: pattern switch over API types, non-literal `Feature` in `supports` (lowering §3; D-061) | the construct, target |
 
 Every error carries the target and is reported for all targets at once (the generator does not stop
 at the first target).
