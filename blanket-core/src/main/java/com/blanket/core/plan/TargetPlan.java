@@ -227,7 +227,7 @@ final class TargetPlan implements Opcodes {
             case UNSUPPORTED:
                 return new Lowered.Unsupported(l.ref(), null);
             case ADAPTER: {
-                Op call = adapterCall(l, m, label, tb.file());
+                Op call = adapterCall(l, m, null, label, tb.file());
                 return new Lowered.Adapter(call.owner(), call.name(), call.desc());
             }
             case NEW: {
@@ -241,9 +241,11 @@ final class TargetPlan implements Opcodes {
 
     /**
      * The static call an {@code adapter} rule makes: {@code <set>:com.blanket.adapters.<Class>#<method>} becomes owner
-     * {@code com/blanket/adapters/<set>/<Class>}; the descriptor is the API member's, receiver first (API names).
+     * {@code com/blanket/adapters/<set>/<Class>}; the descriptor is the API member's, receiver first (API names). For a
+     * glue member ({@code m} null) it is {@code glueDesc}, the stub's own descriptor: the adapter takes the stub's
+     * parameters as they are (an {@code Object} parameter stays {@code Object}) and does its own casts.
      */
-    private Op adapterCall(Lowering l, Scan.ApiMember m, String label, String file) {
+    private Op adapterCall(Lowering l, Scan.ApiMember m, String glueDesc, String label, String file) {
         String ref = l.ref();
         int colon = ref.indexOf(':'), hash = ref.indexOf('#');
         String cls = colon > 0 && hash > colon ? ref.substring(colon + 1, hash) : "";
@@ -261,12 +263,12 @@ final class TargetPlan implements Opcodes {
                     "the adapter set " + set + " is not the set of " + t.mc() + ", " + row.adapters() + " (targets.json)",
                     "name an adapter of the set " + row.adapters() + " in the rule of " + label + " for " + t.id() + " in " + file));
         }
-        if (m == null) {
+        if (m == null && glueDesc == null) {
             throw Planner.fail(new Diagnostic(ErrorCode.UNSUPPORTED, t.id(), label, ref, null,
-                    file + " binds " + label + " to an adapter, which only an API member can use",
+                    file + " binds " + label + " to an adapter in a chain, which only an API member or a whole glue rule can use",
                     "bind " + label + " with a direct lowering or a chain"));
         }
-        String desc = m.isField() ? "()" + m.desc() : m.isStatic() ? m.desc() : "(L" + m.owner() + ";" + m.desc().substring(1);
+        String desc = m == null ? glueDesc : m.isField() ? "()" + m.desc() : m.isStatic() ? m.desc() : "(L" + m.owner() + ";" + m.desc().substring(1);
         return Op.invoke(INVOKESTATIC, "com/blanket/adapters/" + set + "/" + cls.substring(ADAPTER_PACKAGE.length()), method, desc, false);
     }
 
@@ -336,7 +338,7 @@ final class TargetPlan implements Opcodes {
             case NEWARRAY:
                 return Op.newArray(l.ref(), l.length());
             case ADAPTER:
-                return adapterCall(l, member, label, file);
+                return adapterCall(l, member, null, label, file);
             default:
                 throw new IllegalStateException("not a chain step: " + l);
         }
@@ -391,7 +393,8 @@ final class TargetPlan implements Opcodes {
                 ApiClasses.Method stub = stub(owner, e.getKey(), label, gb.file());
                 String retDesc = Type.getReturnType(stub.desc()).getDescriptor();
                 List<Op> body = new ArrayList<>(arguments(rule.lower(), stub, anchorOf(gb), label, gb.file()));
-                body.addAll(lower(rule.lower(), retDesc, anchorOf(gb), label, gb.file(), null));
+                if (rule.lower().kind() == Lowering.Kind.ADAPTER) body.add(adapterCall(rule.lower(), null, stub.desc(), label, gb.file()));
+                else body.addAll(lower(rule.lower(), retDesc, anchorOf(gb), label, gb.file(), null));
                 out.add(new Glue(owner + "." + stub.name(), retDesc, Collections.unmodifiableList(body)));
                 planned.put(owner + "." + stub.name(), stub.desc());
             }
@@ -432,6 +435,9 @@ final class TargetPlan implements Opcodes {
                 } else {
                     for (Type a : Type.getArgumentTypes(r.desc())) wanted.add(a.getDescriptor());
                 }
+            }
+            case ADAPTER -> {   // a whole-rule adapter takes the stub's parameters as they are
+                if (first == l) for (Type p : params) wanted.add(p.getDescriptor());
             }
             default -> { }
         }

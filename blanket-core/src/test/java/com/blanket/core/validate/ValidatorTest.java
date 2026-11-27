@@ -327,9 +327,19 @@ class ValidatorTest {
         data = new FixtureGame.Data(FixtureGame.clientJar(tmp, false, true));   // a.c()V is not in this jar
         Diagnostic d = only(run(baseline()));
         assertEquals(ErrorCode.UNRESOLVED, d.code());
-        assertEquals("hook tick.end", d.member());
+        assertEquals("hook tick.end (event FX_TICK)", d.member());
         assertEquals("jar", d.namespaceStep());
         assertTrue(d.detail().startsWith("C7 hooks"), d.detail());
+        assertTrue(d.format().contains("hook tick.end (event FX_TICK)"), d.format());
+    }
+
+    @Test
+    void c7HookNamedByTwoEventsNamesBothInTheDiagnostic() throws IOException {
+        data = new FixtureGame.Data(FixtureGame.clientJar(tmp, false, true));   // a.c()V is not in this jar
+        Map<String, String> f = baseline();
+        f.put("events/FxTock.json", TICK_EVENT.replace("FX_TICK", "FX_TOCK"));
+        Diagnostic d = only(run(f));
+        assertEquals("hook tick.end (event FX_TICK, FX_TOCK)", d.member());
     }
 
     private static final String TWO_CALLS = """
@@ -344,7 +354,7 @@ class ValidatorTest {
         Diagnostic d = only(run(f));
         assertEquals(ErrorCode.UNRESOLVED, d.code());
         assertEquals("call sites", d.namespaceStep());
-        assertEquals("hook tick.end", d.member());
+        assertEquals("hook tick.end (event FX_TICK)", d.member());
         assertTrue(d.detail().contains("2 call sites"), d.detail());
         assertTrue(d.nextStep().contains("ordinal"), d.nextStep());
     }

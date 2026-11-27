@@ -292,6 +292,13 @@ of the lowering, receiver included; the generator emits a `checkcast` per argume
 `GlueWorld.viewProjection(Object, Object)` lowers to the direct invoke
 `Camera#getViewRotationProjectionMatrix(Matrix4f)Matrix4f` on 26.x (D-057).
 
+A glue member may also bind a whole-rule `{ "adapter": "<set>:com.blanket.adapters.<Class>#<method>" }` (M3): the
+glue body loads the stub's parameters in order and calls the adapter with the stub's own descriptor, so an `Object`
+parameter stays `Object` and the adapter casts or tests it itself (`instanceof` needs this, a chain has no such step).
+The adapter closure and checks C4 and C6 treat the call like an API member's adapter. An adapter in a chain is still an
+API-member-only form. The glue stub, and with it the adapter's class and everything the class references, ships in
+every jar that reaches the stub's class, so keep such adapters free of references that exist on only part of a set.
+
 ## 5. Adapter sets `adapters/<set>/adapter-set.json`
 
 ```json
