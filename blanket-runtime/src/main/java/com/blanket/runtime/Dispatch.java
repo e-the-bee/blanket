@@ -5,9 +5,12 @@ import com.blanket.api.Client;
 import com.blanket.api.ClientTick;
 import com.blanket.api.Events;
 import com.blanket.api.HudRender;
+import com.blanket.api.ScreenKind;
+import com.blanket.api.ScreenOpen;
 import com.blanket.api.WorldJoin;
 import com.blanket.api.WorldLeave;
 import com.blanket.api.WorldRender;
+import com.blanket.runtime.glue.GlueScreen;
 import com.blanket.runtime.glue.GlueWorld;
 
 /** Entry points for the generated hooks (Mixin handlers and native listeners). Client thread only. */
@@ -19,6 +22,9 @@ public final class Dispatch {
     private static final HudRender HUD_PAYLOAD = new HudRender(HUD);
     private static final WorldRender WORLD_PAYLOAD = new WorldRender(WORLD);
     private static final WorldChange WORLDS = new WorldChange();
+    private static final ScreenChange SCREENS = new ScreenChange();
+    private static final ScreenOpen SCREEN_PAYLOAD = new ScreenOpen();
+    private static final ScreenKind[] KINDS = ScreenKind.values();
     private static boolean hudPending;
 
     /** Start of a client tick: WORLD_LEAVE and WORLD_JOIN when the world changed (D-015), then CLIENT_TICK_START. */
@@ -27,6 +33,19 @@ public final class Dispatch {
         if ((change & WorldChange.LEAVE) != 0) Events.WORLD_LEAVE.fire(WorldLeave.INSTANCE);
         if ((change & WorldChange.JOIN) != 0) Events.WORLD_JOIN.fire(WorldJoin.INSTANCE);
         Events.CLIENT_TICK_START.fire(ClientTick.INSTANCE);
+    }
+
+    /**
+     * A screen opens, or null when one closes (events-and-hooks.md section 4.5): SCREEN_OPEN with the screen classified
+     * through glue ({@code kind}, {@code isModScreen}); the payload object is reused.
+     */
+    public static void screenOpen(Object screen) {
+        if (Events.SCREEN_OPEN.isEmpty() || !SCREENS.accept(screen, GlueScreen.current())) return;
+        if (screen == null) {
+            Events.SCREEN_OPEN.fire(SCREEN_PAYLOAD.set(ScreenKind.NONE, false));
+        } else {
+            Events.SCREEN_OPEN.fire(SCREEN_PAYLOAD.set(KINDS[GlueScreen.kind(screen)], GlueScreen.isModScreen(screen)));
+        }
     }
 
     public static void tickEnd() {
@@ -41,7 +60,7 @@ public final class Dispatch {
 
     /** Deferred GUI eras (1.21.6+): record during extraction. */
     public static void hudRecord(float partialTick) {
-        if (Events.HUD_RENDER.isEmpty()) return;
+        if (Events.HUD_RENDER.isEmpty() || GlueScreen.current() != null) return;   // D-018: no HUD while a screen is open
         HUD.clear();
         Events.HUD_RENDER.fire(HUD_PAYLOAD.set(partialTick));
         hudPending = true;

@@ -1,0 +1,29 @@
+{
+  "schema": 1,
+  "api": "com.blanket.runtime.glue.GlueScreen",
+  "members": {
+    "kind": [
+      { "when": { "mc": "..1.13.2" }, "lower": { "adapter": "legacy:com.blanket.adapters.ScreenKinds#kind" } },
+      { "when": { "mc": "26.1.." }, "lower": { "adapter": "unobf:com.blanket.adapters.ScreenKinds#kind" } },
+      { "when": {}, "lower": { "adapter": "modern:com.blanket.adapters.ScreenKinds#kind" } }
+    ],
+    "isModScreen": [
+      { "when": { "mc": "..1.13.2" }, "lower": { "adapter": "legacy:com.blanket.adapters.ScreenKinds#isModScreen" } },
+      { "when": { "mc": "26.1.." }, "lower": { "adapter": "unobf:com.blanket.adapters.ScreenKinds#isModScreen" } },
+      { "when": { "mc": "1.20.1" }, "lower": { "adapter": "modern:com.blanket.adapters.ScreenKindsHost1201#isModScreen" } },
+      { "when": {}, "lower": { "adapter": "modern:com.blanket.adapters.ScreenKindsHost#isModScreen" } }
+    ],
+    "current": [
+      { "when": { "mc": "..1.13.2" }, "lower": { "chain": [
+        { "invoke": "lf:net/minecraft/class_1600#method_2965()Lnet/minecraft/class_1600;" },
+        { "get": "lf:net/minecraft/class_1600#field_3816:Lnet/minecraft/class_388;" } ] } },
+      { "when": { "mc": "26.1.." }, "lower": { "chain": [
+        { "invoke": "official:net.minecraft.client.Minecraft#getInstance()Lnet/minecraft/client/Minecraft;" },
+        { "get": "official:net.minecraft.client.Minecraft#screen:Lnet/minecraft/client/gui/screens/Screen;" } ] } },
+      { "when": {}, "lower": { "chain": [
+        { "invoke": "net.minecraft.client.Minecraft#getInstance()Lnet/minecraft/client/Minecraft;" },
+        { "get": "net.minecraft.client.Minecraft#screen:Lnet/minecraft/client/gui/screens/Screen;" } ] } }
+    ]
+  },
+  "note": "M3 B-EVT. kind and isModScreen are adapters (an instanceof test has no lowering step); the mod screen host of 1.20.1 is its own class (ScreenHost1201). current is the client's open screen: Minecraft.screen (currentScreen in Legacy Yarn), null when none is open."
+}
