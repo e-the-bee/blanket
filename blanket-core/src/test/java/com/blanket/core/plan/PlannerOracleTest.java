@@ -323,9 +323,10 @@ class PlannerOracleTest implements Opcodes {
         Plan p = plan(id);
 
         Map<String, String> members = new TreeMap<>();
-        for (Map.Entry<String, List<Op>> e : p.members().entrySet()) {
-            assertEquals(1, e.getValue().size(), id + " " + e.getKey() + " is one instruction in M0");
-            members.put(e.getKey(), text(e.getValue().get(0)));
+        for (Map.Entry<String, Lowered> e : p.members().entrySet()) {
+            List<Op> ops = ((Lowered.Inline) e.getValue()).ops();
+            assertEquals(1, ops.size(), id + " " + e.getKey() + " is one instruction in M0");
+            members.put(e.getKey(), text(ops.get(0)));
         }
         assertEquals(MEMBERS.get(id), members, id + " members");
         assertEquals(TYPES.get(id), p.types(), id + " types");

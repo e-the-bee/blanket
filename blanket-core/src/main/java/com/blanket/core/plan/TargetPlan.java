@@ -70,7 +70,10 @@ final class TargetPlan implements Opcodes {
     Plan build() {
         planned.clear();
         List<Glue> glue = glue();
-        return new Plan(t, era(t), entry(), glImpl(t), core(glue), types(), members(), glue, hooks());
+        Map<String, Boolean> features = new LinkedHashMap<>();
+        for (String name : b.features().names()) features.put(name, b.features().available(name, t));
+        return new Plan(t, era(t), entry(), glImpl(t), core(glue), types(), members(), Collections.unmodifiableMap(features),
+                t.java() + 44, Map.of(), glue, hooks());
     }
 
     // ---------------------------------------------------------------------------------------- target facts
@@ -139,8 +142,8 @@ final class TargetPlan implements Opcodes {
         return false;
     }
 
-    private Map<String, List<Op>> members() {
-        Map<String, List<Op>> out = new LinkedHashMap<>();
+    private Map<String, Lowered> members() {
+        Map<String, Lowered> out = new LinkedHashMap<>();
         for (Scan.ApiMember m : scan.members()) {
             if (m.isField()) continue;
             TypeBinding tb = typeFile(m.owner());
@@ -156,7 +159,8 @@ final class TargetPlan implements Opcodes {
                         "C1 coverage: used member " + label + " has no rule for " + t.id() + " in " + tb.file(),
                         "add a rule whose \"when\" matches " + t.id() + " to member \"" + m.name() + "\" in " + tb.file()));
             }
-            out.put(m.owner() + "." + m.name() + m.desc(), lower(rule.lower(), Type.getReturnType(m.desc()).getDescriptor(), anchorOf(tb), label, tb.file()));
+            out.put(m.owner() + "." + m.name() + m.desc(),
+                    new Lowered.Inline(lower(rule.lower(), Type.getReturnType(m.desc()).getDescriptor(), anchorOf(tb), label, tb.file())));
         }
         return out;
     }

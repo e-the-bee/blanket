@@ -1,0 +1,8 @@
+{
+  "schema": 1,
+  "name": "unobf",
+  "stubs": "26.1.2",
+  "authoring": "official",
+  "shipping": "official",
+  "covers": { "mc": "26.1.2" }
+}

@@ -3,6 +3,7 @@ package com.blanket.core.validate;
 
 import com.blanket.core.bindings.BindingFiles;
 import com.blanket.core.bindings.EventBinding;
+import com.blanket.core.bindings.Features;
 import com.blanket.core.bindings.Hooks;
 import com.blanket.core.bindings.Targets;
 import com.blanket.core.bindings.TypeBinding;
@@ -19,10 +20,11 @@ import java.util.stream.Stream;
  * Every binding file of one bindings folder, read and parsed. Keys are the paths the files are named by in messages
  * ({@code types/Player.json}, {@code glue/GlueFrame.json}, {@code events/ClientTick.json}).
  *
- * @param hooks hooks.json, or null when the folder has none
+ * @param hooks    hooks.json, or null when the folder has none
+ * @param features features.json, or {@link Features#empty()} when the folder has none
  */
 public record BindingSet(Path dir, Targets targets, Map<String, TypeBinding> types, Map<String, TypeBinding> glue,
-                         Hooks hooks, Map<String, EventBinding> events) {
+                         Hooks hooks, Map<String, EventBinding> events, Features features) {
 
     /** Reads {@code targets.json}, {@code hooks.json} (optional) and every file under {@code types/}, {@code glue/}, {@code events/}. */
     public static BindingSet load(Path dir) throws IOException {
@@ -44,7 +46,9 @@ public record BindingSet(Path dir, Targets targets, Map<String, TypeBinding> typ
             String name = "events/" + p.getFileName();
             events.put(name, EventBinding.parse(BindingFiles.readJson(p), name));
         }
-        return new BindingSet(dir, targets, types, glue, hooks, events);
+        Path featuresFile = dir.resolve("features.json");
+        Features features = Files.isRegularFile(featuresFile) ? Features.parse(BindingFiles.readJson(featuresFile), "features.json") : Features.empty();
+        return new BindingSet(dir, targets, types, glue, hooks, events, features);
     }
 
     private static List<Path> json(Path folder) throws IOException {

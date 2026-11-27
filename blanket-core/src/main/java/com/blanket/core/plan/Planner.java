@@ -2,6 +2,7 @@
 package com.blanket.core.plan;
 
 import com.blanket.core.fetch.ArtifactFetcher;
+import com.blanket.core.lower.Hierarchy;
 import com.blanket.core.lookup.Matrix;
 import com.blanket.core.mapping.MappingDownloads;
 import com.blanket.core.resolve.TargetSpec;
@@ -64,6 +65,11 @@ public final class Planner {
                         throw new UncheckedIOException("cannot obtain the game data of " + target.id() + ": " + e.getMessage(), e);
                     }
                 });
+            }
+
+            @Override
+            public Hierarchy hierarchy(TargetSpec target) {
+                return Hierarchy.empty();
             }
         };
     }
