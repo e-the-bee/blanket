@@ -39,7 +39,7 @@ public final class Stacks {
     }
 
     public static String displayName(ItemStack s) {
-        if (isEmpty(s)) return I18n.translate("tile.air.name", new Object[0]);
+        if (isEmpty(s)) return "Air";
         return I18n.translate(s.getTranslationKey() + ".name", new Object[0]).trim();
     }
 }

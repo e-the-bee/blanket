@@ -159,6 +159,10 @@ member is lowered to an adapter that treats the sentinel and `null` as empty. Mo
 stack with `null` is a bug on every target; the generator warns when it sees `IFNULL`/`IFNONNULL` on a
 value typed `ItemStack` ([lowering-and-adapters.md](lowering-and-adapters.md) §4.4).
 
+**Empty display name (≤1.10.2).** The game has no name for an empty slot (1.8.9's `en_US.lang` has no
+`tile.air.name`), so `displayName()` of an empty stack returns the fixed text `Air` on those targets,
+matching the English name modern targets return (D-063).
+
 ### 3.7 Value types `BlockPos`, `Vec3`, `Box`, `Direction` (alias)
 
 | Member | Demand | Binding key |
@@ -173,6 +177,9 @@ constructor's string literal (`"NORTH"`), which obfuscation does not touch, and 
 compiles to `values()`/`ordinal()` ([lowering-and-adapters.md](lowering-and-adapters.md) §4.6). The
 API declares the six constants in Minecraft's order; the generator checks the target enum's order and
 fails the build if it differs.
+
+`toString()` of an alias enum is Minecraft's own (lowercase `up` on 1.8.9 and 26.1.2 in the M2 gate) and
+may differ between versions; use `name()` for a stable name.
 
 ### 3.8 `Target`, `TargetKind` (owned)
 
