@@ -13,3 +13,8 @@ dependencies {
     implementation(libs.gson)
     testImplementation(libs.asm.util)
 }
+
+// Real-data tests plan with adapter rules from blanket-bindings/build/adapters, which only remapAdapters produces.
+tasks.test {
+    dependsOn(":blanket-bindings:remapAdapters")
+}
