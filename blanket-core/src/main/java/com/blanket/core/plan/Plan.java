@@ -3,6 +3,7 @@ package com.blanket.core.plan;
 
 import com.blanket.core.resolve.TargetSpec;
 
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -29,4 +30,25 @@ import java.util.Map;
  */
 public record Plan(TargetSpec target, String era, String entry, String glImpl, boolean core, Map<String, String> types,
                    Map<String, Lowered> members, Map<String, Boolean> features, int classVersionMax,
-                   Map<String, byte[]> adapters, List<Glue> glue, List<Hook> hooks) {}
+                   Map<String, byte[]> adapters, List<Glue> glue, List<Hook> hooks) {
+
+    /** Owner prefix of every adapter class a lowering calls. */
+    private static final String ADAPTER_PACKAGE = "com/blanket/adapters/";
+
+    /**
+     * Every adapter call of the plan, which is what the adapter closure starts from: the members' adapters, and the
+     * adapters that glue bodies call, keyed by the glue name {@code <stub class>.<method>}. Glue is not part of
+     * {@link #members()}: the owners there are the API classes that are never shipped.
+     */
+    public Map<String, Lowered> adapterCalls() {
+        Map<String, Lowered> out = new LinkedHashMap<>(members);
+        for (Glue g : glue) {
+            for (Op op : g.steps()) {
+                if (op.kind() == Op.Kind.INVOKE && op.owner().startsWith(ADAPTER_PACKAGE)) {
+                    out.put(g.name(), new Lowered.Adapter(op.owner(), op.name(), op.desc()));
+                }
+            }
+        }
+        return out;
+    }
+}
