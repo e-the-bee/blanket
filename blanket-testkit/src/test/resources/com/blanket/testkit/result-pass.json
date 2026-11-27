@@ -1,0 +1,6 @@
+{ "schema": 1, "mod": "hudbox", "ticksStart": 140, "ticksEnd": 140, "worldJoins": 1, "worldLeaves": 0,
+  "probes": [
+    { "name": "hud", "round": "before-key", "x": 60, "y": 60, "rgb": "#FF00FF", "pass": true },
+    { "name": "box", "round": "before-key", "x": 427, "y": 250, "rgb": "#10C010", "pass": true },
+    { "name": "hud", "round": "after-key", "x": 60, "y": 60, "rgb": "#3A5F8C", "pass": true } ],
+  "key": { "pressed": true, "pass": true }, "listenerFailures": 0, "pass": true }

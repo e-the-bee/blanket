@@ -1,0 +1,28 @@
+{
+ "id": "fabric-loader-0.20.1-1.21.1",
+ "inheritsFrom": "1.21.1",
+ "releaseTime": "2026-10-28T19:05:44+0000",
+ "time": "2026-10-28T19:05:44+0000",
+ "type": "release",
+ "mainClass": "net.fabricmc.loader.impl.launch.knot.KnotClient",
+ "arguments": {
+  "game": [],
+  "jvm": [
+   "-DFabricMcEmu= net.minecraft.client.main.Main "
+  ]
+ },
+ "libraries": [
+  {
+   "name": "org.ow2.asm:asm:9.10.1",
+   "url": "https://maven.fabricmc.net/"
+  },
+  {
+   "name": "net.fabricmc:intermediary:1.21.1",
+   "url": "https://maven.fabricmc.net/"
+  },
+  {
+   "name": "net.fabricmc:fabric-loader:0.20.1",
+   "url": "https://maven.fabricmc.net/"
+  }
+ ]
+}

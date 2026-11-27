@@ -1,0 +1,32 @@
+{
+ "install": {
+  "profileName": "forge",
+  "target": "1.8.9-forge1.8.9-11.15.1.2318-1.8.9",
+  "path": "net.minecraftforge:forge:1.8.9-11.15.1.2318-1.8.9",
+  "version": "forge 1.8.9-11.15.1.2318-1.8.9",
+  "filePath": "forge-1.8.9-11.15.1.2318-1.8.9-universal.jar",
+  "minecraft": "1.8.9"
+ },
+ "versionInfo": {
+  "id": "1.8.9-forge1.8.9-11.15.1.2318-1.8.9",
+  "time": "2017-06-08T04:26:33+0000",
+  "releaseTime": "1960-01-01T00:00:00-0700",
+  "type": "release",
+  "minecraftArguments": "--username ${auth_player_name} --version ${version_name} --gameDir ${game_directory} --assetsDir ${assets_root} --assetIndex ${assets_index_name} --uuid ${auth_uuid} --accessToken ${auth_access_token} --userProperties ${user_properties} --userType ${user_type} --tweakClass net.minecraftforge.fml.common.launcher.FMLTweaker",
+  "mainClass": "net.minecraft.launchwrapper.Launch",
+  "minimumLauncherVersion": 14,
+  "assets": "1.8",
+  "inheritsFrom": "1.8.9",
+  "jar": "1.8.9",
+  "libraries": [
+   {
+    "name": "net.minecraftforge:forge:1.8.9-11.15.1.2318-1.8.9",
+    "url": "https://maven.minecraftforge.net/"
+   },
+   {
+    "name": "net.minecraft:launchwrapper:1.12",
+    "serverreq": true
+   }
+  ]
+ }
+}

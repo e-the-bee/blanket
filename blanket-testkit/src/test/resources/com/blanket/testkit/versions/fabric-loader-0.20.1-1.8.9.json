@@ -1,0 +1,48 @@
+{
+ "id": "fabric-loader-0.20.1-1.8.9",
+ "inheritsFrom": "1.8.9",
+ "releaseTime": "2026-10-29T18:08:58+0000",
+ "time": "2026-10-29T18:08:58+0000",
+ "type": "release",
+ "mainClass": "net.fabricmc.loader.impl.launch.knot.KnotClient",
+ "libraries": [
+  {
+   "name": "org.ow2.asm:asm:9.10.1",
+   "url": "https://maven.fabricmc.net/"
+  },
+  {
+   "name": "net.fabricmc:sponge-mixin:0.17.5+mixin.0.8.7",
+   "url": "https://maven.fabricmc.net/"
+  },
+  {
+   "name": "net.legacyfabric:intermediary:1.8.9",
+   "url": "https://maven.legacyfabric.net/"
+  },
+  {
+   "name": "net.fabricmc:fabric-loader:0.20.1",
+   "url": "https://maven.fabricmc.net/"
+  },
+  {
+   "name": "org.lwjgl.lwjgl:lwjgl:2.9.4+legacyfabric.17",
+   "url": "https://maven.legacyfabric.net/"
+  },
+  {
+   "name": "org.lwjgl.lwjgl:lwjgl_util:2.9.4+legacyfabric.17",
+   "url": "https://maven.legacyfabric.net/"
+  },
+  {
+   "name": "org.lwjgl.lwjgl:lwjgl-platform:2.9.4+legacyfabric.17",
+   "url": "https://maven.legacyfabric.net/",
+   "extract": {
+    "exclude": [
+     "META-INF/"
+    ]
+   },
+   "natives": {
+    "linux": "natives-linux",
+    "osx": "natives-osx",
+    "windows": "natives-windows"
+   }
+  }
+ ]
+}
