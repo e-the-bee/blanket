@@ -51,4 +51,23 @@ class KeyQueueTest {
         KeyQueue.add("a");
         assertEquals(1, KeyQueue.size());
     }
+
+    @Test
+    void registeredKeepsEveryMappingInOrderAfterDrain() {
+        KeyQueue.begin("demo");
+        KeyQueue.add("a");
+        KeyQueue.add("b");
+        assertEquals(Arrays.asList("a", "b"), KeyQueue.drain());
+        assertEquals(Arrays.asList("a", "b"), KeyQueue.registered());
+        assertTrue(KeyQueue.drain().isEmpty());
+        assertEquals(Arrays.asList("a", "b"), KeyQueue.registered());
+    }
+
+    @Test
+    void beginStartsANewRegisteredList() {
+        KeyQueue.add("old");
+        KeyQueue.begin("demo");
+        KeyQueue.add("new");
+        assertEquals(Arrays.asList("new"), KeyQueue.registered());
+    }
 }

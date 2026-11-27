@@ -2,6 +2,7 @@
 package com.blanket.runtime;
 
 import com.blanket.api.ClientMod;
+import com.blanket.api.EventSource;
 
 /** Called once by the generated loader entry class. */
 public final class Boot {
@@ -11,6 +12,7 @@ public final class Boot {
         Executor.gl = gl;
         System.out.println("[blanket] " + modId + ": runtime up (" + gl.getClass().getSimpleName() + ")");
         KeyQueue.begin(modId);
+        EventSource.modId(modId);
         try {
             mod.init();
         } catch (Throwable t) {
