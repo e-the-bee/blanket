@@ -26,6 +26,7 @@ class ResolverLoaderRefTest {
     private static final String END = "loader:net.minecraftforge.fml.common.gameevent.TickEvent$Phase#END:Lnet/minecraftforge/fml/common/gameevent/TickEvent$Phase;";
     private static final String PHASE_CLASS = "loader:net.minecraftforge.fml.common.gameevent.TickEvent$Phase";
     private static final String WITH_MC = "loader:net.minecraftforge.fml.common.gameevent.TickEvent#world:Lnet/minecraft/client/Minecraft;";
+    private static final String WITH_LF = "loader:net.minecraftforge.client.event.GuiOpenEvent#gui:Lnet/minecraft/class_388;";
     private static final TargetSpec FORGE_189 = new TargetSpec("forge", "1.8.9", "obf", "forge-legacy", 8, null);
 
     @TempDir
@@ -36,6 +37,11 @@ class ResolverLoaderRefTest {
     private Resolver.MappingFiles files() {
         return key -> {
             asked.add(key);
+            if (key.equals("lfint:1.8.9")) {
+                Path lf = tmp.resolve("lfint.tiny");
+                Files.writeString(lf, "tiny\t2\t0\tofficial\tintermediary\nc\taxu\tnet/minecraft/class_388\n");
+                return lf;
+            }
             if (!key.equals("pg:1.8.9")) throw new IOException("no fixture for " + key + " (HTTP 404)");
             Path pg = tmp.resolve("pg.txt");
             Files.writeString(pg, "net.minecraft.client.Minecraft -> ave:\n");
@@ -71,6 +77,17 @@ class ResolverLoaderRefTest {
         assertEquals(List.of("pg:1.8.9"), asked);
         assertEquals("Lave;", out.get(WITH_MC).desc());
         assertEquals("world", out.get(WITH_MC).name());
+    }
+
+    @Test
+    void legacyIdInALoaderDescriptorOnALegacyTargetIsTranslatedThroughTheLegacyIntermediary() {
+        List<Resolver.Problem> problems = new ArrayList<>();
+        Map<String, Resolver.Resolved> out = resolve(problems, WITH_LF);
+        assertTrue(problems.isEmpty(), problems.toString());
+        assertEquals(List.of("lfint:1.8.9"), asked, "no Mojang file: the legacy range has no Mojang names");
+        assertEquals("Laxu;", out.get(WITH_LF).desc());
+        assertEquals("net/minecraftforge/client/event/GuiOpenEvent", out.get(WITH_LF).owner());
+        assertEquals("gui", out.get(WITH_LF).name());
     }
 
     @Test

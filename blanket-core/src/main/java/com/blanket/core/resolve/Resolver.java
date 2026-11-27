@@ -77,6 +77,9 @@ public final class Resolver {
         }
     }
 
+    /** A Legacy Fabric class id, {@code net/minecraft/class_N}: how a `loader:` descriptor names a Minecraft class on a 1.3 to 1.13.2 target. */
+    private static final java.util.regex.Pattern LEGACY_ID = java.util.regex.Pattern.compile("net/minecraft/class_\\d+(\\$.*)?");
+
     private final TargetSpec target;
     private final String anchor;
     private final MappingFiles files;
@@ -123,7 +126,7 @@ public final class Resolver {
                 m.runtimeName = ref.name();
                 // Only Minecraft classes are translated; loader, library and JDK classes in the descriptor are literal.
                 for (String c : Desc.classesIn(ref.desc())) {
-                    if (game.isGame(c)) classJob(classes, "mojang", anchor, ref.text(), c);
+                    if (game.isGame(c)) classJob(classes, descriptorNs(c), descriptorVersion(c), ref.text(), c);
                 }
             }
             members.add(m);
@@ -172,7 +175,7 @@ public final class Resolver {
         for (Job m : members) {
             Ref ref = byText.get(m.origin);
             if (m.runtimeOwner != null) {
-                String desc = Desc.mapClasses(ref.desc(), c -> classRuntime(classes, "mojang", anchor, c, ref.text(), problems));
+                String desc = Desc.mapClasses(ref.desc(), c -> classRuntime(classes, descriptorNs(c), descriptorVersion(c), c, ref.text(), problems));
                 out.put(ref.text(), new Resolved(ref.text(), m.runtimeOwner, m.runtimeName, desc, ref.field()));
                 continue;
             }
@@ -227,6 +230,19 @@ public final class Resolver {
             return c;
         }
         return j.runtimeName;
+    }
+
+    /**
+     * The namespace a Minecraft class in a `loader:` descriptor is written in: Mojang names of the anchor, except a Legacy
+     * Fabric id ({@code net/minecraft/class_N}) on a target in the Legacy Fabric range, which has no Mojang names to route
+     * through (binding-format.md section 2.4).
+     */
+    private String descriptorNs(String c) {
+        return target.hasLegacyIntermediary() && LEGACY_ID.matcher(c).matches() ? "lf" : "mojang";
+    }
+
+    private String descriptorVersion(String c) {
+        return descriptorNs(c).equals("mojang") ? anchor : null;
     }
 
     private static String jobKey(String ns, String version, String owner) {
