@@ -11,8 +11,8 @@ public final class GlueKeys {
     /** The client's options object, once the client has one (Forge 1.8.9 at {@code FMLInitializationEvent}). */
     public static Object options() { throw GlueFrame.stub("options"); }
 
-    /** The options' array of every key mapping (the controls screen and {@code options.txt} use it). */
-    public static Object[] mappings(Object options) { throw GlueFrame.stub("mappings"); }
+    /** The options' array of every key mapping (the controls screen and {@code options.txt} use it), typed as the game's array. */
+    public static Object mappings(Object options) { throw GlueFrame.stub("mappings"); }
 
     /** Replaces the options' key mapping array; {@code mappings} has the array's own runtime type. */
     public static void setMappings(Object options, Object mappings) { throw GlueFrame.stub("setMappings"); }

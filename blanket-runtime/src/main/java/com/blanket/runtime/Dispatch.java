@@ -100,7 +100,7 @@ public final class Dispatch {
         java.util.List<Object> queued = KeyQueue.drain();
         if (queued.isEmpty()) return;
         com.blanket.runtime.glue.GlueKeys.setMappings(options,
-                KeyHandover.append(com.blanket.runtime.glue.GlueKeys.mappings(options), queued));
+                KeyHandover.append((Object[]) com.blanket.runtime.glue.GlueKeys.mappings(options), queued));
     }
 
     /** Key hand-over through the loader's {@code RegisterKeyMappingsEvent} (Forge 1.20.1, NeoForge), on the mod bus. */
