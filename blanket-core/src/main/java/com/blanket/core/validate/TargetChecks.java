@@ -119,6 +119,7 @@ final class TargetChecks {
             if (kind == Hooks.At.Kind.INVOKE || kind == Hooks.At.Kind.INVOKE_STRING) {
                 use("hook " + h.getKey(), site, C7, rule.at().method(), bindings.targets().anchor());
             }
+            for (String field : rule.mutable()) use("hook " + h.getKey(), site, C7, field, bindings.targets().anchor());
         }
     }
 

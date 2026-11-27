@@ -1,11 +1,13 @@
 // SPDX-License-Identifier: GPL-3.0-only
 package com.blanket.core.validate;
-
 import com.blanket.core.bindings.EventBinding;
 import com.blanket.core.resolve.TargetSpec;
+import com.blanket.core.scan.Scan;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.TreeSet;
 
 /**
  * Which recipe delivers an event on a target (binding-format.md section 7): the event's first matching recipe, or, when
@@ -31,6 +33,21 @@ public final class EventRecipes {
             if (e.getValue().event().equals(event)) found = e;
         }
         return found;
+    }
+
+    /**
+     * The events whose recipes a mod wires: the {@code Events} constants it reads, and every hand-over whose
+     * {@code usedBy} API method it calls ({@code KEY_HANDOVER} for {@code KeyBinding.register}). Sorted.
+     */
+    public static Set<String> used(Map<String, EventBinding> events, Scan scan) {
+        Set<String> out = new TreeSet<>(scan.events());
+        for (EventBinding eb : events.values()) {
+            if (eb.usedBy() == null) continue;
+            for (Scan.ApiMember m : scan.members()) {
+                if (!m.isField() && eb.usedBy(m.owner(), m.name())) out.add(eb.event());
+            }
+        }
+        return out;
     }
 
     /**

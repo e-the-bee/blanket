@@ -1,0 +1,47 @@
+{
+  "schema": 1,
+  "api": "com.blanket.runtime.glue.GlueKeys",
+  "members": {
+    "options": [
+      { "when": { "loader": "forge", "mc": "..1.13.2" }, "lower": { "chain": [
+        { "invoke": "lf:net/minecraft/class_1600#method_2965()Lnet/minecraft/class_1600;" },
+        { "get": "lf:net/minecraft/class_1600#field_3823:Lnet/minecraft/class_347;" } ] },
+        "note": "MinecraftClient.getInstance().options (lfyarn 1.8.9: method_2965 getInstance, field_3823 options; javap ave.A()Lave;, ave.t:Lavh;)" },
+      { "when": {}, "lower": { "unsupported": "only Forge 1.8.9 hands keys over outside the options' own load" } }
+    ],
+    "mappings": [
+      { "when": { "loader": "legacy-fabric", "mc": "..1.13.2" }, "lower": { "chain": [
+        { "cast": "lf:net/minecraft/class_347" },
+        { "get": "lf:net/minecraft/class_347#field_945:[Lnet/minecraft/class_327;" } ] },
+        "note": "GameOptions.allKeys (lfyarn 1.8.9 field_945; javap avh: public avb[] ax, assigned at Options.<init> 1070)" },
+      { "when": { "loader": "forge", "mc": "..1.13.2" }, "lower": { "chain": [
+        { "cast": "lf:net/minecraft/class_347" },
+        { "get": "lf:net/minecraft/class_347#field_945:[Lnet/minecraft/class_327;" } ] },
+        "note": "the array Forge's ClientRegistry.registerKeyBinding appends to (javap: getfield avh.ax at 12)" },
+      { "when": { "loader": "fabric", "mc": "1.21.1" }, "lower": { "chain": [
+        { "cast": "net.minecraft.client.Options" },
+        { "get": "net.minecraft.client.Options#keyMappings:[Lnet/minecraft/client/KeyMapping;" } ] } },
+      { "when": { "loader": "fabric", "mc": "26.1.." }, "lower": { "chain": [
+        { "cast": "official:net.minecraft.client.Options" },
+        { "get": "official:net.minecraft.client.Options#keyMappings:[Lnet/minecraft/client/KeyMapping;" } ] } },
+      { "when": {}, "lower": { "unsupported": "Forge 1.20.1 and NeoForge hand keys over through RegisterKeyMappingsEvent" } }
+    ],
+    "setMappings": [
+      { "when": { "loader": "legacy-fabric", "mc": "..1.13.2" }, "lower": { "put": "lf:net/minecraft/class_347#field_945:[Lnet/minecraft/class_327;" } },
+      { "when": { "loader": "forge", "mc": "..1.13.2" }, "lower": { "put": "lf:net/minecraft/class_347#field_945:[Lnet/minecraft/class_327;" } },
+      { "when": { "loader": "fabric", "mc": "1.21.1" }, "lower": { "put": "net.minecraft.client.Options#keyMappings:[Lnet/minecraft/client/KeyMapping;" },
+        "note": "final in the jar; hook keys.options shadows it @Mutable" },
+      { "when": { "loader": "fabric", "mc": "26.1.." }, "lower": { "put": "official:net.minecraft.client.Options#keyMappings:[Lnet/minecraft/client/KeyMapping;" },
+        "note": "final in the jar; hook keys.options shadows it @Mutable" },
+      { "when": {}, "lower": { "unsupported": "Forge 1.20.1 and NeoForge hand keys over through RegisterKeyMappingsEvent" } }
+    ],
+    "register": [
+      { "when": { "loader": "forge", "mc": "1.20.1" },
+        "lower": { "invoke": "loader:net.minecraftforge.client.event.RegisterKeyMappingsEvent#register(Lnet/minecraft/client/KeyMapping;)V" } },
+      { "when": { "loader": "neoforge", "mc": "1.21.1" },
+        "lower": { "invoke": "loader:net.neoforged.neoforge.client.event.RegisterKeyMappingsEvent#register(Lnet/minecraft/client/KeyMapping;)V" } },
+      { "when": {}, "lower": { "unsupported": "no RegisterKeyMappingsEvent: Fabric and Forge 1.8.9 append to the options' key array" } }
+    ]
+  },
+  "note": "M3 KEYS: the game's side of the key hand-over (events-and-hooks.md 4.7, S-07)."
+}

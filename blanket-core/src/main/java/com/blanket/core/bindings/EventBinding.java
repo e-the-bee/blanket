@@ -13,22 +13,39 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-/** {@code events/<Event>.json}: the recipes that deliver one event on each target (binding-format.md section 7). */
+/**
+ * {@code events/<Event>.json}: the recipes that deliver one event on each target (binding-format.md section 7). A file
+ * with {@code usedBy} is a hand-over rather than an API event: its recipes are wired where the mod uses that API member
+ * ({@code KEY_HANDOVER} where it calls {@code KeyBinding.register}), not where it reads an {@code Events} constant.
+ */
 public final class EventBinding {
     private static final Set<String> BUSES = Json.set("game", "mod", "fml");
     private static final Set<String> SOURCES = Json.set("arg", "this", "getter", "adapter", "const", "glue");
+    /** An API method without descriptor: {@code com.blanket.api.KeyBinding#register}. */
+    private static final java.util.regex.Pattern API_MEMBER =
+            java.util.regex.Pattern.compile("com\\.blanket\\.api\\.[A-Za-z_$][A-Za-z0-9_$.]*#[A-Za-z_$][A-Za-z0-9_$]*");
 
     private final String event;
+    private final String usedBy;
     private final List<Recipe> recipes;
 
-    private EventBinding(String event, List<Recipe> recipes) {
+    private EventBinding(String event, String usedBy, List<Recipe> recipes) {
         this.event = event;
+        this.usedBy = usedBy;
         this.recipes = recipes;
     }
 
     public static EventBinding parse(JsonElement root, String file) {
-        JsonObject o = Json.root(root, file, "event", "recipes");
+        JsonObject o = Json.root(root, file, "event", "usedBy", "recipes");
         String event = Json.nonEmpty(o, "event", file, "$");
+        String usedBy = null;
+        if (o.has("usedBy")) {
+            usedBy = Json.nonEmpty(o, "usedBy", file, "$");
+            if (!API_MEMBER.matcher(usedBy).matches()) {
+                throw new BindingException(file, "$.usedBy", "usedBy names an API method without descriptor"
+                        + " (com.blanket.api.KeyBinding#register), found '" + usedBy + "'");
+            }
+        }
         JsonArray arr = Json.arr(o.get("recipes"), file, "$.recipes");
         if (arr.size() == 0) {
             throw new BindingException(file, "$.recipes", "an event needs at least one recipe");
@@ -39,9 +56,27 @@ public final class EventBinding {
             if (event.equals(r.via())) {
                 throw new BindingException(file, "$.recipes[" + i + "].via", "a via names another event; " + event + " cannot go via itself");
             }
+            if (usedBy != null && r.via() != null) {
+                throw new BindingException(file, "$.recipes[" + i + "].via", "a usedBy hand-over has hooks of its own; it cannot go via an event");
+            }
             recipes.add(r);
         }
-        return new EventBinding(event, Collections.unmodifiableList(recipes));
+        return new EventBinding(event, usedBy, Collections.unmodifiableList(recipes));
+    }
+
+    /**
+     * The API method ({@code com.blanket.api.KeyBinding#register}, any descriptor) whose use wires this file's recipes,
+     * or null for an API event, which is wired where the mod reads its {@code Events} constant.
+     */
+    public String usedBy() {
+        return usedBy;
+    }
+
+    /** True when this is a hand-over wired by the API method {@code owner} (internal name) {@code name}. */
+    public boolean usedBy(String owner, String name) {
+        if (usedBy == null) return false;
+        int hash = usedBy.indexOf('#');
+        return usedBy.substring(0, hash).replace('.', '/').equals(owner) && usedBy.substring(hash + 1).equals(name);
     }
 
     public String event() {
@@ -56,6 +91,9 @@ public final class EventBinding {
         JsonObject o = new JsonObject();
         o.addProperty("schema", Json.SCHEMA);
         o.addProperty("event", event);
+        if (usedBy != null) {
+            o.addProperty("usedBy", usedBy);
+        }
         JsonArray a = new JsonArray();
         for (Recipe r : recipes) {
             a.add(r.toJson());

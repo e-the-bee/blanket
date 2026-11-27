@@ -58,23 +58,29 @@ public final class Hooks {
         return o;
     }
 
-    /** One rule of a hook: where it applies, the method and the point inside it. */
+    /**
+     * One rule of a hook: where it applies, the method and the point inside it, and the fields of the hooked class the
+     * hook's code assigns although they are final ({@code mutable}: the generated Mixin shadows each with
+     * {@code @Mutable}, which removes {@code final} from the target field).
+     */
     public static final class Rule {
         private final Selector when;
         private final String method;
         private final At at;
+        private final List<String> mutable;
         private final String note;
 
-        private Rule(Selector when, String method, At at, String note) {
+        private Rule(Selector when, String method, At at, List<String> mutable, String note) {
             this.when = when;
             this.method = method;
             this.at = at;
+            this.mutable = mutable;
             this.note = note;
         }
 
         static Rule parse(JsonElement e, String file, String path) {
             JsonObject o = Json.obj(e, file, path);
-            Json.checkKeys(o, file, path, new String[] {"when", "method", "at", "note"});
+            Json.checkKeys(o, file, path, new String[] {"when", "method", "at", "mutable", "note"});
             if (!o.has("when")) {
                 throw new BindingException(file, path, "missing \"when\"");
             }
@@ -84,7 +90,25 @@ public final class Hooks {
                 throw new BindingException(file, path, "missing \"at\"");
             }
             At at = At.parse(o.get("at"), file, path + ".at");
-            return new Rule(when, method, at, Json.optStr(o, "note", file, path));
+            List<String> mutable = new ArrayList<String>();
+            if (o.has("mutable")) {
+                JsonArray a = Json.arr(o.get("mutable"), file, path + ".mutable");
+                if (a.size() == 0) {
+                    throw new BindingException(file, path + ".mutable", "mutable lists at least one field; leave it out otherwise");
+                }
+                com.blanket.core.resolve.Ref hooked = com.blanket.core.resolve.Ref.parse(method, file, path + ".method");
+                for (int i = 0; i < a.size(); i++) {
+                    String p = path + ".mutable[" + i + "]";
+                    String f = Json.str(a.get(i), file, p);
+                    com.blanket.core.resolve.Ref r = com.blanket.core.resolve.Ref.parse(f, file, p);
+                    if (!r.field() || !r.owner().equals(hooked.owner()) || !r.ns().equals(hooked.ns())) {
+                        throw new BindingException(file, p, "a mutable entry is a field of the hooked class in the method's namespace ("
+                                + hooked.owner() + "#name:desc), found '" + f + "'");
+                    }
+                    mutable.add(f);
+                }
+            }
+            return new Rule(when, method, at, Collections.unmodifiableList(mutable), Json.optStr(o, "note", file, path));
         }
 
         public Selector when() {
@@ -99,6 +123,11 @@ public final class Hooks {
             return at;
         }
 
+        /** Field references (on the hooked class) the generated Mixin shadows as {@code @Mutable}; usually empty. */
+        public List<String> mutable() {
+            return mutable;
+        }
+
         public String note() {
             return note;
         }
@@ -108,6 +137,13 @@ public final class Hooks {
             o.add("when", TypeBinding.selectorJson(when));
             o.addProperty("method", method);
             o.add("at", at.toJson());
+            if (!mutable.isEmpty()) {
+                JsonArray a = new JsonArray();
+                for (String f : mutable) {
+                    a.add(f);
+                }
+                o.add("mutable", a);
+            }
             if (note != null) {
                 o.addProperty("note", note);
             }
