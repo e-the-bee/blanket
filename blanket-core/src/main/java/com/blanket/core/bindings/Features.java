@@ -71,6 +71,25 @@ public final class Features {
         return false;
     }
 
+    /**
+     * Where {@code feature} is available, as text for messages: each {@code available} rule as its loaders and
+     * {@code mc} range ({@code mc 1.9..}, {@code fabric, forge mc 1.14..}), rules joined by {@code " or "}; a rule
+     * without keys is {@code every target}. Null for a feature this file does not list.
+     */
+    public String range(String feature) {
+        List<Selector> rules = available.get(feature);
+        if (rules == null) return null;
+        StringBuilder b = new StringBuilder();
+        for (Selector s : rules) {
+            if (b.length() > 0) b.append(" or ");
+            StringBuilder one = new StringBuilder();
+            if (s.loaders() != null) one.append(String.join(", ", s.loaders()));
+            if (s.mc() != null) one.append(one.length() > 0 ? " " : "").append("mc ").append(s.mc());
+            b.append(one.length() > 0 ? one : "every target");
+        }
+        return b.toString();
+    }
+
     /** The Feature constants, in file order. */
     public Set<String> names() {
         return available.keySet();

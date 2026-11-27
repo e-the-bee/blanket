@@ -22,6 +22,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 /**
@@ -145,8 +146,9 @@ public final class Main {
         }
         if (targets.isEmpty()) throw new CliException("--targets lists no target");
 
-        Scan scan = ModScanner.scan(jar);
-        Report report = ModCheck.run(bindings, data.open(bindings, o.offline()), ApiClasses.of(Main.class.getClassLoader()), scan, targets);
+        Map<String, byte[]> classes = ModScanner.classes(jar);
+        Scan scan = ModScanner.scan(classes);
+        Report report = ModCheck.run(bindings, data.open(bindings, o.offline()), ApiClasses.of(Main.class.getClassLoader()), scan, classes, targets);
         for (Diagnostic d : report.errors()) out.println(d.format());
         for (String w : report.warnings()) out.println("warning: " + w);
         String scanned = scan.members().size() + " API members, " + scan.types().size() + " API types, "

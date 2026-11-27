@@ -21,6 +21,8 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Path;
 import java.util.Enumeration;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
@@ -39,7 +41,29 @@ public final class ModScanner {
 
     /** Scans every {@code .class} of the jar (not {@code META-INF/} and not {@code module-info}). */
     public static Scan scan(Path jar) throws IOException {
+        try {
+            return scan(classes(jar));
+        } catch (IllegalArgumentException e) {
+            throw new IOException(jar + ": " + e.getMessage(), e);
+        }
+    }
+
+    /** Scans the given class files; a class ASM cannot read is an {@link IllegalArgumentException} naming it. */
+    public static Scan scan(Map<String, byte[]> classes) {
         Scan scan = new Scan();
+        for (Map.Entry<String, byte[]> e : classes.entrySet()) {
+            try {
+                scanClass(e.getValue(), scan);
+            } catch (RuntimeException ex) {
+                throw new IllegalArgumentException("cannot read class " + e.getKey() + ".class: " + ex.getMessage(), ex);
+            }
+        }
+        return scan;
+    }
+
+    /** The class files {@link #scan(Path)} reads, by internal name, in jar order. */
+    public static Map<String, byte[]> classes(Path jar) throws IOException {
+        Map<String, byte[]> out = new LinkedHashMap<>();
         try (ZipFile zip = new ZipFile(jar.toFile())) {
             Enumeration<? extends ZipEntry> entries = zip.entries();
             while (entries.hasMoreElements()) {
@@ -49,13 +73,11 @@ public final class ModScanner {
                     continue;
                 }
                 try (InputStream in = zip.getInputStream(e)) {
-                    scanClass(in.readAllBytes(), scan);
-                } catch (RuntimeException ex) {
-                    throw new IOException(jar + ": cannot read class " + n + ": " + ex.getMessage(), ex);
+                    out.put(n.substring(0, n.length() - ".class".length()), in.readAllBytes());
                 }
             }
         }
-        return scan;
+        return out;
     }
 
     /** Adds one class to {@code scan}. */

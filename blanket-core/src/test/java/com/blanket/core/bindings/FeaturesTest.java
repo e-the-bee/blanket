@@ -43,6 +43,19 @@ class FeaturesTest {
     }
 
     @Test
+    void rangeIsTheAvailableRulesAsText() throws IOException {
+        assertEquals("mc 1.9..", BindingSet.load(BINDINGS).features().range("OFFHAND"));
+        String json = """
+                { "schema": 1, "features": {
+                  "TWO": { "available": [ { "when": { "loader": ["fabric", "forge"], "mc": "1.14.." } }, { "when": { "mc": "1.8.9" } } ] },
+                  "ALL": { "available": [ { "when": {} } ] } } }""";
+        Features f = Features.parse(JsonParser.parseString(json), "features.json");
+        assertEquals("fabric, forge mc 1.14.. or mc 1.8.9", f.range("TWO"));
+        assertEquals("every target", f.range("ALL"));
+        assertEquals(null, f.range("NONE"));
+    }
+
+    @Test
     void anUnknownKeyIsRejectedWithFileAndPath() {
         String json = """
                 { "schema": 1, "features": { "OFFHAND": { "available": [ { "when": { "mc": "1.9.." } } ], "colour": "red" } } }""";
