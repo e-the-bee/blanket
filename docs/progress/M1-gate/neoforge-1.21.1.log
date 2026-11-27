@@ -1,0 +1,8 @@
+date: 2026-11-26
+machine: testbox container 141 (Debian 13, Mesa llvmpipe, no GPU, Xvfb 854x480x24)
+target: neoforge:1.21.1
+jar: m0spike-0.0.0+1.21.1-neoforge.jar
+run.py: in world (37s)
+[m0spike] box anchored at 2.0 -60.0 3.0
+[m0spike] pos 2.5 -60.0 0.5
+F3 XYZ: 2.500 / -60.00000 / 0.500

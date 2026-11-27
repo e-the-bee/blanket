@@ -1,0 +1,8 @@
+date: 2026-11-26
+machine: testbox container 141 (Debian 13, Mesa llvmpipe, no GPU, Xvfb 854x480x24)
+target: forge:1.20.1
+jar: m0spike-0.0.0+1.20.1-forge.jar
+run.py: in world (41s)
+[m0spike] box anchored at 5.0 -60.0 -2.0
+[m0spike] pos 5.5 -60.0 -4.5
+F3 XYZ: 5.500 / -60.00000 / -4.500

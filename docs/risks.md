@@ -43,7 +43,7 @@ documents maps to a spike here.
 | R-38 | The private `blanket-emit` module leaks or the deploy key is exposed in CI logs | low | low | — | Nothing secret in the code itself; worst case is an early release. Fork PRs never get the key |
 | R-23 | Per-frame overhead (state guard `glGet`s, command list, replay) costs measurable FPS | low | low | S-06 (measured in M4) | Cache immutable state per frame; batch all mod draws per event into one guarded list (already the design) |
 | R-24 | Build-time font baking with Java 2D fails on headless CI JDKs without `java.desktop` | low | low | M4 | Bundle a pure-Java TrueType rasterizer in the generator |
-| R-25 | In-game automation (offline launch, llvmpipe speed, Xvfb) is flaky or too slow | med | med | S-14 | Fewer ticks per run; real GPU self-hosted runner |
+| R-25 | In-game automation (offline launch, llvmpipe speed, Xvfb) is flaky or too slow | med (R-EXP-11: on a no-GPU container all six targets reached a world in 31–41 s; the real CI runner is still unmeasured) | med | S-14 | Fewer ticks per run; real GPU self-hosted runner |
 | R-26 | Metadata details marked ASSUMED are wrong (key casing, dependency syntax, `dist` handling, lang formats, `MixinConfigs` on modern Forge) | med | low | S-04, S-05, S-11 | Fix the emitter; every case is visible on first launch |
 | R-27 | A lowering bug yields a `VerifyError` only when a rarely used path loads in game | med | med | L1 `-Xverify:all` on every lowered class | `--verify` mode in `generate` loads every output class with the class index as a verifier context |
 | R-28 | `ScreenHost` override signatures change per era and a method silently stops overriding | med | med | C6 | — (C6 makes it a Blanket build error) |
@@ -72,8 +72,8 @@ documents maps to a spike here.
 | S-22 | Packet pipeline per era: handler anchor, local channel layout, play-phase timing, `BLOCK_UPDATE`/`CHAT`/`CUSTOM_PAYLOAD` views read correctly, cancel works both ways, custom payload send on 1.20.5+ | M6 | `samples/packets` passes on every tier-1 target |
 | S-20 | Depth contract: entity depth present at the `WORLD_RENDER` hook on every era representative, including the 1.21.9+ submit/render split and Fabulous graphics | M6 | panel behind an armor stand is hidden, in front is visible, on every tier-1 target |
 | S-12 | Legacy Forge coremod with low `@SortingIndex` sees notch names | when first needed | transformer patches a notch-named method on `forge:1.8.9` |
-| S-13 | LWJGL 2 `Display` under Xvfb for golden tests of `Lwjgl2Gl` | M4 | golden scene matches the LWJGL 3 GL 2.1 output |
-| S-14 | Instance provisioning, offline single-player launch for the core six, llvmpipe frame rate (**Windows + GPU part passed in M0**, R-EXP-07/08; CI/llvmpipe part moves to M3) | M0 | 100 ticks in a world within 6 minutes per target on the CI runner |
+| S-13 | LWJGL 2 `Display` under Xvfb for golden tests of `Lwjgl2Gl` (`Display` ran under Xvfb on both 1.8.9 targets, R-EXP-11; the golden-image gate stays M4) | M4 | golden scene matches the LWJGL 3 GL 2.1 output |
+| S-14 | Instance provisioning, offline single-player launch for the core six, llvmpipe frame rate (**Windows + GPU part passed in M0**, R-EXP-07/08; **llvmpipe part measured 2026-11-26** on a no-GPU Linux container, R-EXP-11: the gate criterion held on all six targets; the real CI runner part is still to do in M3) | M0 | 100 ticks in a world within 6 minutes per target on the CI runner |
 | S-15 | ItemStack sentinel on 1.8.9: construct, query through adapters, never leak to vanilla | M2 | `api-tour` empty-hand values correct on both 1.8.9 targets |
 | S-16 | Key code tables: LWJGL 2 (≤1.12.2), GLFW (1.13–26.2), SDL3 (26.3+) | M3, M7 | every `Key` constant toggles the testkit probe on each target |
 

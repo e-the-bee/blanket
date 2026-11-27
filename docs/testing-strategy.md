@@ -79,7 +79,9 @@ exception.
 
 Assumptions to retire in M0 (spike S-14): offline launch for single-player works on the core six;
 llvmpipe provides GL 2.1 compatibility (1.8.9) and 3.3 core (26.1.2) contexts fast enough for 100 ticks
-in the timeout (llvmpipe implements up to GL 4.6, V R-GFX-09; speed **ASSUMED**).
+in the timeout (llvmpipe implements up to GL 4.6, V R-GFX-09; speed **measured 2026-11-26**, R-EXP-11: on a
+no-GPU container with llvmpipe all six targets were in a world after 31–41 s and logged 21–22 positions
+(about 420–440 ticks); 30 fps on 26.1.2 at 854x480; the real CI runner is still unmeasured).
 
 ## 5. CI matrix and cost
 

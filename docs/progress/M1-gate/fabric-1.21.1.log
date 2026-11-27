@@ -1,0 +1,8 @@
+date: 2026-11-26
+machine: testbox container 141 (Debian 13, Mesa llvmpipe, no GPU, Xvfb 854x480x24)
+target: fabric:1.21.1
+jar: m0spike-0.0.0+1.21.1-fabric.jar
+run.py: in world (40s)
+[m0spike] box anchored at -10.0 -60.0 6.0
+[m0spike] pos -9.5 -60.0 3.5
+F3 XYZ: -9.500 / -60.00000 / 3.500
