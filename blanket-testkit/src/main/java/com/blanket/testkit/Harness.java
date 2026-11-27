@@ -101,6 +101,7 @@ public final class Harness {
             if (!server.awaitReady(SERVER_START_SECONDS)) {
                 throw new HarnessException("the local server did not get ready; see " + outDir.resolve("server.log"));
             }
+            LocalServer.READY_COMMANDS.forEach(server::command);
             out.println("launching " + vid + " -> " + gameLog);
             long launched = System.currentTimeMillis();
             Process p = new ProcessBuilder(cmd).directory(game.toFile()).redirectErrorStream(true).start();

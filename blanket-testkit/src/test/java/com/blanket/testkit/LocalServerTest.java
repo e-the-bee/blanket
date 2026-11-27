@@ -51,4 +51,9 @@ class LocalServerTest {
         assertTrue(LocalServer.JOINED.matcher("[12:00:01] [Server thread/INFO]: Dev joined the game").find());
         assertFalse(LocalServer.JOINED.matcher("[12:00:01] [Server thread/INFO]: NotDev joined the game").find());
     }
+
+    @Test
+    void peacefulBeforeTheClientStarts() {
+        assertEquals(java.util.List.of("difficulty peaceful"), LocalServer.READY_COMMANDS);
+    }
 }

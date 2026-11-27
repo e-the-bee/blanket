@@ -19,6 +19,8 @@ import java.util.stream.Stream;
 /**
  * The vanilla dedicated server the client joins: offline, bound to 127.0.0.1 (a server on all interfaces raises a
  * Windows Firewall prompt), a flat world it generates itself on first start, no structures, monsters or animals.
+ * {@code spawn-monsters=false} did not keep slimes away on 26.1.2 (the player was slain by one within two minutes,
+ * 2026-11-27), so {@link #READY_COMMANDS} sets peaceful difficulty once the world is ready.
  * The world is kept between runs; the player's saved data is deleted before each start so {@code Dev} joins fresh at
  * the world spawn. Console output goes to a log file.
  */
@@ -28,14 +30,22 @@ public final class LocalServer implements AutoCloseable {
     static final Pattern JOINED = Pattern.compile("\\b" + LaunchCommand.PLAYER + " joined the game");
     /** World sub-folders with player data: {@code playerdata} up to 1.21.1, {@code players} on 26.1.2 (run.py). */
     static final List<String> PLAYER_DATA = List.of("playerdata", "players");
+    /**
+     * Typed into the console when the world is ready, before the client starts. Same syntax on 1.8.9
+     * ({@code /difficulty <new difficulty>}) and the modern servers ({@code /difficulty [peaceful]}): the servers' own
+     * {@code help} output, M0 spike NOTES.md "Scripted scene".
+     */
+    static final List<String> READY_COMMANDS = List.of("difficulty peaceful");
 
     private final Process process;
     private final CountDownLatch done = new CountDownLatch(1);
     private final CountDownLatch joined = new CountDownLatch(1);
     private volatile long joinedAtMillis;
+    private final PrintWriter console;
 
     private LocalServer(Process process) {
         this.process = process;
+        this.console = new PrintWriter(process.getOutputStream(), true, StandardCharsets.UTF_8);
     }
 
     /**
@@ -104,13 +114,17 @@ public final class LocalServer implements AutoCloseable {
         return joined.getCount() == 0 ? joinedAtMillis : 0;
     }
 
+    /** Types {@code line} into the server console (the reply goes to the server log). */
+    public void command(String line) {
+        console.println(line);
+    }
+
     /** Types {@code stop} into the console and waits up to a minute, then kills the server. */
     @Override
     public void close() {
         if (process.isAlive()) {
             try {
-                PrintWriter in = new PrintWriter(process.getOutputStream(), true, StandardCharsets.UTF_8);
-                in.println("stop");
+                console.println("stop");
                 if (!process.waitFor(60, TimeUnit.SECONDS)) {
                     process.destroyForcibly();
                 }
