@@ -119,6 +119,15 @@ class StubJarsRealDataTest {
     }
 
     @Test
+    void legacyScreenImplementsTheInterfaceMethodUnderItsYarnName() throws Exception {
+        Map<String, byte[]> stub = entries(out.resolve("1.8.9-yarn-legacy.jar"));
+        // LF intermediary has the row of Screen.a(ZI)V only on IdentifiableBooleanConsumer, which Screen implements
+        List<String> d = declared(stub.get("net/minecraft/client/gui/screen/Screen.class"));
+        assertTrue(d.contains("method confirmResult(ZI)V"), d.toString());
+        assertFalse(d.contains("method a(ZI)V"), d.toString());
+    }
+
+    @Test
     void modernStubHasMojangMinecraftWithHitResult() throws Exception {
         Map<String, byte[]> stub = entries(out.resolve("1.21.1-mojang.jar"));
         byte[] client = stub.get("net/minecraft/client/Minecraft.class");

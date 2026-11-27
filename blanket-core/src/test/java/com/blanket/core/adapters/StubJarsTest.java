@@ -239,6 +239,44 @@ class StubJarsTest implements Opcodes {
     }
 
     @Test
+    void aMethodRowOnlyOnAnInterfaceNamesTheImplementationToo() throws Exception {
+        Map<String, byte[]> classes = new TreeMap<>();
+        ClassWriter i = new ClassWriter(0);
+        i.visit(V21, ACC_PUBLIC | ACC_ABSTRACT | ACC_INTERFACE, "i", null, "java/lang/Object", null);
+        i.visitMethod(ACC_PUBLIC | ACC_ABSTRACT, "m", "(ZI)V", null, null).visitEnd();
+        i.visitEnd();
+        classes.put("i.class", i.toByteArray());
+        ClassWriter base = new ClassWriter(0);
+        base.visit(V21, ACC_PUBLIC | ACC_SUPER, "b", null, "java/lang/Object", new String[] {"i"});
+        base.visitMethod(ACC_PUBLIC, "m", "(ZI)V", null, null).visitEnd();
+        base.visitMethod(ACC_PUBLIC, "n", "()V", null, null).visitEnd();
+        base.visitEnd();
+        classes.put("b.class", base.toByteArray());
+        ClassWriter sub = new ClassWriter(0);
+        sub.visit(V21, ACC_PUBLIC | ACC_SUPER, "s", null, "b", null);
+        sub.visitMethod(ACC_PUBLIC, "m", "(ZI)V", null, null).visitEnd();
+        sub.visitEnd();
+        classes.put("s.class", sub.toByteArray());
+        Path jar = dir.resolve("hier.jar");
+        StubJars.writeJar(jar, classes);
+
+        Path map = dir.resolve("hier.tiny");
+        Files.writeString(map, String.join("\n",
+                "tiny\t2\t0\tofficial\tnamed",
+                "c\ti\tp/I",
+                "\tm\t(ZI)V\tm\tconfirm",
+                "c\tb\tp/B",
+                "c\ts\tp/S",
+                ""));
+        Path out = dir.resolve("hier-stub.jar");
+        StubJars.write(jar, List.of(StubJars.Table.read(map, 0, 1)), out);
+        Map<String, byte[]> e = entries(out);
+        assertEquals(List.of("confirm(ZI)V"), shape(e.get("p/I.class")).methods());
+        assertEquals(List.of("confirm(ZI)V", "n()V"), shape(e.get("p/B.class")).methods());
+        assertEquals(List.of("confirm(ZI)V"), shape(e.get("p/S.class")).methods());
+    }
+
+    @Test
     void legacyYarnUrlIsTheV2JarOfTheLegacyFabricMaven() {
         assertEquals("https://maven.legacyfabric.net/net/legacyfabric/yarn/1.8.9+build.604/yarn-1.8.9+build.604-v2.jar",
                 Urls.legacyYarn("net.legacyfabric:yarn:1.8.9+build.604"));
