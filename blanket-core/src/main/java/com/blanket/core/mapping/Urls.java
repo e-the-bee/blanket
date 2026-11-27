@@ -10,6 +10,9 @@ public final class Urls {
 
     public static final String MOJANG_MANIFEST = "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json";
 
+    /** The launcher's default library repository: a launcher library entry without a {@code url} comes from here. */
+    public static final String MOJANG_LIBRARIES = "https://libraries.minecraft.net/";
+
     /** Fabric intermediary v2 jar; contains {@code mappings/mappings.tiny}. */
     public static String fabricIntermediary(String mc) {
         return "https://maven.fabricmc.net/net/fabricmc/intermediary/" + mc + "/intermediary-" + mc + "-v2.jar";
@@ -48,5 +51,15 @@ public final class Urls {
 
     public static String neoForgeUniversal(String version) {
         return "https://maven.neoforged.net/releases/net/neoforged/neoforge/" + version + "/neoforge-" + version + "-universal.jar";
+    }
+
+    /** The Forge installer; its {@code version.json} (1.13 and later) or {@code install_profile.json} lists Forge's libraries. */
+    public static String forgeInstaller(String artifactVersion) {
+        return "https://maven.minecraftforge.net/net/minecraftforge/forge/" + artifactVersion + "/forge-" + artifactVersion + "-installer.jar";
+    }
+
+    /** The NeoForge installer; its {@code version.json} lists NeoForge's libraries. */
+    public static String neoForgeInstaller(String version) {
+        return "https://maven.neoforged.net/releases/net/neoforged/neoforge/" + version + "/neoforge-" + version + "-installer.jar";
     }
 }
