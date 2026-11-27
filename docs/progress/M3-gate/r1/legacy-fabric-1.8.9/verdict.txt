@@ -1,0 +1,1 @@
+PASS legacy-fabric:1.8.9

@@ -149,13 +149,17 @@ read inside the hook.
 | Fabric 1.14–26.1 | Mixin `Minecraft#setScreen(Screen)V`, `HEAD`; payload `{"arg": 1}` | verified R-EVT-10 |
 | Fabric 26.2+ | Mixin `official:net.minecraft.client.gui.Gui#setScreen(...)`, `HEAD` | `setScreen` moved to `Gui` (verified R-EVT-11) |
 | Legacy Fabric 1.8.9–1.12.2 | Mixin `MinecraftClient#setScreen` (`lf:class_1600#method_2928`), `HEAD` | verified R-MAP-13 |
-| NeoForge | native `ScreenEvent$Opening` (`getNewScreen()`) | verified R-EVT-04 |
-| Forge 1.20.6+ (M7) | native `ScreenEvent$Opening` (static `BUS` from 1.21.6) | verified for 1.21.11 (R-EVT-06) |
-| Forge 1.8.9–1.12.2 | native `GuiOpenEvent` (`gui` field on 1.8.9, `getGui()` on 1.12.2) | verified R-EVT-02 |
+| NeoForge | native `ScreenEvent$Opening` (`getNewScreen()`) plus native `ScreenEvent$Closing` dispatching null (`Opening` is not posted for a null screen) | verified R-EVT-04, R-EXP-25 (1.21.1) |
+| Forge 1.20.1 (SRG era, §4.9) | as NeoForge: `ScreenEvent$Opening` plus `ScreenEvent$Closing` | R-EXP-25 |
+| Forge 1.20.6+ (M7) | native `ScreenEvent$Opening` (static `BUS` from 1.21.6); closing as 1.20.1 **ASSUMED** | verified for 1.21.11 (R-EVT-06) |
+| Forge 1.8.9–1.12.2 | native `GuiOpenEvent` (`gui` field on 1.8.9, `getGui()` on 1.12.2); posted for null too on 1.8.9 | verified R-EVT-02, R-EXP-25 |
 
 An adapter classifies the screen object into `ScreenKind` with `instanceof` checks against the era's
 title, pause, chat, inventory and container screen classes; `isModScreen()` is `instanceof` the era's
-`ScreenHost`. `null` gives `ScreenKind.NONE`. Cancelling or replacing the screen is not in v1.
+`ScreenHost`. `null` gives `ScreenKind.NONE`. Cancelling or replacing the screen is not in v1. Where a
+replacement posts `Opening(B)` then `Closing(A)`, the runtime drops that close; on Fabric, `setScreen`
+HEAD sees null when vanilla then substitutes the title screen, so that change is reported as `NONE`
+(R-EXP-25).
 
 ### 4.6 Mod screens (`Screen.render`)
 

@@ -55,26 +55,32 @@ reviewed visually in the PR.
 
 ## 4. L4 in-game smoke tests
 
-**The smoke mod** (`samples/hud-box`) uses: `CLIENT_TICK_END` (counts ticks), `WORLD_JOIN`,
-`HUD_RENDER` (fills a 40×40 rectangle of colour `#FF00FF` at GUI position (10, 10) and draws text),
-`WORLD_RENDER` (a filled box of colour `#00FF00` at a fixed world position 3 blocks in front of the
-spawn point), `Client.player()` reads (logs position), and `KeyBinding.register`.
+**The smoke mod** (`samples/hud-box`) uses: `CLIENT_TICK_START` and `CLIENT_TICK_END` (counts ticks),
+`WORLD_JOIN`, `HUD_RENDER` (fills a 40×40 rectangle of colour `#FF00FF` at GUI position (10, 10); text
+waits for `Canvas2D` text in M4), `WORLD_RENDER` (a filled 1×1×1 box of colour `#00FF00` 3 blocks south
+of where the player first appeared), `Client.player()` reads (logs position), and `KeyBinding.register`
+(key `H` toggles the rectangle).
 
-**Testkit hooks.** `blanket generate --testkit` adds, only in test builds, a relocated testkit module
-to the jar with its own generated hooks (same mechanism as events): it loads a world from a template
-save on the title screen, waits until 100 client ticks after `WORLD_JOIN`, reads back the main
-framebuffer with `glReadPixels`, evaluates pixel probes (the HUD rectangle's centre must be
-`#FF00FF ± 8`, the box's projected centre must be greenish), writes `testkit-result.json` (probes,
-event counts, exceptions, Mixin errors from the log), and quits the game. Release builds never include
-it.
+**Testkit hooks.** `--testkit` (in M3 an `EmitMain` argument) adds, only in test builds, the relocated
+`com.blanket.runtime.testkit` classes, which subscribe to events like a mod. Given the system properties
+`blanket.testkit.probes` (the sample's `testkit-probes.json`) and `blanket.testkit.out`, the testkit
+anchors at the first `CLIENT_TICK_END` after `WORLD_JOIN` with the player on the ground, waits the file's `waitTicks`
+(100), reads pixels back with `glReadPixels` in the same frame after Blanket's HUD drawing (the HUD
+rectangle's centre must be `#FF00FF ± 8`, the box's projected centre must be green-dominant), presses the
+first registered key and checks that the HUD probe changes, writes `testkit-result.json` (probes per
+round, key result, event counts, listener failures), and quits the game. Without the properties it does
+nothing. Release builds never include it (D-067).
 
-**Harness** (`blanket-testkit`): provisions the instance as in [build-and-gradle.md](build-and-gradle.md)
-§4, copies the world template and the jar, starts the game under Xvfb with Mesa llvmpipe
-(`LIBGL_ALWAYS_SOFTWARE=true`), applies a timeout of 6 minutes, and fails if the result file is missing
-or any probe fails. The game log is archived as a CI artifact.
+**Harness** (`blanket-testkit`, CLI `run <target> --jar <jar> --probes <file> --out <dir>`): provisions
+the instance as in [build-and-gradle.md](build-and-gradle.md) §4, starts a local offline dedicated server
+with a flat world on 127.0.0.1 at `difficulty peaceful`, starts the game under Xvfb with Mesa llvmpipe
+joined to that server (1.8.9 `--server/--port`, the others `--quickPlayMultiplayer`), applies a timeout
+of 6 minutes, and writes the verdict. The game log is archived as a CI artifact. (D-067; a template
+save, the earlier plan, differs per version.)
 
-**Gate per target:** game reaches the world (a title screen or a blocking warning screen is a failure, D-050), ≥100 `CLIENT_TICK_END` and exactly matching tick counts
-from start/end, `WORLD_JOIN` fired once, both pixel probes pass, no Mixin error, no Blanket listener
+**Gate per target:** game reaches the world (a title screen or a blocking warning screen is a failure,
+D-050), the result file exists, ≥100 `CLIENT_TICK_END` and exactly matching tick counts from start/end,
+`WORLD_JOIN` fired once, both pixel probes and the key check pass, no Mixin error, no Blanket listener
 exception.
 
 Assumptions to retire in M0 (spike S-14): offline launch for single-player works on the core six;
