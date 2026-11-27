@@ -53,7 +53,8 @@ public final class Executor {
     private static int program, mvpLocation, vbo, vao, ownFbo;
     private static FloatBuffer vertices = direct(7 * 6 * 64).asFloatBuffer();
     private static final FloatBuffer matrix = direct(16).asFloatBuffer();
-    private static final IntBuffer ints = direct(4).asIntBuffer();
+    // 16, not 4: LWJGL 2's glGetInteger(int, IntBuffer) rejects a buffer with fewer than 16 elements left (M3 gate, 1.8.9).
+    private static final IntBuffer ints = direct(16).asIntBuffer();
 
     static void drawHud(Recorder r) {
         Tap t = tap;
