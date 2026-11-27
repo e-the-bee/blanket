@@ -168,6 +168,60 @@ class ValidatorTest {
         assertEquals("event FX_TICK", d.member());
     }
 
+    private static String viaEvent(String event, String when, String via) {
+        return """
+                { "schema": 1, "event": "%s", "recipes": [ { "when": %s, "via": "%s" } ] }""".formatted(event, when, via);
+    }
+
+    @Test
+    void c1ViaAnEventWithARecipeForTheTargetIsGreen() throws IOException {
+        Map<String, String> f = baseline();
+        f.put("events/FxJoin.json", viaEvent("FX_JOIN", "{}", "FX_TICK"));
+        assertTrue(run(f).ok(), run(f).format());
+    }
+
+    @Test
+    void c1ViaAnEventWithoutAFileIsUnbound() throws IOException {
+        Map<String, String> f = baseline();
+        f.put("events/FxJoin.json", viaEvent("FX_JOIN", "{}", "FX_NOWHERE"));
+        Diagnostic d = only(run(f));
+        assertEquals(ErrorCode.UNBOUND, d.code());
+        assertEquals("event FX_JOIN", d.member());
+        assertTrue(d.detail().contains("goes via FX_NOWHERE") && d.detail().contains("which no events/ file binds"), d.detail());
+    }
+
+    @Test
+    void c1ViaAnEventWithoutARecipeForTheTargetIsUnbound() throws IOException {
+        Map<String, String> f = baseline();
+        f.put("events/FxTick.json", TICK_EVENT.replace("\"when\": {}", "\"when\": { \"loader\": \"fabric\" }"));
+        f.put("events/FxJoin.json", viaEvent("FX_JOIN", "{}", "FX_TICK"));
+        Report r = run(f);
+        List<String> members = r.errors().stream().map(Diagnostic::member).sorted().toList();
+        assertEquals(List.of("event FX_JOIN", "event FX_TICK"), members, r.format());
+        Diagnostic join = r.errors().stream().filter(d -> d.member().equals("event FX_JOIN")).findFirst().orElseThrow();
+        assertTrue(join.detail().contains("which has no recipe for neoforge:1.21.1 in events/FxTick.json"), join.detail());
+    }
+
+    @Test
+    void c1ViaChainIsUnbound() throws IOException {
+        Map<String, String> f = baseline();
+        f.put("events/FxJoin.json", viaEvent("FX_JOIN", "{}", "FX_TICK"));
+        f.put("events/FxLeave.json", viaEvent("FX_LEAVE", "{}", "FX_JOIN"));
+        Diagnostic d = only(run(f));
+        assertEquals("event FX_LEAVE", d.member());
+        assertTrue(d.detail().contains("goes via FX_JOIN") && d.detail().contains("a via chain or cycle"), d.detail());
+    }
+
+    @Test
+    void c1ViaCycleIsUnboundOnBothEvents() throws IOException {
+        Map<String, String> f = baseline();
+        f.put("events/FxJoin.json", viaEvent("FX_JOIN", "{}", "FX_LEAVE"));
+        f.put("events/FxLeave.json", viaEvent("FX_LEAVE", "{}", "FX_JOIN"));
+        Report r = run(f);
+        assertEquals(List.of("event FX_JOIN", "event FX_LEAVE"), r.errors().stream().map(Diagnostic::member).sorted().toList(), r.format());
+        assertTrue(r.errors().stream().allMatch(d -> d.detail().contains("a via chain or cycle")), r.format());
+    }
+
     // ---------------------------------------------------------------------------------------- C2 resolution
 
     @Test

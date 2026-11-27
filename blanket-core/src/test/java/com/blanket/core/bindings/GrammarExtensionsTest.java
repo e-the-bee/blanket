@@ -267,4 +267,59 @@ class GrammarExtensionsTest {
         assertThrows(BindingException.class, () -> event(nativeEvent(null, "loader:x.Y#get(I)F")));
         assertThrows(BindingException.class, () -> event(nativeEvent(null, "loader:x.Y#partialTicks")));
     }
+
+    // ---- M3: via recipes and native arrays ---------------------------------------------------
+
+    @Test
+    void viaParsesAndRoundTrips() {
+        String json = "{\"schema\": 1, \"event\": \"WORLD_JOIN\", \"recipes\": [{\"when\": {\"loader\": \"fabric\"}, \"via\": \"CLIENT_TICK_START\"}]}";
+        EventBinding e = event(json);
+        EventBinding.Recipe r = e.recipes().get(0);
+        assertEquals("CLIENT_TICK_START", r.via());
+        assertTrue(r.injections().isEmpty());
+        assertEquals(false, r.isMixin());
+        assertEquals(JsonParser.parseString(json), e.toJson());
+    }
+
+    @Test
+    void viaIsTheOnlyKindOfItsRecipe() {
+        BindingException both = assertThrows(BindingException.class, () -> event("{\"schema\": 1, \"event\": \"E\", \"recipes\": [{\"when\": {},"
+                + " \"via\": \"T\", \"mixin\": {\"hook\": \"h\", \"dispatch\": \"d\"}}]}"));
+        assertTrue(both.getMessage().contains("exactly one of \"mixin\", \"native\" and \"via\""), both.getMessage());
+        assertThrows(BindingException.class, () -> event("{\"schema\": 1, \"event\": \"E\", \"recipes\": [{\"when\": {}}]}"));
+    }
+
+    @Test
+    void viaNamesAnotherEventConstant() {
+        BindingException self = assertThrows(BindingException.class,
+                () -> event("{\"schema\": 1, \"event\": \"E\", \"recipes\": [{\"when\": {}, \"via\": \"E\"}]}"));
+        assertTrue(self.getMessage().contains("$.recipes[0].via") && self.getMessage().contains("cannot go via itself"), self.getMessage());
+        BindingException name = assertThrows(BindingException.class,
+                () -> event("{\"schema\": 1, \"event\": \"E\", \"recipes\": [{\"when\": {}, \"via\": \"events/ClientTick.json\"}]}"));
+        assertTrue(name.getMessage().contains("event constant"), name.getMessage());
+        assertThrows(BindingException.class, () -> event("{\"schema\": 1, \"event\": \"E\", \"recipes\": [{\"when\": {}, \"via\": \"\"}]}"));
+    }
+
+    @Test
+    void nativeArrayParsesInOrderAndRoundTrips() {
+        String json = "{\"schema\": 1, \"event\": \"SCREEN_OPEN\", \"recipes\": [{\"when\": {}, \"native\": ["
+                + "{\"event\": \"loader:x.Open\", \"bus\": \"game\", \"dispatch\": \"screenOpen\", \"payload\": {\"s\": {\"getter\": \"loader:x.Open#getScreen()Lx/S;\"}}},"
+                + "{\"event\": \"loader:x.Close\", \"bus\": \"game\", \"dispatch\": \"screenOpen\", \"payload\": {\"s\": {\"const\": null}}}]}]}";
+        EventBinding e = event(json);
+        EventBinding.Recipe r = e.recipes().get(0);
+        assertEquals(false, r.isMixin());
+        assertEquals(java.util.List.of("loader:x.Open", "loader:x.Close"), r.injections().stream().map(EventBinding.Injection::nativeEvent).toList());
+        assertEquals("const", r.injections().get(1).payload().get("s").kind());
+        assertEquals(JsonParser.parseString(json), e.toJson());
+    }
+
+    @Test
+    void nativeArrayNeedsBodiesThatAreAllNative() {
+        BindingException empty = assertThrows(BindingException.class,
+                () -> event("{\"schema\": 1, \"event\": \"E\", \"recipes\": [{\"when\": {}, \"native\": []}]}"));
+        assertTrue(empty.getMessage().contains("$.recipes[0].native: a native array needs at least one native body"), empty.getMessage());
+        BindingException mixed = assertThrows(BindingException.class, () -> event("{\"schema\": 1, \"event\": \"E\", \"recipes\": [{\"when\": {},"
+                + " \"native\": [{\"hook\": \"h\", \"dispatch\": \"d\"}]}]}"));
+        assertTrue(mixed.getMessage().contains("$.recipes[0].native[0]"), mixed.getMessage());
+    }
 }

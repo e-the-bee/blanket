@@ -175,13 +175,16 @@ final class Coverage {
             for (TargetSpec t : specs) {
                 int i = Rules.first(eb.recipes(), EventBinding.Recipe::when, t);
                 if (i < 0) {
-                    errors.add(new Diagnostic(ErrorCode.UNBOUND, t.id(), label, null, null,
-                            "C1 coverage: " + label + " has no recipe for " + t.id() + " in " + file,
-                            "add a recipe whose \"when\" matches " + t.id() + " to " + file + ": a `mixin` on a hook of hooks.json, or a `native` loader event (contributing.md 3.3)"));
+                    errors.add(EventRecipes.noRecipe(label, file, t));
                     continue;
                 }
                 reached[i] = true;
-                for (EventBinding.Injection in : eb.recipes().get(i).injections()) {
+                EventBinding.Recipe r = eb.recipes().get(i);
+                if (r.via() != null) {
+                    EventRecipes.via(bindings.events(), eb.event(), file, r.via(), t, errors);   // the named event's own hooks are checked under it
+                    continue;
+                }
+                for (EventBinding.Injection in : r.injections()) {
                     if (in.hook() != null) hookRule(t, label, file, in.hook());
                 }
             }

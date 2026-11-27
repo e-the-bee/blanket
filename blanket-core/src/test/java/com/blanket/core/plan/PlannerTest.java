@@ -727,4 +727,158 @@ class PlannerTest implements Opcodes {
         assertEquals(java.util.Set.of("com/blanket/api/Client.get()Lcom/blanket/api/Client;", "com/blanket/api/Client.player()Lcom/blanket/api/Player;",
                 "com/blanket/api/Player.x()D"), alone.members().keySet());
     }
+
+    // ---------------------------------------------------------------------------------------- M3: which events are wired
+
+    private static java.util.function.Consumer<MethodVisitor> reads(String... events) {
+        return v -> {
+            for (String e : events) {
+                v.visitFieldInsn(GETSTATIC, "com/blanket/api/Events", e, "Lcom/blanket/api/EventSource;");
+                v.visitInsn(POP);
+            }
+        };
+    }
+
+    /** An embedded class whose static {@code run} reads the events, then calls {@code next.run()} when next is not null. */
+    private static byte[] eventReader(String name, String next, String... events) {
+        return simple(name, "java/lang/Object", ACC_PUBLIC, w -> {
+            MethodVisitor m = w.visitMethod(ACC_PUBLIC | ACC_STATIC, "run", "()V", null, null);
+            m.visitCode();
+            reads(events).accept(m);
+            if (next != null) m.visitMethodInsn(INVOKESTATIC, next, "run", "()V", false);
+            m.visitInsn(RETURN);
+            m.visitMaxs(0, 0);
+            m.visitEnd();
+        });
+    }
+
+    private static List<String> events(Plan p) {
+        return p.hooks().stream().map(Hook::event).distinct().sorted().toList();
+    }
+
+    @Test
+    void theDispatchersOwnEventReadsWireNothing() throws IOException {
+        // the runtime's Dispatch reads every event to fire it; only the mod's reads are subscriptions (events-and-hooks 1.5)
+        Path embed = jar("dispatch.jar", Map.of("com/blanket/runtime/Dispatch",
+                eventReader("com/blanket/runtime/Dispatch", null, "CLIENT_TICK_END", "HUD_RENDER", "WORLD_RENDER")));
+        Path m = modJar("tick-only.jar", reads("CLIENT_TICK_END"));
+        for (String id : List.of("fabric:26.1.2", "neoforge:26.1.2")) {
+            Plan p = plan(files(), m, List.of(embed), PlannerTest.class.getClassLoader(), id);
+            assertEquals(List.of("CLIENT_TICK_END"), events(p), id);
+            assertEquals(1, p.hooks().size(), id + " " + p.hooks());
+        }
+    }
+
+    @Test
+    void anEmbeddedClassReachedFromARootThatSubscribesWiresItsEvent() throws IOException {
+        // Boot (a root) reaches a testkit-like class that subscribes to WORLD_RENDER: its read counts like the mod's
+        Path embed = jar("embed.jar", Map.of(
+                "com/blanket/runtime/Dispatch", eventReader("com/blanket/runtime/Dispatch", null, "CLIENT_TICK_END", "HUD_RENDER", "WORLD_RENDER"),
+                "com/blanket/runtime/Boot", eventReader("com/blanket/runtime/Boot", "com/blanket/runtime/testkit/Probe"),
+                "com/blanket/runtime/testkit/Probe", eventReader("com/blanket/runtime/testkit/Probe", null, "WORLD_RENDER")));
+        Path m = modJar("tick-only.jar", reads("CLIENT_TICK_END"));
+        assertEquals(List.of("CLIENT_TICK_END", "WORLD_RENDER"), events(plan(files(), m, List.of(embed), PlannerTest.class.getClassLoader(), TARGETS_26)));
+
+        // a class reached only from Dispatch subscribes too: the exception is Dispatch itself
+        Path fromDispatch = jar("from-dispatch.jar", Map.of(
+                "com/blanket/runtime/Dispatch", eventReader("com/blanket/runtime/Dispatch", "com/blanket/runtime/Helper", "HUD_RENDER"),
+                "com/blanket/runtime/Helper", eventReader("com/blanket/runtime/Helper", null, "WORLD_RENDER")));
+        assertEquals(List.of("CLIENT_TICK_END", "WORLD_RENDER"), events(plan(files(), m, List.of(fromDispatch), PlannerTest.class.getClassLoader(), TARGETS_26)));
+    }
+
+    static final String HOOKS_WITH_START = HOOKS.replace("\"tick.end\":",
+            "\"tick.start\": [ { \"when\": { \"loader\": \"fabric\" }, \"method\": \"official:net.example.Game#tick()V\", \"at\": \"HEAD\" } ],\n  \"tick.end\":");
+
+    static final String TICK_START = """
+            { "schema": 1, "event": "CLIENT_TICK_START", "recipes": [
+              { "when": { "loader": "fabric" }, "mixin": { "hook": "tick.start", "dispatch": "tickStart" } },
+              { "when": { "loader": "neoforge" }, "native": { "event": "loader:net.loaderfx.TickEvent", "bus": "game", "dispatch": "tickStart" } } ] }""";
+
+    private static String via(String event, String via) {
+        return """
+                { "schema": 1, "event": "%s", "recipes": [ { "when": {}, "via": "%s" } ] }""".formatted(event, via);
+    }
+
+    private Map<String, String> filesWithWorldEvents() {
+        Map<String, String> f = files();
+        f.put("hooks.json", HOOKS_WITH_START);
+        f.put("events/ClientTickStart.json", TICK_START);
+        f.put("events/WorldJoin.json", via("WORLD_JOIN", "CLIENT_TICK_START"));
+        f.put("events/WorldLeave.json", via("WORLD_LEAVE", "CLIENT_TICK_START"));
+        return f;
+    }
+
+    @Test
+    void viaEventsAreDeliveredByTheNamedEventsHookWiredOnce() throws IOException {
+        Path all = modJar("world.jar", reads("CLIENT_TICK_START", "WORLD_JOIN", "WORLD_LEAVE"));
+        Plan fabric = plan(filesWithWorldEvents(), all, List.of(), PlannerTest.class.getClassLoader(), TARGETS_26);
+        assertEquals(1, fabric.hooks().size(), fabric.hooks().toString());
+        Hook start = fabric.hooks().get(0);
+        assertEquals("CLIENT_TICK_START", start.event());
+        assertEquals("tickStart", start.dispatch());
+        assertEquals("()V", start.dispatchDesc());
+        assertEquals("tick.start", start.hookId());
+        assertEquals("tick()V", start.mixinMethod());
+        assertEquals(new At("HEAD", null, -1, null, null), start.at());
+
+        Plan neo = plan(filesWithWorldEvents(), all, List.of(), PlannerTest.class.getClassLoader(), "neoforge:26.1.2");
+        assertEquals(1, neo.hooks().size(), neo.hooks().toString());
+        assertEquals("net/loaderfx/TickEvent", neo.hooks().get(0).nativeEvent());
+        assertNull(neo.hooks().get(0).hookId(), "a native listener has no hooks.json id");
+
+        // a mod that only joins worlds still gets the tick-start hook; with CLIENT_TICK_END it gets both, once each
+        Path join = modJar("join.jar", reads("WORLD_JOIN", "CLIENT_TICK_END"));
+        Plan p = plan(filesWithWorldEvents(), join, List.of(), PlannerTest.class.getClassLoader(), TARGETS_26);
+        assertEquals(List.of("tick.end", "tick.start"), p.hooks().stream().map(Hook::hookId).sorted().toList());
+    }
+
+    @Test
+    void viaToAnUnboundEventOrAChainFailsPlanning() throws IOException {
+        Map<String, String> f = filesWithWorldEvents();
+        f.put("events/WorldJoin.json", via("WORLD_JOIN", "SCREEN_OPEN"));
+        PlanSource s = source(f, modJar("join.jar", reads("WORLD_JOIN")), List.of(), PlannerTest.class.getClassLoader());
+        IllegalStateException e = assertThrows(IllegalStateException.class, () -> s.plan(s.targets().get(0)));
+        assertTrue(e.getMessage().startsWith("UNBOUND fabric:26.1.2 event WORLD_JOIN"), e.getMessage());
+        assertTrue(e.getMessage().contains("goes via SCREEN_OPEN on fabric:26.1.2 (events/WorldJoin.json), which no events/ file binds"), e.getMessage());
+
+        Map<String, String> chain = filesWithWorldEvents();
+        chain.put("events/WorldLeave.json", via("WORLD_LEAVE", "WORLD_JOIN"));
+        PlanSource c = source(chain, modJar("leave.jar", reads("WORLD_LEAVE")), List.of(), PlannerTest.class.getClassLoader());
+        IllegalStateException ce = assertThrows(IllegalStateException.class, () -> c.plan(c.targets().get(0)));
+        assertTrue(ce.getMessage().startsWith("UNBOUND fabric:26.1.2 event WORLD_LEAVE"), ce.getMessage());
+        assertTrue(ce.getMessage().contains("a via chain or cycle"), ce.getMessage());
+
+        // the named event lacks a recipe for one target
+        Map<String, String> partial = filesWithWorldEvents();
+        partial.put("events/ClientTickStart.json", """
+                { "schema": 1, "event": "CLIENT_TICK_START", "recipes": [
+                  { "when": { "loader": "fabric" }, "mixin": { "hook": "tick.start", "dispatch": "tickStart" } } ] }""");
+        PlanSource ps = source(partial, modJar("join2.jar", reads("WORLD_JOIN")), List.of(), PlannerTest.class.getClassLoader());
+        TargetSpec neo = ps.targets().stream().filter(t -> t.id().equals("neoforge:26.1.2")).findFirst().orElseThrow();
+        IllegalStateException pe = assertThrows(IllegalStateException.class, () -> ps.plan(neo));
+        assertTrue(pe.getMessage().contains("event WORLD_JOIN") && pe.getMessage().contains("which has no recipe for neoforge:26.1.2 in events/ClientTickStart.json"),
+                pe.getMessage());
+    }
+
+    @Test
+    void nativeArrayGivesOneListenerPerBody() throws IOException {
+        Map<String, String> f = files();
+        f.put("events/HudRender.json", HUD.replace(
+                "\"native\": { \"event\": \"loader:net.loaderfx.HudEvent\", \"bus\": \"game\", \"dispatch\": \"hud\",\n"
+                        + "    \"payload\": { \"partialTick\": { \"getter\": \"loader:net.loaderfx.HudEvent#partialTick()F\" } } } } ] }",
+                "\"native\": [\n"
+                        + "    { \"event\": \"loader:net.loaderfx.HudEvent\", \"bus\": \"game\", \"dispatch\": \"hud\","
+                        + " \"payload\": { \"partialTick\": { \"getter\": \"loader:net.loaderfx.HudEvent#partialTick()F\" } } },\n"
+                        + "    { \"event\": \"loader:net.loaderfx.WorldEvent\", \"bus\": \"game\", \"dispatch\": \"hud\","
+                        + " \"payload\": { \"partialTick\": { \"const\": 0 } } } ] } ] }"));
+        assertTrue(f.get("events/HudRender.json").contains("WorldEvent"), "the fixture recipe was rewritten");
+        Plan p = plan(f, mod, List.of(), PlannerTest.class.getClassLoader(), "neoforge:26.1.2");
+        List<Hook> hud = hooks(p, "HUD_RENDER");
+        assertEquals(List.of("net/loaderfx/HudEvent", "net/loaderfx/WorldEvent"), hud.stream().map(Hook::nativeEvent).toList());
+        assertEquals(List.of(List.of(Op.constant(0f))), hud.get(1).payloadByDispatchParam());
+        assertTrue(hud.stream().allMatch(h -> !h.mixin() && h.hookId() == null));
+
+        // Mixin hooks carry their hooks.json ids
+        assertEquals(List.of("gui.record", "gui.replay"), hooks(plan("fabric:26.1.2"), "HUD_RENDER").stream().map(Hook::hookId).toList());
+    }
 }

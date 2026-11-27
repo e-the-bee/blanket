@@ -15,6 +15,7 @@ import com.blanket.core.scan.Scan;
 import com.blanket.core.validate.ApiClasses;
 import com.blanket.core.validate.BindingSet;
 import com.blanket.core.validate.Diagnostic;
+import com.blanket.core.validate.EventRecipes;
 import com.blanket.core.validate.ErrorCode;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonPrimitive;
@@ -456,25 +457,24 @@ final class TargetPlan implements Opcodes {
 
     // ---------------------------------------------------------------------------------------- hooks
 
+    /**
+     * The hooks of every used event's recipe. An event that goes {@code via} another is delivered by the other's recipe,
+     * and each recipe is wired once: a mod using CLIENT_TICK_START, WORLD_JOIN and WORLD_LEAVE gets one tick-start hook.
+     */
     private List<Hook> hooks() {
-        List<Hook> out = new ArrayList<>();
+        Map<String, EventRecipes.Wired> wired = new LinkedHashMap<>();
         for (String event : scan.events()) {
-            String label = "event " + event;
-            EventBinding eb = null;
-            String file = null;
-            for (Map.Entry<String, EventBinding> e : b.events().entrySet()) {
-                if (e.getValue().event().equals(event)) {
-                    eb = e.getValue();
-                    file = e.getKey();
-                }
+            List<Diagnostic> errors = new ArrayList<>();
+            EventRecipes.Wired w = EventRecipes.wire(b.events(), event, t, errors);
+            if (w == null) throw Planner.fail(errors.get(0));
+            wired.putIfAbsent(w.event(), w);
+        }
+        List<Hook> out = new ArrayList<>();
+        for (EventRecipes.Wired w : wired.values()) {
+            String label = "event " + w.event();
+            for (EventBinding.Injection in : w.recipe().injections()) {
+                out.add(in.hook() != null ? mixin(w.event(), in, label) : listener(w.event(), in, label));
             }
-            EventBinding.Recipe recipe = eb == null ? null : first(eb.recipes(), EventBinding.Recipe::when);
-            if (recipe == null) {
-                throw Planner.fail(new Diagnostic(ErrorCode.UNBOUND, t.id(), label, null, null,
-                        "C1 coverage: " + (eb == null ? "no events/ file binds " + label : label + " has no recipe for " + t.id() + " in " + file),
-                        "add a recipe whose \"when\" matches " + t.id() + " (contributing.md 3.3)"));
-            }
-            for (EventBinding.Injection in : recipe.injections()) out.add(in.hook() != null ? mixin(event, in, label) : listener(event, in, label));
         }
         return out;
     }
@@ -504,7 +504,7 @@ final class TargetPlan implements Opcodes {
         Site site = new Site(label, args);
         ApiClasses.Method dispatch = dispatch(in.dispatch(), label);
         return new Hook(event, dispatch.name(), dispatch.desc(), true, method.owner(), method.name() + method.desc(), at, handler.toString(),
-                null, null, List.of(), before(in, site), payload(in, dispatch, site));
+                null, null, List.of(), before(in, site), payload(in, dispatch, site), in.hook());
     }
 
     private Hook listener(String event, EventBinding.Injection in, String label) {

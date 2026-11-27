@@ -383,16 +383,42 @@ Mixin injector with `require = 1` and `expect = 1`
     { "when": {...}, "mixin":  { "hook": "<hook id>", "dispatch": "<Dispatch method>", "before": [<glue source>, ...]?, "payload": { "<name>": <source>, ... } } },
     { "when": {...}, "mixin":  [ { "hook": ..., "dispatch": ..., ... }, { "hook": ..., "dispatch": ... } ] },
     { "when": {...}, "native": { "event": "<loader ref>", "bus": "game" | "mod" | "fml", "dispatch": "<Dispatch method>",
-                                 "filter": { "<getter or field ref>": "<static field ref>", ... }?, "before": [...]?, "payload": {...} } }
+                                 "filter": { "<getter or field ref>": "<static field ref>", ... }?, "before": [...]?, "payload": {...} } },
+    { "when": {...}, "native": [ { "event": ..., "bus": ..., "dispatch": ..., ... }, { "event": ..., ... } ] },
+    { "when": {...}, "via":    "<EVENT>" }
   ]
 }
 ```
 
-Every `mixin` injection and every `native` body has a required `dispatch` key: the name of the
+A recipe has exactly one of `mixin`, `native` and `via`. Every `mixin` injection and every `native` body has a required
+`dispatch` key: the name of the
 `com.blanket.runtime.Dispatch` method it calls, for example `tickEnd`, `hud`, `hudRecord`, `hudReplay`, `world`,
 `worldLegacy` (D-057). The method's parameter count equals the number of payload entries. `mixin` is one injection
 object or an array of them; each injection is its own Mixin injector with its own hook, dispatch, `before` and
-payload (26.x HUD: `gui.record` calls `hudRecord`, `gui.replay` calls `hudReplay`).
+payload (26.x HUD: `gui.record` calls `hudRecord`, `gui.replay` calls `hudReplay`). `native` is likewise one body or an
+array of them; each body is its own listener method, for an event that needs two loader events on one target (a screen
+opening and a screen closing, the second passing `{"const": null}`):
+
+```json
+{ "when": { "loader": "forge" }, "native": [
+    { "event": "loader:<opening event>", "bus": "game", "dispatch": "screenOpen", "payload": { "screen": { "getter": "loader:<opening event>#<getter>" } } },
+    { "event": "loader:<closing event>", "bus": "game", "dispatch": "screenOpen", "payload": { "screen": { "const": null } } } ] }
+```
+
+`via` names another event (its constant, for example `CLIENT_TICK_START`) when the runtime synthesizes this event from
+that event's hook, so the event has no hook of its own: `WORLD_JOIN` and `WORLD_LEAVE` are fired by `Dispatch.tickStart`
+(D-015). The generator wires the named event's recipe for the target, and wires each recipe once, so a mod using
+`CLIENT_TICK_START`, `WORLD_JOIN` and `WORLD_LEAVE` gets one tick-start hook. C1 accepts a `via` recipe when the named event
+has a `mixin` or `native` recipe for the target; a named event without an events file or a recipe for the target, a
+named event whose recipe there is itself `via` (a chain or a cycle) and an event naming itself are errors:
+
+```json
+{ "schema": 1, "event": "WORLD_JOIN", "recipes": [ { "when": {}, "via": "CLIENT_TICK_START" } ] }
+```
+
+An event is used, and its recipe wired, only where the mod or an embedded class other than `com.blanket.runtime.Dispatch`
+reads its `Events` constant ([events-and-hooks.md](events-and-hooks.md) §1 principle 5): `Dispatch` reads every event to
+fire it, which is no subscription.
 
 `filter` (native only, D-057) maps a getter or field reference on the event object to a static field reference,
 for example `{"loader:...TickEvent#phase:L.../TickEvent$Phase;": "loader:...TickEvent$Phase#END:L.../TickEvent$Phase;"}`.

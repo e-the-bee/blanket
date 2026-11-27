@@ -188,10 +188,11 @@ class BindingFilesTest {
     }
 
     @Test
-    void recipeNeedsExactlyOneOfMixinAndNative() {
+    void recipeNeedsExactlyOneOfMixinNativeAndVia() {
+        // M3 S0 added "via" as a third recipe kind, so the message names all three
         String json = "{\"schema\":1,\"event\":\"E\",\"recipes\":[{\"when\":{},\"mixin\":{\"hook\":\"h\"},\"native\":{}}]}";
         String m = message(() -> EventBinding.parse(JsonParser.parseString(json), "events/E.json"));
-        assertTrue(m.contains("exactly one of \"mixin\" and \"native\""), m);
+        assertTrue(m.contains("exactly one of \"mixin\", \"native\" and \"via\""), m);
     }
 
     @Test

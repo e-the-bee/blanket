@@ -6,7 +6,8 @@ import java.util.List;
 /**
  * How one event reaches {@code com.blanket.runtime.Dispatch} on a target: a Mixin injection or a native listener.
  *
- * @param event                  the API event constant ({@code CLIENT_TICK_END})
+ * @param event                  the API event constant whose recipe this is ({@code CLIENT_TICK_END}); for an event that
+ *                               goes {@code via} another, the other one ({@code CLIENT_TICK_START} for {@code WORLD_JOIN})
  * @param dispatch               the {@code Dispatch} method name ({@code tickEnd})
  * @param dispatchDesc           its descriptor ({@code ()V})
  * @param mixin                  true for a Mixin injection, false for a native listener
@@ -20,7 +21,18 @@ import java.util.List;
  * @param filters                native only: identity checks, ANDed, run first
  * @param before                 chains run before the payload; each leaves nothing on the stack
  * @param payloadByDispatchParam one chain per {@code Dispatch} parameter, in order; each leaves that parameter's value
+ * @param hookId                 Mixin only: the hooks.json id ({@code tick.end}), which names the Mixin class
+ *                               {@code <Event>$<HookId>} (events-and-hooks.md section 3); null for a native listener
  */
 public record Hook(String event, String dispatch, String dispatchDesc, boolean mixin, String mixinTarget,
                    String mixinMethod, At at, String handlerDesc, String nativeEvent, String bus, List<Filter> filters,
-                   List<List<Op>> before, List<List<Op>> payloadByDispatchParam) {}
+                   List<List<Op>> before, List<List<Op>> payloadByDispatchParam, String hookId) {
+
+    /** A hook without a hooks.json id: a native listener, or a Mixin fixture that does not care about its class name. */
+    public Hook(String event, String dispatch, String dispatchDesc, boolean mixin, String mixinTarget, String mixinMethod, At at,
+                String handlerDesc, String nativeEvent, String bus, List<Filter> filters, List<List<Op>> before,
+                List<List<Op>> payloadByDispatchParam) {
+        this(event, dispatch, dispatchDesc, mixin, mixinTarget, mixinMethod, at, handlerDesc, nativeEvent, bus, filters, before,
+                payloadByDispatchParam, null);
+    }
+}
