@@ -113,10 +113,8 @@ public final class Planner {
         Report check = ModCheck.run(bindings, data, api, scan, List.of(t));
         List<Diagnostic> errors = new ArrayList<>();
         Predicate<String> enums = owner -> isEnum(apiLoader, owner);
-        Set<String> unmet = TargetPlan.unmetLabels(bindings, t);
         for (Diagnostic d : check.errors()) {
-            boolean ofUnmetMember = unmet.contains(d.member()) && (d.code() == ErrorCode.UNRESOLVED || d.code() == ErrorCode.SHAPE);
-            if (!ofUnmetMember && !decidedHere(d, bindings, scan, enums)) errors.add(d);
+            if (!decidedHere(d, bindings, scan, enums)) errors.add(d);
         }
         if (!errors.isEmpty()) throw fail(errors);
         try (Names names = new Names(t, bindings.targets().gameClasses())) {
@@ -150,15 +148,12 @@ public final class Planner {
 
     /**
      * The coverage findings of {@link ModCheck} that are no failure of the plan, which carries the answer in its members:
-     * an explicit {@code unsupported} rule (the plan holds {@link Lowered.Unsupported}, and FOLD fails only the uses it
-     * cannot prove dead), a constant of an aliased enum (a field of an API type, bound by the rule under the constant's
-     * name), a use of an owned facade (a type file with member rules and no representation) and a pass-through member
+     * a use of an owned facade (a type file with member rules and no representation) and a pass-through member
      * ({@link TargetPlan#passThrough}). {@code TargetPlan} still fails a used member that has no rule and is none of these.
+     * Unsupported members ({@code unsupported} rules, {@code requires} rules without their feature) are not reported by a
+     * check without the classes; the plan holds {@link Lowered.Unsupported} and LOWER fails only the uses it cannot prove dead.
      */
     private static boolean decidedHere(Diagnostic d, BindingSet bindings, Scan scan, Predicate<String> enums) {
-        if (d.code() == ErrorCode.UNSUPPORTED) {
-            return d.detail().startsWith("C1 coverage:") && d.detail().contains(" marks this member unsupported on ");
-        }
         if (d.code() != ErrorCode.UNBOUND) return false;
         int dot = d.member().indexOf('.');
         if (dot > 0 && d.detail().startsWith("C1 coverage: used member ") && d.detail().contains(" has no rule list in ")) {
@@ -177,10 +172,6 @@ public final class Planner {
         if (d.member().endsWith(suffix)) {
             TypeBinding tb = typeFile(bindings, d.member().substring(0, d.member().length() - suffix.length()));
             return tb != null && TargetPlan.isFacade(tb);
-        }
-        if (dot > 0 && d.detail().startsWith("C1 coverage: the mod reads the field ")) {
-            TypeBinding tb = typeFile(bindings, d.member().substring(0, dot));
-            return tb != null && tb.members().containsKey(d.member().substring(dot + 1));
         }
         return false;
     }

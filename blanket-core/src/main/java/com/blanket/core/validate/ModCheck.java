@@ -2,13 +2,23 @@
 package com.blanket.core.validate;
 
 import com.blanket.core.bindings.EventBinding;
+import com.blanket.core.bindings.Features;
 import com.blanket.core.bindings.Hooks;
 import com.blanket.core.bindings.Lowering;
 import com.blanket.core.bindings.TypeBinding;
+import com.blanket.core.lower.DeadCode;
+import com.blanket.core.lower.Folding;
+import com.blanket.core.lower.Reachability;
 import com.blanket.core.mapping.Desc;
+import com.blanket.core.plan.Lowered;
 import com.blanket.core.resolve.TargetSpec;
 import com.blanket.core.scan.Scan;
 import com.google.gson.JsonObject;
+import org.objectweb.asm.ClassReader;
+import org.objectweb.asm.tree.AbstractInsnNode;
+import org.objectweb.asm.tree.ClassNode;
+import org.objectweb.asm.tree.MethodInsnNode;
+import org.objectweb.asm.tree.MethodNode;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -28,21 +38,40 @@ import java.util.TreeSet;
  * {@code blanket check}: validates only what one mod uses. The used API members and events come from {@link Scan}; for each
  * target the first matching rule of each of them is checked for coverage ({@link ErrorCode#UNBOUND}), and then the
  * references of those rules, the shape of the lowerings and the hooks of the used events go through the same
- * {@link TargetChecks} that {@link Validator} runs on the whole binding set (C2, C3, C7).
+ * {@link TargetChecks} that {@link Validator} runs on the whole binding set (C2, C3, C7). With the mod's classes, the
+ * uses of members that are unsupported on a target (an {@code unsupported} rule, or a {@code requires} rule whose
+ * feature the target lacks) are judged as LOWER judges them: {@code Blanket.supports} is folded with the target's
+ * features, dead code is removed, and a use left in reachable code is {@link ErrorCode#UNSUPPORTED}.
  *
  * <p>The binding set is narrowed first: a type file keeps only the member rule lists the mod uses (plus the types that
  * appear in the descriptors of used members, which {@code TargetChecks} needs for their aliases), an events file is kept
  * only for a used event, hooks only when a used event's recipe names them, glue files only for the members a used event
- * passes as payload.
+ * passes as payload. The rule list of an aliased enum constant the mod reads is kept like a method's.
  */
 public final class ModCheck {
     private ModCheck() {}
+
+    /** The fixed API owner of {@code supports} (lowering-and-adapters.md section 4.7). */
+    private static final String BLANKET = "com/blanket/api/Blanket";
 
     /** One used API member and the member key of its type file (null when the file has none), by the keys of {@code narrowed}. */
     private record Need(TypeBinding type, Scan.ApiMember member, String key) {
         String label() {
             return Rules.simple(type.api()) + "." + (key != null ? key : member.name());
         }
+
+        /** The plan's member key: {@code owner.name+desc}, or {@code owner.name:desc} for a field. */
+        String memberKey() {
+            return member.owner() + "." + member.name() + (member.isField() ? ":" : "") + member.desc();
+        }
+    }
+
+    /**
+     * As {@link #run(BindingSet, TargetData, ApiClasses, Scan, Map, List)} without the classes: the uses of unsupported
+     * members are not judged. RESOLVE checks this way and leaves them to LOWER, which judges them per class.
+     */
+    public static Report run(BindingSet bindings, TargetData data, ApiClasses classes, Scan scan, List<TargetSpec> targets) throws IOException {
+        return run(bindings, data, classes, scan, null, targets);
     }
 
     /**
@@ -50,10 +79,13 @@ public final class ModCheck {
      * back together.
      *
      * @param classes where API classes are read from when the mod's own use does not give them (glue classes)
+     * @param code    the scanned classes (internal name to class file, API names), or null not to judge the uses of
+     *                unsupported members
      * @return the errors sorted by target and member, and the warnings
      * @throws IOException when game data cannot be obtained
      */
-    public static Report run(BindingSet bindings, TargetData data, ApiClasses classes, Scan scan, List<TargetSpec> targets) throws IOException {
+    public static Report run(BindingSet bindings, TargetData data, ApiClasses classes, Scan scan, Map<String, byte[]> code,
+                             List<TargetSpec> targets) throws IOException {
         List<Need> needs = new ArrayList<>();
         BindingSet narrowed = narrow(bindings, scan, needs);
         Map<String, List<ApiClasses.Method>> used = new HashMap<>();
@@ -65,8 +97,9 @@ public final class ModCheck {
         List<Diagnostic> errors = new ArrayList<>();
         List<String> warnings = new ArrayList<>();
         for (TargetSpec t : targets) {
-            coverage(narrowed, needs, scan, t, errors);
+            Map<String, Lowered> unsupported = coverage(narrowed, needs, scan, t, errors);
             new TargetChecks(narrowed, data, api, t, errors, warnings).run();
+            if (code != null) reachability(code, bindings.features(), unsupported, t, errors);
         }
         errors.sort(Comparator.comparing(Diagnostic::target).thenComparing(Diagnostic::member)
                 .thenComparing(d -> d.code().ordinal())
@@ -98,7 +131,10 @@ public final class ModCheck {
                     continue;
                 }
                 if (m.isField()) {
-                    needs.add(new Need(tb, m, null));
+                    // an aliased enum constant has a rule list under its name; any other field is reported by coverage
+                    String key = tb.members().containsKey(m.name()) ? m.name() : null;
+                    needs.add(new Need(tb, m, key));
+                    if (key != null) keys.put(key, key);
                     continue;
                 }
                 boolean overloaded = descsByName.get(owner + "." + m.name()).size() > 1;
@@ -182,7 +218,13 @@ public final class ModCheck {
 
     // ---------------------------------------------------------------------------------------- coverage of the used set
 
-    private static void coverage(BindingSet narrowed, List<Need> needs, Scan scan, TargetSpec t, List<Diagnostic> errors) {
+    /**
+     * C1 for the used set on {@code t}. Returns the used members that are unsupported there, by plan member key: an
+     * {@code unsupported} rule, or a {@code requires} rule whose feature {@code t} lacks (binding-format.md section 4.3).
+     */
+    private static Map<String, Lowered> coverage(BindingSet narrowed, List<Need> needs, Scan scan, TargetSpec t, List<Diagnostic> errors) {
+        Map<String, Lowered> unsupported = new HashMap<>();
+        Features features = narrowed.features();
         Set<String> noRepresentation = new HashSet<>();
         for (Need n : needs) {
             TypeBinding tb = n.type();
@@ -199,7 +241,7 @@ public final class ModCheck {
             }
             if (tb.representation().get(ri).owned() != null) continue;   // an owned type needs no member rules (4.1)
             Scan.ApiMember m = n.member();
-            if (m.isField()) {
+            if (m.isField() && n.key() == null) {
                 errors.add(new Diagnostic(ErrorCode.UNBOUND, t.id(), simple + "." + m.name(), null, null,
                         "C1 coverage: the mod reads the field " + m.owner() + "." + m.name() + ", but API types have accessors only",
                         "use the accessor method of " + simple + " instead of the field"));
@@ -221,11 +263,13 @@ public final class ModCheck {
                                 + Rules.refAdvice(t) + "; " + Rules.lookupCommand("<Minecraft class>#<member>")));
                 continue;
             }
-            Lowering lower = rules.get(i).lower();
-            if (lower.kind() == Lowering.Kind.UNSUPPORTED) {
-                errors.add(new Diagnostic(ErrorCode.UNSUPPORTED, t.id(), n.label(), null, null,
-                        "C1 coverage: " + tb.file() + " member \"" + n.key() + "\" rule " + i + " marks this member unsupported on " + t.id() + ": " + lower.ref(),
-                        "do not use " + n.label() + " on " + t.id() + ", or bind it there"));
+            TypeBinding.MemberRule rule = rules.get(i);
+            String feature = rule.requires();
+            if (feature != null && features.names().contains(feature) && !features.available(feature, t)) {
+                unsupported.put(n.memberKey(), new Lowered.Unsupported(n.label() + " requires the feature " + feature + ", which "
+                        + t.id() + " does not have", feature));
+            } else if (rule.lower().kind() == Lowering.Kind.UNSUPPORTED) {
+                unsupported.put(n.memberKey(), new Lowered.Unsupported(rule.lower().ref(), null));
             }
         }
         for (String event : scan.events()) {
@@ -267,5 +311,38 @@ public final class ModCheck {
                 }
             }
         }
+        return unsupported;
+    }
+
+    // ---------------------------------------------------------------------------------------- reachability of unsupported uses
+
+    /**
+     * FOLD's passes on a copy of every class, in API names: {@code supports} folded with {@code t}'s features, dead code
+     * removed, then each use of an {@code unsupported} member left in reachable code is reported (example 4 of
+     * binding-format.md). Folding and dead-code removal run only on classes that call {@code supports}; nothing else can
+     * become dead.
+     */
+    private static void reachability(Map<String, byte[]> code, Features features, Map<String, Lowered> unsupported, TargetSpec t,
+                                     List<Diagnostic> errors) {
+        Map<String, Boolean> available = new LinkedHashMap<>();
+        for (String f : features.names()) available.put(f, features.available(f, t));
+        for (byte[] bytes : code.values()) {
+            ClassNode node = new ClassNode();
+            new ClassReader(bytes).accept(node, 0);
+            if (callsSupports(node)) {
+                Folding.fold(node, available, t.id(), errors);
+                DeadCode.remove(node);
+            }
+            if (!unsupported.isEmpty()) Reachability.check(node, unsupported, t.id(), features::range, errors);
+        }
+    }
+
+    private static boolean callsSupports(ClassNode node) {
+        for (MethodNode m : node.methods) {
+            for (AbstractInsnNode in : m.instructions) {
+                if (in instanceof MethodInsnNode c && c.owner.equals(BLANKET) && c.name.equals("supports")) return true;
+            }
+        }
+        return false;
     }
 }
