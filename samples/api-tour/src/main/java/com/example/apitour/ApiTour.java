@@ -71,7 +71,7 @@ public class ApiTour implements ClientMod {
                 log("target=null");
             } else {
                 BlockPos at = target.blockPos();
-                log("target=" + target.kind() + " " + (at == null ? "null" : at.x() + " " + at.y() + " " + at.z()) + " " + target.side());
+                log("target=" + target.kind() + " " + (at == null ? "null" : at.x() + " " + at.y() + " " + at.z()) + " " + (target.side() == null ? "null" : target.side().name()));
                 Vec3 loc = target.location();
                 log("target.loc=" + (loc == null ? "null" : f(loc.x()) + " " + f(loc.y()) + " " + f(loc.z())));
                 log("side.switch=" + sideName(target.side()));
