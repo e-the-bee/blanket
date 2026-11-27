@@ -121,7 +121,7 @@ public final class Planner {
             TargetPlan builder = new TargetPlan(bindings, scan, api, t, names, enums);
             Plan collecting = builder.build();   // collects every reference
             AdapterClosure adapters = AdapterClosure.collect(bindings.dir(), t, bindings.targets().gameClasses(), bindings.targets().anchor(),
-                    collecting.members(), names);   // and the adapter closure's, in the same round
+                    collecting.adapterCalls(), names);   // and the adapter closure's, in the same round (glue adapters included)
             names.resolve(data);
             Plan plan = builder.build();         // the plan in resolved names
             Map<String, String> runtimeToJar = names.runtimeToJar();

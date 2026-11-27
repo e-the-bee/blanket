@@ -93,7 +93,7 @@ final class AdapterChecks {
     /** The adapter calls of the rules that apply on the target, by API member key; malformed or wrong-set rules are errors here. */
     private Map<String, Lowered.Adapter> rules(String set) {
         Map<String, Lowered.Adapter> out = new LinkedHashMap<>();
-        for (Map.Entry<String, TypeBinding> e : bindings.types().entrySet()) {
+        for (Map.Entry<String, TypeBinding> e : bindings.typesAndGlue().entrySet()) {   // glue members bind adapters too
             String file = e.getKey();
             TypeBinding tb = e.getValue();
             String owner = Rules.internal(tb.api());
