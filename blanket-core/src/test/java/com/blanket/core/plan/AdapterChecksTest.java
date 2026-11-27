@@ -84,6 +84,7 @@ class AdapterChecksTest implements Opcodes {
                 m.visitInsn(ICONST_0);
                 m.visitInsn(IRETURN);
             });
+            code(w, ACC_PUBLIC | ACC_STATIC, "flush", "(Ljava/lang/Object;)V", m -> m.visitInsn(RETURN));
         });
     }
 
@@ -132,6 +133,8 @@ class AdapterChecksTest implements Opcodes {
     private Report run() throws IOException {
         ApiClasses api = owner -> owner.equals("com/blanket/api/Client")
                 ? Optional.of(List.of(new ApiClasses.Method("open", "()V", false), new ApiClasses.Method("size", sizeDesc, false)))
+                : owner.equals("com/blanket/runtime/glue/GlueGui")
+                ? Optional.of(List.of(new ApiClasses.Method("flush", "(Ljava/lang/Object;)V", true)))
                 : Optional.empty();
         return new Validator(BindingSet.load(bindings), game.data(true, false), api).run();
     }
@@ -171,6 +174,28 @@ class AdapterChecksTest implements Opcodes {
             assertEquals("intermediary:net/example/class_4#method_99()V", d.reference());
             assertTrue(d.detail().startsWith("C4 adapters: "), d.detail());
             assertTrue(d.nextStep().contains("lookup --ref \"intermediary:net/example/class_4#method_99()V\""), d.nextStep());
+        }
+    }
+
+    /** {@code glue/GlueGui.json} with {@code flush} bound to {@code ref}; the API of {@link #run} has {@code GlueGui.flush(Object)V}. */
+    private void glueFlush(String ref) throws IOException {
+        Files.createDirectories(bindings.resolve("glue"));
+        Files.writeString(bindings.resolve("glue/GlueGui.json"), """
+                { "schema": 1, "api": "com.blanket.runtime.glue.GlueGui",
+                  "members": { "flush": [ { "when": {}, "lower": { "adapter": "%s" } } ] } }""".formatted(ref), StandardCharsets.UTF_8);
+    }
+
+    @Test
+    void aGlueMemberBoundToAnAdapterIsCheckedLikeAnApiMember() throws IOException {
+        glueFlush("modern:com.blanket.adapters.Screens#flush");
+        Report green = run();
+        assertTrue(green.ok(), green.format());
+
+        glueFlush("modern:com.blanket.adapters.Screens#gone");
+        for (Diagnostic d : onBothTargets(run())) {
+            assertEquals(ErrorCode.UNRESOLVED, d.code());
+            assertEquals("GlueGui.flush", d.member());
+            assertEquals("C4 adapters: the adapter class " + SCREENS + " has no method gone", d.detail());
         }
     }
 

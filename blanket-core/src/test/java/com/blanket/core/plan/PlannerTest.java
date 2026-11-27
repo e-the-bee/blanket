@@ -544,6 +544,42 @@ class PlannerTest implements Opcodes {
         assertTrue(e.getMessage().contains("adapter set legacy is not the set of 26.1.2, unobf"), e.getMessage());
     }
 
+    @Test
+    void glueMemberBoundToAnAdapterCallsItWithTheStubsOwnParametersAndReachesTheClosure() throws IOException {
+        Map<String, String> f = files();
+        f.put("glue/GlueGui.json", """
+                { "schema": 1, "api": "com.blanket.runtime.glue.GlueGui", "members": {
+                    "flush": [ { "when": {}, "lower": { "adapter": "unobf:com.blanket.adapters.Hooks#flush" } } ] } }""");
+        builtFiles.put("build/adapters/unobf/adapter-refs.json", """
+                { "schema": 1, "set": "unobf", "namespace": "official", "declaring": {}, "overrides": {} }""".getBytes(StandardCharsets.UTF_8));
+        // flush(Object): the adapter does the instanceof itself, so the stub's Object parameter is passed as it is
+        builtFiles.put("build/adapters/unobf/com/blanket/adapters/unobf/Hooks.class",
+                simple("com/blanket/adapters/unobf/Hooks", "java/lang/Object", ACC_PUBLIC | ACC_FINAL, w -> {
+                    MethodVisitor x = w.visitMethod(ACC_PUBLIC | ACC_STATIC, "flush", "(Ljava/lang/Object;)V", null, null);
+                    x.visitCode();
+                    x.visitVarInsn(ALOAD, 0);
+                    x.visitTypeInsn(INSTANCEOF, "net/example/Painter");
+                    x.visitInsn(POP);
+                    x.visitInsn(RETURN);
+                    x.visitMaxs(0, 0);
+                    x.visitEnd();
+                }));
+        Plan p = plan(f, mod, List.of(), PlannerTest.class.getClassLoader(), TARGETS_26);
+        Glue flush = glue(p, GUI + ".flush");
+        assertEquals(new Glue(GUI + ".flush", "V", List.of(Op.load(ALOAD, 0),
+                invokeStatic("com/blanket/adapters/unobf/Hooks", "flush", "(Ljava/lang/Object;)V"))), flush);
+        assertEquals(java.util.Set.of("com/blanket/adapters/unobf/Hooks"), p.adapters().keySet(), "the glue adapter's class is in the closure");
+        assertEquals(new Lowered.Adapter("com/blanket/adapters/unobf/Hooks", "flush", "(Ljava/lang/Object;)V"), p.adapterCalls().get(GUI + ".flush"));
+        assertFalse(p.members().containsKey(GUI + ".flush"), "glue stays out of the members: those owners are never shipped");
+
+        f.put("glue/GlueGui.json", """
+                { "schema": 1, "api": "com.blanket.runtime.glue.GlueGui", "members": {
+                    "flush": [ { "when": {}, "lower": { "adapter": "legacy:com.blanket.adapters.Hooks#flush" } } ] } }""");
+        PlanSource s = source(f, mod, List.of(), PlannerTest.class.getClassLoader());
+        IllegalStateException e = assertThrows(IllegalStateException.class, () -> s.plan(s.targets().get(0)));
+        assertTrue(e.getMessage().contains("adapter set legacy is not the set of 26.1.2, unobf"), e.getMessage());
+    }
+
     static final String FEATURES = """
             { "schema": 1, "features": {
               "LATER": { "available": [ { "when": { "mc": "27.." } } ] },
