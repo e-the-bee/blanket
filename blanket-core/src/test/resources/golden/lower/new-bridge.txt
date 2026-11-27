@@ -1,0 +1,27 @@
+// class version 65.0 (65)
+// access flags 0x21
+public class mod/K {
+
+
+  // access flags 0x9
+  public static run(III)Lcom/blanket/api/BlockPos;
+    ILOAD 0
+    ILOAD 1
+    ILOAD 2
+    INVOKESTATIC mod/K.blanket$new$BlockPos$of (III)Lcom/blanket/api/BlockPos;
+    ARETURN
+    MAXSTACK = 3
+    MAXLOCALS = 3
+
+  // access flags 0x100A
+  private static synthetic blanket$new$BlockPos$of(III)Lcom/blanket/api/BlockPos;
+    NEW game/BlockPos
+    DUP
+    ILOAD 0
+    ILOAD 1
+    ILOAD 2
+    INVOKESPECIAL game/BlockPos.<init> (III)V
+    ARETURN
+    MAXSTACK = 5
+    MAXLOCALS = 3
+}
