@@ -6,6 +6,7 @@ import com.blanket.core.bindings.Hooks;
 import com.blanket.core.bindings.Lowering;
 import com.blanket.core.bindings.Selector;
 import com.blanket.core.bindings.TypeBinding;
+import com.blanket.core.bindings.Targets;
 import com.blanket.core.bindings.Version;
 import com.blanket.core.resolve.Ref;
 import com.blanket.core.resolve.Resolver;
@@ -26,6 +27,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
+import java.util.function.Predicate;
 
 /**
  * Builds the {@link Plan} of one target from the bindings and the mod's used set. Runs twice over the same
@@ -38,6 +40,8 @@ final class TargetPlan implements Opcodes {
     static final String LWJGL3_FROM = "1.13";
     static final String LWJGL2_GL = "com/blanket/runtime/Lwjgl2Gl";
     static final String LWJGL3_GL = "com/blanket/runtime/Lwjgl3Gl";
+    /** The package of adapter sources (binding-format.md section 5); the shipped class adds the set: {@code com/blanket/adapters/<set>/<Class>}. */
+    static final String ADAPTER_PACKAGE = "com.blanket.adapters.";
 
     /** A value a payload source leaves on the stack: the instructions and the value's type descriptor. */
     private record Value(List<Op> ops, String desc) {}
@@ -55,16 +59,19 @@ final class TargetPlan implements Opcodes {
     private final TargetSpec t;
     private final Names n;
     private final String anchor;
+    /** Whether an API class (internal name) is an enum. */
+    private final Predicate<String> enums;
     /** Glue member ({@code stub class.method}) to its stub descriptor, for the members bound on this target. */
     private final Map<String, String> planned = new LinkedHashMap<>();
 
-    TargetPlan(BindingSet b, Scan scan, ApiClasses api, TargetSpec t, Names n) {
+    TargetPlan(BindingSet b, Scan scan, ApiClasses api, TargetSpec t, Names n, Predicate<String> enums) {
         this.b = b;
         this.scan = scan;
         this.api = api;
         this.t = t;
         this.n = n;
         this.anchor = b.targets().anchor();
+        this.enums = enums;
     }
 
     Plan build() {
@@ -125,6 +132,7 @@ final class TargetPlan implements Opcodes {
         for (TypeBinding tb : b.types().values()) {
             String owner = internal(tb.api());
             if (!used(owner)) continue;
+            if (isFacade(tb)) continue;   // an owned class with bound members: no representation to pick
             TypeBinding.Representation rep = first(tb.representation(), TypeBinding.Representation::when);
             if (rep == null) {
                 throw Planner.fail(new Diagnostic(ErrorCode.UNBOUND, t.id(), simple(tb.api()) + " (representation)", null, null,
@@ -142,27 +150,145 @@ final class TargetPlan implements Opcodes {
         return false;
     }
 
+    /** An owned facade (binding-format.md section 4.1): a type file with member rules and no representation, such as {@code Input}. */
+    static boolean isFacade(TypeBinding tb) {
+        return tb.representation().isEmpty() && !tb.members().isEmpty();
+    }
+
+    /**
+     * The labels ({@code Player.offHandItem}) of the members whose first matching rule on {@code t} needs a feature the
+     * target lacks. Their references need not resolve there: the plan holds {@link Lowered.Unsupported} for them
+     * (binding-format.md section 4.4, example 4).
+     */
+    static java.util.Set<String> unmetLabels(BindingSet b, TargetSpec t) {
+        java.util.Set<String> out = new java.util.TreeSet<>();
+        Version v = Version.parse(t.mc());
+        for (TypeBinding tb : b.types().values()) {
+            for (Map.Entry<String, List<TypeBinding.MemberRule>> e : tb.members().entrySet()) {
+                for (TypeBinding.MemberRule r : e.getValue()) {
+                    if (!r.when().matches(t.loader(), v)) continue;
+                    if (r.requires() != null && b.features().names().contains(r.requires()) && !b.features().available(r.requires(), t)) {
+                        out.add(simple(tb.api()) + "." + e.getKey());
+                    }
+                    break;
+                }
+            }
+        }
+        return out;
+    }
+
+    /** Members of {@code java.lang.Object}, then of {@code java.lang.Enum}, as {@code name+descriptor}: the pass-through members. */
+    private static final java.util.Set<String> OBJECT_MEMBERS = declared(Object.class), ENUM_MEMBERS = declared(Enum.class);
+
+    private static java.util.Set<String> declared(Class<?> c) {
+        java.util.Set<String> out = new java.util.TreeSet<>();
+        for (java.lang.reflect.Method m : c.getDeclaredMethods()) {
+            if (!java.lang.reflect.Modifier.isPrivate(m.getModifiers()) && !m.isSynthetic()) out.add(m.getName() + Type.getMethodDescriptor(m));
+        }
+        return java.util.Collections.unmodifiableSet(out);
+    }
+
+    /**
+     * The calls an alias type passes through to the real class when no rule binds them (lowering-and-adapters.md section
+     * 4.6): members of {@code Object}; for an aliased enum, members of {@code Enum}, {@code values()} and {@code valueOf(String)}.
+     */
+    static boolean passThrough(Scan.ApiMember m, Predicate<String> enums) {
+        if (m.isField()) return false;
+        if (OBJECT_MEMBERS.contains(m.name() + m.desc())) return true;
+        if (!enums.test(m.owner())) return false;
+        return ENUM_MEMBERS.contains(m.name() + m.desc())
+                || m.name().equals("values") && m.desc().startsWith("()[")
+                || m.name().equals("valueOf") && m.desc().startsWith("(Ljava/lang/String;)");
+    }
+
+    /**
+     * One entry per used member of a type that has rules: methods under {@code owner.name+desc}, aliased enum constants
+     * under {@code owner.name:desc}. Pass-through members have none; owned types need no rules.
+     */
     private Map<String, Lowered> members() {
         Map<String, Lowered> out = new LinkedHashMap<>();
         for (Scan.ApiMember m : scan.members()) {
-            if (m.isField()) continue;
             TypeBinding tb = typeFile(m.owner());
             if (tb == null) continue;   // an owned API class without a type file stays as it is
-            TypeBinding.Representation rep = first(tb.representation(), TypeBinding.Representation::when);
-            if (rep == null || rep.owned() != null) continue;
+            if (!isFacade(tb)) {
+                TypeBinding.Representation rep = first(tb.representation(), TypeBinding.Representation::when);
+                if (rep == null || rep.owned() != null) continue;
+            }
             String label = simple(tb.api()) + "." + m.name();
             List<TypeBinding.MemberRule> rules = tb.members().get(m.name() + m.desc());
             if (rules == null) rules = tb.members().get(m.name());
+            if (rules == null && passThrough(m, enums)) continue;
             TypeBinding.MemberRule rule = rules == null ? null : first(rules, TypeBinding.MemberRule::when);
             if (rule == null) {
                 throw Planner.fail(new Diagnostic(ErrorCode.UNBOUND, t.id(), label, null, null,
                         "C1 coverage: used member " + label + " has no rule for " + t.id() + " in " + tb.file(),
                         "add a rule whose \"when\" matches " + t.id() + " to member \"" + m.name() + "\" in " + tb.file()));
             }
-            out.put(m.owner() + "." + m.name() + m.desc(),
-                    new Lowered.Inline(lower(rule.lower(), Type.getReturnType(m.desc()).getDescriptor(), anchorOf(tb), label, tb.file())));
+            String key = m.isField() ? m.owner() + "." + m.name() + ":" + m.desc() : m.owner() + "." + m.name() + m.desc();
+            out.put(key, lowered(rule, m, tb, label));
         }
         return out;
+    }
+
+    /** What one member rule plans: {@code requires} on a target without the feature and {@code unsupported} become {@link Lowered.Unsupported}. */
+    private Lowered lowered(TypeBinding.MemberRule rule, Scan.ApiMember m, TypeBinding tb, String label) {
+        String feature = rule.requires();
+        if (feature != null) {
+            if (!b.features().names().contains(feature)) {
+                throw Planner.fail(new Diagnostic(ErrorCode.UNRESOLVED, t.id(), label, null, null,
+                        "the rule of " + label + " requires the feature " + feature + ", which features.json does not define",
+                        "add " + feature + " to features.json, or fix the \"requires\" in " + tb.file()));
+            }
+            if (!b.features().available(feature, t)) {
+                return new Lowered.Unsupported(label + " requires the feature " + feature + ", which " + t.id() + " does not have", feature);
+            }
+        }
+        Lowering l = rule.lower();
+        switch (l.kind()) {
+            case UNSUPPORTED:
+                return new Lowered.Unsupported(l.ref(), null);
+            case ADAPTER: {
+                Op call = adapterCall(l, m, label, tb.file());
+                return new Lowered.Adapter(call.owner(), call.name(), call.desc());
+            }
+            case NEW: {
+                Resolver.Resolved r = n.named(anchorOf(tb), l.ref(), label);
+                return new Lowered.Construct(r.owner(), r.desc());
+            }
+            default:
+                return new Lowered.Inline(lower(l, m.isField() ? m.desc() : Type.getReturnType(m.desc()).getDescriptor(), anchorOf(tb), label, tb.file(), m));
+        }
+    }
+
+    /**
+     * The static call an {@code adapter} rule makes: {@code <set>:com.blanket.adapters.<Class>#<method>} becomes owner
+     * {@code com/blanket/adapters/<set>/<Class>}; the descriptor is the API member's, receiver first (API names).
+     */
+    private Op adapterCall(Lowering l, Scan.ApiMember m, String label, String file) {
+        String ref = l.ref();
+        int colon = ref.indexOf(':'), hash = ref.indexOf('#');
+        String cls = colon > 0 && hash > colon ? ref.substring(colon + 1, hash) : "";
+        String method = hash > 0 ? ref.substring(hash + 1) : "";
+        if (!cls.startsWith(ADAPTER_PACKAGE) || cls.indexOf('.', ADAPTER_PACKAGE.length()) >= 0 || cls.length() == ADAPTER_PACKAGE.length()
+                || method.isEmpty() || method.indexOf('(') >= 0) {
+            throw Planner.fail(new Diagnostic(ErrorCode.SHAPE, t.id(), label, ref, null,
+                    "an adapter reference is <set>:com.blanket.adapters.<Class>#<method> (binding-format.md section 5), found " + ref,
+                    "write the adapter rule of " + label + " in " + file + " in that form"));
+        }
+        String set = ref.substring(0, colon);
+        Targets.VersionRow row = b.targets().versions().get(t.mc());
+        if (row != null && !set.equals(row.adapters())) {
+            throw Planner.fail(new Diagnostic(ErrorCode.UNRESOLVED, t.id(), label, ref, null,
+                    "the adapter set " + set + " is not the set of " + t.mc() + ", " + row.adapters() + " (targets.json)",
+                    "name an adapter of the set " + row.adapters() + " in the rule of " + label + " for " + t.id() + " in " + file));
+        }
+        if (m == null) {
+            throw Planner.fail(new Diagnostic(ErrorCode.UNSUPPORTED, t.id(), label, ref, null,
+                    file + " binds " + label + " to an adapter, which only an API member can use",
+                    "bind " + label + " with a direct lowering or a chain"));
+        }
+        String desc = m.isField() ? "()" + m.desc() : m.isStatic() ? m.desc() : "(L" + m.owner() + ";" + m.desc().substring(1);
+        return Op.invoke(INVOKESTATIC, "com/blanket/adapters/" + set + "/" + cls.substring(ADAPTER_PACKAGE.length()), method, desc, false);
     }
 
     private TypeBinding typeFile(String owner) {
@@ -172,8 +298,11 @@ final class TargetPlan implements Opcodes {
 
     // ---------------------------------------------------------------------------------------- lowerings
 
-    /** The instructions of a lowering whose result has type {@code resultDesc} (constants take that type). */
-    private List<Op> lower(Lowering l, String resultDesc, String anchor, String label, String file) {
+    /**
+     * The instructions of a lowering whose result has type {@code resultDesc} (constants take that type). {@code member}
+     * is the API member being lowered, or null for a glue member.
+     */
+    private List<Op> lower(Lowering l, String resultDesc, String anchor, String label, String file, Scan.ApiMember member) {
         List<Op> out = new ArrayList<>();
         switch (l.kind()) {
             case CHAIN -> {
@@ -183,12 +312,12 @@ final class TargetPlan implements Opcodes {
                     if (s.kind() == Lowering.Kind.CONST) {
                         out.add(Op.constant(constant(s.constant(), consumedAs(steps, i), label)));
                     } else {
-                        out.add(step(s, anchor, label, file));
+                        out.add(step(s, anchor, label, file, member));
                     }
                 }
             }
             case CONST -> out.add(Op.constant(constant(l.constant(), resultDesc, label)));
-            default -> out.add(step(l, anchor, label, file));
+            default -> out.add(step(l, anchor, label, file, member));
         }
         return Collections.unmodifiableList(out);
     }
@@ -201,7 +330,7 @@ final class TargetPlan implements Opcodes {
         return params[params.length - (j - i)].getDescriptor();
     }
 
-    private Op step(Lowering l, String anchor, String label, String file) {
+    private Op step(Lowering l, String anchor, String label, String file, Scan.ApiMember member) {
         switch (l.kind()) {
             case INVOKE: {
                 Resolver.Resolved r = n.named(anchor, l.ref(), label);
@@ -218,8 +347,8 @@ final class TargetPlan implements Opcodes {
                 Resolver.Resolved r = n.named(anchor, l.ref(), label);
                 if (!n.dry() && !"()V".equals(r.desc())) {
                     throw Planner.fail(new Diagnostic(ErrorCode.UNSUPPORTED, t.id(), label, l.ref(), null,
-                            "a new lowering with constructor arguments is M2; M1 plans the no-argument constructor only",
-                            "bind " + label + " in " + file + " to a no-argument constructor or a glue chain"));
+                            "a new lowering with constructor arguments is a construct bridge only as a whole rule; inside a chain or a glue body only the no-argument constructor is planned",
+                            "bind " + label + " in " + file + " to a no-argument constructor, or make the rule a plain `new`"));
                 }
                 return Op.newObject(r.owner());
             }
@@ -228,13 +357,7 @@ final class TargetPlan implements Opcodes {
             case NEWARRAY:
                 return Op.newArray(l.ref(), l.length());
             case ADAPTER:
-                throw Planner.fail(new Diagnostic(ErrorCode.UNSUPPORTED, t.id(), label, null, null,
-                        file + " binds " + label + " to adapter " + l.ref() + " on " + t.id() + "; adapters are M2",
-                        "bind " + label + " with a direct lowering or a chain for " + t.id()));
-            case UNSUPPORTED:
-                throw Planner.fail(new Diagnostic(ErrorCode.UNSUPPORTED, t.id(), label, null, null,
-                        file + " marks " + label + " unsupported on " + t.id() + ": " + l.ref(),
-                        "do not use " + label + " on " + t.id() + ", or bind it there"));
+                return adapterCall(l, member, label, file);
             default:
                 throw new IllegalStateException("not a chain step: " + l);
         }
@@ -289,7 +412,7 @@ final class TargetPlan implements Opcodes {
                 ApiClasses.Method stub = stub(owner, e.getKey(), label, gb.file());
                 String retDesc = Type.getReturnType(stub.desc()).getDescriptor();
                 List<Op> body = new ArrayList<>(arguments(rule.lower(), stub, anchorOf(gb), label, gb.file()));
-                body.addAll(lower(rule.lower(), retDesc, anchorOf(gb), label, gb.file()));
+                body.addAll(lower(rule.lower(), retDesc, anchorOf(gb), label, gb.file(), null));
                 out.add(new Glue(owner + "." + stub.name(), retDesc, Collections.unmodifiableList(body)));
                 planned.put(owner + "." + stub.name(), stub.desc());
             }

@@ -73,7 +73,7 @@ class PlannerOracleTest implements Opcodes {
 
     private static Plan plan(String id) {
         try {
-            if (source == null) source = Planner.plan(m0Mod(), BINDINGS);
+            if (source == null) source = Planner.plan(m0Mod(), BINDINGS, List.of());
             for (TargetSpec t : source.targets()) if (t.id().equals(id)) return source.plan(t);
         } catch (IOException | RuntimeException e) {
             throw RealData.skipIfOffline(e);
