@@ -147,6 +147,13 @@ final class AdapterClosure {
         return out;
     }
 
+    /** The class files of {@link #reached()} as built (shipping names; their references to Blanket classes are final). */
+    Map<String, byte[]> classes() {
+        Map<String, byte[]> out = new TreeMap<>();
+        for (Loaded s : sets.values()) out.putAll(s.classes);
+        return out;
+    }
+
     /** True when the plan names no adapter. */
     boolean isEmpty() {
         return sets.isEmpty();

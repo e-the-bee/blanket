@@ -65,12 +65,15 @@ final class TargetPlan implements Opcodes {
     private final String anchor;
     /** Whether an API class (internal name) is an enum. */
     private final Predicate<String> enums;
-    /** Glue member ({@code stub class.method}) to its stub descriptor, for the members bound on this target. */
-    private final Map<String, String> planned = new LinkedHashMap<>();
+    /** Glue members ({@code stub class.method}) that a class of the used set calls ({@link Reach.Used#glueCalls}). */
+    private final java.util.Set<String> glueCalls;
+    /** Glue members the wired hooks call, filled while the hooks are planned. */
+    private final java.util.Set<String> hookGlue = new java.util.TreeSet<>();
 
-    TargetPlan(BindingSet b, Scan scan, ApiClasses api, TargetSpec t, Names n, Predicate<String> enums) {
+    TargetPlan(BindingSet b, Scan scan, java.util.Set<String> glueCalls, ApiClasses api, TargetSpec t, Names n, Predicate<String> enums) {
         this.b = b;
         this.scan = scan;
+        this.glueCalls = glueCalls;
         this.api = api;
         this.t = t;
         this.n = n;
@@ -79,12 +82,13 @@ final class TargetPlan implements Opcodes {
     }
 
     Plan build() {
-        planned.clear();
+        hookGlue.clear();
+        List<Hook> hooks = hooks();   // first: the glue the hooks call gets a body
         List<Glue> glue = glue();
         Map<String, Boolean> features = new LinkedHashMap<>();
         for (String name : b.features().names()) features.put(name, b.features().available(name, t));
-        return new Plan(t, era(t), entry(), glImpl(t), core(glue), types(), members(), Collections.unmodifiableMap(features),
-                t.java() + 44, Map.of(), glue, hooks());
+        return new Plan(t, era(t), entry(), glImpl(t), core(), types(), members(), Collections.unmodifiableMap(features),
+                t.java() + 44, Map.of(), glue, hooks);
     }
 
     // ---------------------------------------------------------------------------------------- target facts
@@ -111,10 +115,17 @@ final class TargetPlan implements Opcodes {
         return Version.parse(t.mc()).compareTo(Version.parse(LWJGL3_FROM)) < 0 ? LWJGL2_GL : LWJGL3_GL;
     }
 
-    /** The core-profile flag is the constant the target binds {@code GlueFrame.core} to. */
-    private boolean core(List<Glue> glue) {
-        for (Glue g : glue) {
-            if (g.name().equals(GLUE_FRAME_CORE) && g.steps().size() == 1 && g.steps().get(0).arg() instanceof Boolean on) return on;
+    /**
+     * The core-profile flag is the constant the target binds {@code GlueFrame.core} to, read from the rule: a target fact
+     * whether or not a shipped class calls the member.
+     */
+    private boolean core() {
+        for (TypeBinding gb : b.glue().values()) {
+            int dot = GLUE_FRAME_CORE.lastIndexOf('.');
+            if (!internal(gb.api()).equals(GLUE_FRAME_CORE.substring(0, dot))) continue;
+            TypeBinding.MemberRule rule = glueRule(gb, GLUE_FRAME_CORE.substring(dot + 1));
+            JsonPrimitive c = rule == null || rule.lower().kind() != Lowering.Kind.CONST ? null : rule.lower().constant();
+            if (c != null && c.isBoolean()) return c.getAsBoolean();
         }
         if (n.dry()) return false;
         throw Planner.fail(new Diagnostic(ErrorCode.UNBOUND, t.id(), "GlueFrame.core", null, null,
@@ -384,12 +395,18 @@ final class TargetPlan implements Opcodes {
 
     // ---------------------------------------------------------------------------------------- glue
 
-    /** A body for every glue member bound on this target (unsupported members keep their throwing stub). */
+    /**
+     * A body for every glue member bound on this target that a class of the used set or a wired hook calls; the others,
+     * and unsupported members, keep their throwing stub. An uncalled member plans nothing, so an adapter behind it is not
+     * shipped (the testkit's key press is in {@code --testkit} jars only).
+     */
     private List<Glue> glue() {
         List<Glue> out = new ArrayList<>();
         for (TypeBinding gb : b.glue().values()) {
             String owner = internal(gb.api());
             for (Map.Entry<String, List<TypeBinding.MemberRule>> e : gb.members().entrySet()) {
+                String id = owner + "." + stubName(e.getKey());
+                if (!glueCalls.contains(id) && !hookGlue.contains(id)) continue;
                 TypeBinding.MemberRule rule = first(e.getValue(), TypeBinding.MemberRule::when);
                 if (rule == null || rule.lower().kind() == Lowering.Kind.UNSUPPORTED) continue;
                 String label = simple(gb.api()) + "." + e.getKey();
@@ -399,10 +416,25 @@ final class TargetPlan implements Opcodes {
                 if (rule.lower().kind() == Lowering.Kind.ADAPTER) body.add(adapterCall(rule.lower(), null, stub.desc(), label, gb.file()));
                 else body.addAll(lower(rule.lower(), retDesc, anchorOf(gb), label, gb.file(), null));
                 out.add(new Glue(owner + "." + stub.name(), retDesc, Collections.unmodifiableList(body)));
-                planned.put(owner + "." + stub.name(), stub.desc());
             }
         }
         return out;
+    }
+
+    /** The stub method name of a glue member key ({@code name} or {@code name(desc)}). */
+    private static String stubName(String key) {
+        int paren = key.indexOf('(');
+        return paren < 0 ? key : key.substring(0, paren);
+    }
+
+    /** The rule of the glue member named {@code name} on this target; null when it has none or is unsupported. */
+    private TypeBinding.MemberRule glueRule(TypeBinding gb, String name) {
+        for (Map.Entry<String, List<TypeBinding.MemberRule>> e : gb.members().entrySet()) {
+            if (!stubName(e.getKey()).equals(name)) continue;
+            TypeBinding.MemberRule rule = first(e.getValue(), TypeBinding.MemberRule::when);
+            if (rule != null && rule.lower().kind() != Lowering.Kind.UNSUPPORTED) return rule;
+        }
+        return null;
     }
 
     /** The one static stub method a glue member key names ({@code name} or {@code name(desc)}). */
@@ -650,11 +682,12 @@ final class TargetPlan implements Opcodes {
         }
         String owner = internal(gb.api());
         ApiClasses.Method stub = stub(owner, key, type + "." + key, gb.file());
-        if (!planned.containsKey(owner + "." + stub.name())) {
+        if (glueRule(gb, stub.name()) == null) {
             throw Planner.fail(new Diagnostic(ErrorCode.UNSUPPORTED, t.id(), site.label(), null, null,
                     "the payload calls glue " + type + "." + stub.name() + ", which " + gb.file() + " does not bind on " + t.id(),
                     "bind " + type + "." + stub.name() + " for " + t.id() + " in " + gb.file()));
         }
+        hookGlue.add(owner + "." + stub.name());
         Type[] params = Type.getArgumentTypes(stub.desc());
         if (params.length != s.args().size()) {
             throw Planner.fail(new Diagnostic(ErrorCode.SHAPE, t.id(), site.label(), null, null,

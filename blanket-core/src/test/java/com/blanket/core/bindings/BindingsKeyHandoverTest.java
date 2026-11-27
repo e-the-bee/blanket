@@ -8,6 +8,7 @@ import com.blanket.core.plan.Plan;
 import com.blanket.core.plan.PlanSource;
 import com.blanket.core.plan.Planner;
 import com.blanket.core.resolve.TargetSpec;
+import com.blanket.core.testsupport.GlueCallers;
 import com.blanket.core.testsupport.RealData;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -75,7 +76,9 @@ class BindingsKeyHandoverTest implements Opcodes {
 
     private PlanSource plan(boolean register) throws IOException {
         try {
-            return Planner.plan(mod(register), BINDINGS, List.of());
+            // Dispatch.keysOptions and keysRegister call the key glue in the real runtime (options is the forge:1.8.9 hook's)
+            return Planner.plan(mod(register), BINDINGS, List.of(GlueCallers.jar(tmp.resolve("glue-callers.jar"),
+                    "GlueKeys.mappings", "GlueKeys.setMappings", "GlueKeys.register")));
         } catch (IllegalStateException e) {
             throw RealData.skipIfOffline(e);
         }

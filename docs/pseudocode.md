@@ -66,8 +66,8 @@ RESOLVE(scan, t, overlay) → Plan:
     backendClasses = era.render == "gl"  ? {Gl impl for ver.lwjgl}
                    : era.render == "gpu" ? {gpu executor}
                    : both
-    closure = classReach(roots = scan.modClasses + overlay?.classes,
-                         over  = ownedApi + runtime + backendClasses)
+    closure = classReach(roots = scan.modClasses + overlay?.classes + plan.adapters,   // adapters ship whole;
+                         over  = ownedApi + runtime + backendClasses)                  // 3a-3b repeat until closure stands still
     used = scan.apiMembers + glueRefsIn(closure) + scan.events.recipes(era)
 
     // 3b. pick a rule per used member
