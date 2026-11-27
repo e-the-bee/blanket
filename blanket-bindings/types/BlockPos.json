@@ -2,34 +2,40 @@
   "schema": 1,
   "api": "com.blanket.api.BlockPos",
   "representation": [
-    { "when": { "mc": "..1.13.2" }, "alias": "lf:net/minecraft/class_2552" },
-    { "when": { "mc": "26.1.." },    "alias": "official:net.minecraft.core.BlockPos" },
-    { "when": {},                    "alias": "net.minecraft.core.BlockPos" }
+    {"when": {"mc": "..1.13.2"}, "alias": "lf:net/minecraft/class_2552"},
+    {"when": {"mc": "26.1.."}, "alias": "official:net.minecraft.core.BlockPos"},
+    {"when": {}, "alias": "net.minecraft.core.BlockPos"}
   ],
   "members": {
     "of": [
-      { "when": {}, "lower": { "unsupported": "TODO M2 T7: bind BlockPos.of on every target; try `lookup --ref net.minecraft.core.BlockPos#of`" } }
+      {"when": {"mc": "..1.13.2"}, "lower": {"new": "lf:net/minecraft/class_2552#<init>(III)V"}},
+      {"when": {"mc": "26.1.."}, "lower": {"new": "official:net.minecraft.core.BlockPos#<init>(III)V"}},
+      {"when": {}, "lower": {"new": "net.minecraft.core.BlockPos#<init>(III)V"}}
     ],
     "x": [
-      { "when": {}, "lower": { "unsupported": "TODO M2 T7: bind BlockPos.x on every target; try `lookup --ref net.minecraft.core.BlockPos#x`" } }
+      {"when": {"mc": "..1.13.2"}, "lower": {"invoke": "lf:net/minecraft/class_1167#method_10572()I"}},
+      {"when": {"mc": "26.1.."}, "lower": {"invoke": "official:net.minecraft.core.Vec3i#getX()I"}},
+      {"when": {}, "lower": {"invoke": "net.minecraft.core.Vec3i#getX()I"}}
     ],
     "y": [
-      { "when": {}, "lower": { "unsupported": "TODO M2 T7: bind BlockPos.y on every target; try `lookup --ref net.minecraft.core.BlockPos#y`" } }
+      {"when": {"mc": "..1.13.2"}, "lower": {"invoke": "lf:net/minecraft/class_1167#method_10573()I"}},
+      {"when": {"mc": "26.1.."}, "lower": {"invoke": "official:net.minecraft.core.Vec3i#getY()I"}},
+      {"when": {}, "lower": {"invoke": "net.minecraft.core.Vec3i#getY()I"}}
     ],
     "z": [
-      { "when": {}, "lower": { "unsupported": "TODO M2 T7: bind BlockPos.z on every target; try `lookup --ref net.minecraft.core.BlockPos#z`" } }
+      {"when": {"mc": "..1.13.2"}, "lower": {"invoke": "lf:net/minecraft/class_1167#method_10574()I"}},
+      {"when": {"mc": "26.1.."}, "lower": {"invoke": "official:net.minecraft.core.Vec3i#getZ()I"}},
+      {"when": {}, "lower": {"invoke": "net.minecraft.core.Vec3i#getZ()I"}}
     ],
     "offset(Lcom/blanket/api/Direction;)Lcom/blanket/api/BlockPos;": [
-      { "when": { "loader": "legacy-fabric", "mc": "1.8.9" }, "lower": { "unsupported": "TODO M2 T7: legacy-fabric:1.8.9: write the lf: rule" } },
-      { "when": { "loader": "forge", "mc": "1.8.9" }, "lower": { "unsupported": "TODO M2 T7: forge:1.8.9: write the lf: rule" } },
-      { "when": { "loader": "fabric", "mc": "26.1.2" }, "lower": { "unsupported": "TODO M2 T7: fabric:26.1.2: write the official: rule" } },
-      { "when": {}, "lower": { "invoke": "net.minecraft.core.BlockPos#relative(Lnet/minecraft/core/Direction;)Lnet/minecraft/core/BlockPos;" } }
+      {"when": {"mc": "..1.13.2"}, "lower": {"invoke": "lf:net/minecraft/class_2552#method_10490(Lnet/minecraft/class_1354;)Lnet/minecraft/class_2552;"}},
+      {"when": {"mc": "26.1.."}, "lower": {"invoke": "official:net.minecraft.core.BlockPos#relative(Lnet/minecraft/core/Direction;)Lnet/minecraft/core/BlockPos;"}},
+      {"when": {}, "lower": {"invoke": "net.minecraft.core.BlockPos#relative(Lnet/minecraft/core/Direction;)Lnet/minecraft/core/BlockPos;"}}
     ],
     "offset(III)Lcom/blanket/api/BlockPos;": [
-      { "when": { "loader": "legacy-fabric", "mc": "1.8.9" }, "lower": { "unsupported": "TODO M2 T7: legacy-fabric:1.8.9: write the lf: rule" } },
-      { "when": { "loader": "forge", "mc": "1.8.9" }, "lower": { "unsupported": "TODO M2 T7: forge:1.8.9: write the lf: rule" } },
-      { "when": { "loader": "fabric", "mc": "26.1.2" }, "lower": { "unsupported": "TODO M2 T7: fabric:26.1.2: write the official: rule" } },
-      { "when": {}, "lower": { "invoke": "net.minecraft.core.BlockPos#offset(III)Lnet/minecraft/core/BlockPos;" } }
+      {"when": {"mc": "..1.13.2"}, "lower": {"invoke": "lf:net/minecraft/class_2552#method_10487(III)Lnet/minecraft/class_2552;"}},
+      {"when": {"mc": "26.1.."}, "lower": {"invoke": "official:net.minecraft.core.BlockPos#offset(III)Lnet/minecraft/core/BlockPos;"}},
+      {"when": {}, "lower": {"invoke": "net.minecraft.core.BlockPos#offset(III)Lnet/minecraft/core/BlockPos;"}}
     ]
   }
 }

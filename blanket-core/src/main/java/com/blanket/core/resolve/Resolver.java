@@ -373,6 +373,13 @@ public final class Resolver {
             j.runtimeName = j.name;
             return;
         }
+        if (j.name.equals("<init>") && !j.field) {
+            // Mapping files hold no rows for constructors: the name is fixed, the owner and descriptor are translated.
+            j.owner = ownerTo;
+            j.desc = index.translateDesc(hop.from(), j.desc, hop.to());
+            j.runtimeName = j.name;
+            return;
+        }
         MappingIndex.MemberRow row = index.member(hop.from(), j.owner, j.name, j.desc);
         if (row == null) {
             j.failStep = hop.group();
