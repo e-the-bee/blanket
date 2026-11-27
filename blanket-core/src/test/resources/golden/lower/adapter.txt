@@ -1,0 +1,13 @@
+// class version 65.0 (65)
+// access flags 0x21
+public class mod/K {
+
+
+  // access flags 0x9
+  public static run(Lcom/blanket/api/Player;)Ljava/lang/String;
+    ALOAD 0
+    INVOKESTATIC com/blanket/adapters/modern/Names.name (Lcom/blanket/api/Player;)Ljava/lang/String;
+    ARETURN
+    MAXSTACK = 1
+    MAXLOCALS = 1
+}

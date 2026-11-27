@@ -1,0 +1,14 @@
+// class version 65.0 (65)
+// access flags 0x21
+public class mod/K {
+
+
+  // access flags 0x9
+  public static run(Lcom/blanket/api/Player;D)V
+    ALOAD 0
+    DLOAD 1
+    PUTFIELD game/Entity.posY : D
+    RETURN
+    MAXSTACK = 3
+    MAXLOCALS = 3
+}

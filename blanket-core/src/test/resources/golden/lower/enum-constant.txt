@@ -1,0 +1,12 @@
+// class version 65.0 (65)
+// access flags 0x21
+public class mod/K {
+
+
+  // access flags 0x9
+  public static run()Lcom/blanket/api/Direction;
+    GETSTATIC game/Dir.UP : Lgame/Dir;
+    ARETURN
+    MAXSTACK = 1
+    MAXLOCALS = 0
+}

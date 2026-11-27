@@ -1,0 +1,18 @@
+// class version 65.0 (65)
+// access flags 0x21
+public class mod/K {
+
+
+  // access flags 0x9
+  public static run(Lcom/blanket/api/Client;)I
+    ALOAD 0
+    GETFIELD game/Mc.player : Lgame/Entity;
+    CHECKCAST game/LocalPlayer
+    LDC "k"
+    ICONST_2
+    NEWARRAY T_FLOAT
+    INVOKEVIRTUAL game/LocalPlayer.stat (Ljava/lang/String;[F)I
+    IRETURN
+    MAXSTACK = 3
+    MAXLOCALS = 1
+}

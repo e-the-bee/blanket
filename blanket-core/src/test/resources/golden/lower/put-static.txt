@@ -1,0 +1,13 @@
+// class version 65.0 (65)
+// access flags 0x21
+public class mod/K {
+
+
+  // access flags 0x9
+  public static run(Lcom/blanket/api/Vec3;)V
+    ALOAD 0
+    PUTSTATIC game/Vec.ORIGIN : Lgame/Vec;
+    RETURN
+    MAXSTACK = 1
+    MAXLOCALS = 1
+}
