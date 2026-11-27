@@ -24,6 +24,7 @@ import java.io.InputStream;
 import java.io.UncheckedIOException;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -37,7 +38,8 @@ import java.util.function.Predicate;
  * {@link Plan} per supported target, in runtime names with ready opcodes. The used set of a target is the mod's classes
  * plus the embedded classes {@link Reach} says the target's jar can run. Before planning a target, that used set is
  * checked like {@code blanket check} ({@link ModCheck}: C1, C2, C3, C7); any failure there or in planning throws an
- * {@link IllegalStateException} whose message is the {@link Diagnostic} lines.
+ * {@link IllegalStateException} whose message is the {@link Diagnostic} lines. The adapter classes the plan names are
+ * closed over and resolved in the same round as the plan's own references ({@link AdapterClosure}).
  */
 public final class Planner {
     private Planner() {}
@@ -69,7 +71,7 @@ public final class Planner {
         for (Path p : embedPaths) embed.putAll(Reach.read(p));
         ApiClasses api = ApiClasses.of(apiLoader);
         List<TargetSpec> targets = List.copyOf(Matrix.supported(bindings.targets()));
-        Map<String, Plan> plans = new HashMap<>();
+        Map<String, Planned> plans = new HashMap<>();
         return new PlanSource() {
             @Override
             public List<TargetSpec> targets() {
@@ -78,6 +80,10 @@ public final class Planner {
 
             @Override
             public Plan plan(TargetSpec target) {
+                return planned(target).plan();
+            }
+
+            private Planned planned(TargetSpec target) {
                 if (!targets.contains(target)) throw new IllegalArgumentException(target.id() + " is not a supported target");
                 return plans.computeIfAbsent(target.id(), id -> {
                     try {
@@ -88,15 +94,19 @@ public final class Planner {
                 });
             }
 
+            /** Plans the target first: its resolution is where the hierarchy's name translation starts. */
             @Override
-            public Hierarchy hierarchy(TargetSpec target) {
-                return Hierarchy.empty();
+            public Hierarchy hierarchy(TargetSpec target) throws IOException {
+                return TargetHierarchy.open(target, data, planned(target).runtimeToJar());
             }
         };
     }
 
-    private static Plan planOne(BindingSet bindings, TargetData data, ApiClasses api, ClassLoader apiLoader, Map<String, byte[]> mod,
-                                Map<String, byte[]> embed, TargetSpec t) throws IOException {
+    /** One target's plan and the class pairs (runtime name to jar name) its resolution produced. */
+    private record Planned(Plan plan, Map<String, String> runtimeToJar) {}
+
+    private static Planned planOne(BindingSet bindings, TargetData data, ApiClasses api, ClassLoader apiLoader, Map<String, byte[]> mod,
+                                   Map<String, byte[]> embed, TargetSpec t) throws IOException {
         List<String> roots = new ArrayList<>(Reach.ROOTS);
         roots.add(TargetPlan.glImpl(t));
         Scan scan = Reach.scan(mod, embed, roots, stubClasses(bindings));
@@ -111,9 +121,18 @@ public final class Planner {
         if (!errors.isEmpty()) throw fail(errors);
         try (Names names = new Names(t, bindings.targets().gameClasses())) {
             TargetPlan builder = new TargetPlan(bindings, scan, api, t, names, enums);
-            builder.build();          // collects every reference
+            Plan collecting = builder.build();   // collects every reference
+            AdapterClosure adapters = AdapterClosure.collect(bindings.dir(), t, bindings.targets().gameClasses(), bindings.targets().anchor(),
+                    collecting.members(), names);   // and the adapter closure's, in the same round
             names.resolve(data);
-            return builder.build();   // the plan in resolved names
+            Plan plan = builder.build();         // the plan in resolved names
+            Map<String, String> runtimeToJar = names.runtimeToJar();
+            if (adapters.isEmpty()) return new Planned(plan, runtimeToJar);
+            try (TargetHierarchy hierarchy = TargetHierarchy.open(t, data, runtimeToJar)) {
+                Map<String, byte[]> closure = adapters.remap(plan.types(), names, hierarchy);
+                return new Planned(new Plan(plan.target(), plan.era(), plan.entry(), plan.glImpl(), plan.core(), plan.types(), plan.members(),
+                        plan.features(), plan.classVersionMax(), Collections.unmodifiableMap(closure), plan.glue(), plan.hooks()), runtimeToJar);
+            }
         }
     }
 

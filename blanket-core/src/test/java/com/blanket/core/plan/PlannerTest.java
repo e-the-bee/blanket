@@ -275,12 +275,20 @@ class PlannerTest implements Opcodes {
         return source(files, mod, List.of(), PlannerTest.class.getClassLoader());
     }
 
+    /** Binary files written into the bindings folder beside the JSON files, such as built adapters under {@code build/}. */
+    private final Map<String, byte[]> builtFiles = new LinkedHashMap<>();
+
     private PlanSource source(Map<String, String> files, Path modJar, List<Path> embed, ClassLoader api) throws IOException {
         Path dir = Files.createTempDirectory(tmp, "bindings");
         for (Map.Entry<String, String> e : files.entrySet()) {
             Path p = dir.resolve(e.getKey());
             Files.createDirectories(p.getParent());
             Files.writeString(p, e.getValue(), StandardCharsets.UTF_8);
+        }
+        for (Map.Entry<String, byte[]> e : builtFiles.entrySet()) {
+            Path p = dir.resolve(e.getKey());
+            Files.createDirectories(p.getParent());
+            Files.write(p, e.getValue());
         }
         return Planner.plan(modJar, dir, embed, data(), api);
     }
@@ -333,9 +341,10 @@ class PlannerTest implements Opcodes {
         Plan p = s.plan(t);
         assertEquals(69, p.classVersionMax());
         assertEquals(Map.of(), p.features(), "no features.json, no features");
-        assertEquals(Map.of(), p.adapters(), "adapters are RES2's");
+        assertEquals(Map.of(), p.adapters(), "no adapter rule, no adapter classes");
         try (var h = s.hierarchy(t)) {
-            assertEquals(Optional.empty(), h.get("net/example/Game"));
+            assertEquals(Optional.of(new com.blanket.core.lower.Hierarchy.Facts("net/example/Mob", List.of(), false)), h.get("net/example/Hero"));
+            assertEquals(Optional.empty(), h.get("mod/Main"), "mod classes are the lower stage's");
         }
     }
 
@@ -494,7 +503,36 @@ class PlannerTest implements Opcodes {
             v.visitMethodInsn(INVOKESTATIC, "com/blanket/api/Cell", "of", "(III)Lcom/blanket/api/Cell;", false);
             v.visitInsn(POP);
         });
+        // the built set: Boxes.x reads getX through Hero (declared by Mob), Cells.of constructs a Pos
+        builtFiles.put("build/adapters/unobf/adapter-refs.json", """
+                { "schema": 1, "set": "unobf", "namespace": "official",
+                  "declaring": { "net/example/Hero#getX()D": "net/example/Mob" }, "overrides": {} }""".getBytes(StandardCharsets.UTF_8));
+        builtFiles.put("build/adapters/unobf/com/blanket/adapters/unobf/Boxes.class",
+                simple("com/blanket/adapters/unobf/Boxes", "java/lang/Object", ACC_PUBLIC | ACC_FINAL, w -> {
+                    MethodVisitor x = w.visitMethod(ACC_PUBLIC | ACC_STATIC, "x", "(Lnet/example/Hero;)D", null, null);
+                    x.visitCode();
+                    x.visitVarInsn(ALOAD, 0);
+                    x.visitMethodInsn(INVOKEVIRTUAL, "net/example/Hero", "getX", "()D", false);
+                    x.visitInsn(DRETURN);
+                    x.visitMaxs(0, 0);
+                    x.visitEnd();
+                }));
+        builtFiles.put("build/adapters/unobf/com/blanket/adapters/unobf/Cells.class",
+                simple("com/blanket/adapters/unobf/Cells", "java/lang/Object", ACC_PUBLIC | ACC_FINAL, w -> {
+                    MethodVisitor of = w.visitMethod(ACC_PUBLIC | ACC_STATIC, "of", "(III)Lnet/example/Pos;", null, null);
+                    of.visitCode();
+                    of.visitTypeInsn(NEW, "net/example/Pos");
+                    of.visitInsn(DUP);
+                    of.visitVarInsn(ILOAD, 0);
+                    of.visitVarInsn(ILOAD, 1);
+                    of.visitVarInsn(ILOAD, 2);
+                    of.visitMethodInsn(INVOKESPECIAL, "net/example/Pos", "<init>", "(III)V", false);
+                    of.visitInsn(ARETURN);
+                    of.visitMaxs(0, 0);
+                    of.visitEnd();
+                }));
         Plan p = plan(f, m, List.of(), PlannerTest.class.getClassLoader(), TARGETS_26);
+        assertEquals(java.util.Set.of("com/blanket/adapters/unobf/Boxes", "com/blanket/adapters/unobf/Cells"), p.adapters().keySet());
         assertEquals(Map.of(
                 "com/blanket/api/Player.x()D", new Lowered.Adapter("com/blanket/adapters/unobf/Boxes", "x", "(Lcom/blanket/api/Player;)D"),
                 "com/blanket/api/Cell.of(III)Lcom/blanket/api/Cell;", new Lowered.Adapter("com/blanket/adapters/unobf/Cells", "of", "(III)Lcom/blanket/api/Cell;")), p.members());
