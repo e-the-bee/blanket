@@ -101,10 +101,18 @@ public final class Dispatch {
         if (queued.isEmpty()) return;
         com.blanket.runtime.glue.GlueKeys.setMappings(options,
                 KeyHandover.append((Object[]) com.blanket.runtime.glue.GlueKeys.mappings(options), queued));
+        handedOver(queued.size());
     }
 
     /** Key hand-over through the loader's {@code RegisterKeyMappingsEvent} (Forge 1.20.1, NeoForge), on the mod bus. */
     public static void keysRegister(Object event) {
-        for (Object mapping : KeyQueue.drain()) com.blanket.runtime.glue.GlueKeys.register(event, mapping);
+        java.util.List<Object> queued = KeyQueue.drain();
+        for (Object mapping : queued) com.blanket.runtime.glue.GlueKeys.register(event, mapping);
+        if (!queued.isEmpty()) handedOver(queued.size());
+    }
+
+    /** One log line per hand-over: the L4 gate's evidence that the loader recipe ran (the testkit presses the mapping object itself). */
+    private static void handedOver(int n) {
+        System.out.println("[blanket] " + KeyQueue.modId() + ": handed " + n + " key mapping(s) to the game");
     }
 }
