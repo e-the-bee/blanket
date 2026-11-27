@@ -1,0 +1,25 @@
+{
+  "schema": 1,
+  "event": "SCREEN_OPEN",
+  "recipes": [
+    { "when": { "loader": "legacy-fabric", "mc": "..1.13.2" },
+      "mixin": { "hook": "screen.open", "dispatch": "screenOpen", "payload": { "screen": { "arg": 1 } } } },
+    { "when": { "loader": "fabric" },
+      "mixin": { "hook": "screen.open", "dispatch": "screenOpen", "payload": { "screen": { "arg": 1 } } } },
+    { "when": { "loader": "forge", "mc": "1.8.9" },
+      "native": { "event": "loader:net.minecraftforge.client.event.GuiOpenEvent", "bus": "game", "dispatch": "screenOpen",
+        "payload": { "screen": { "getter": "loader:net.minecraftforge.client.event.GuiOpenEvent#gui:Lnet/minecraft/class_388;" } } } },
+    { "when": { "loader": "forge", "mc": "1.20.1" },
+      "native": [
+        { "event": "loader:net.minecraftforge.client.event.ScreenEvent$Opening", "bus": "game", "dispatch": "screenOpen",
+          "payload": { "screen": { "getter": "loader:net.minecraftforge.client.event.ScreenEvent$Opening#getNewScreen()Lnet/minecraft/client/gui/screens/Screen;" } } },
+        { "event": "loader:net.minecraftforge.client.event.ScreenEvent$Closing", "bus": "game", "dispatch": "screenOpen",
+          "payload": { "screen": { "const": null } } } ] },
+    { "when": { "loader": "neoforge", "mc": "1.21.1" },
+      "native": [
+        { "event": "loader:net.neoforged.neoforge.client.event.ScreenEvent$Opening", "bus": "game", "dispatch": "screenOpen",
+          "payload": { "screen": { "getter": "loader:net.neoforged.neoforge.client.event.ScreenEvent$Opening#getNewScreen()Lnet/minecraft/client/gui/screens/Screen;" } } },
+        { "event": "loader:net.neoforged.neoforge.client.event.ScreenEvent$Closing", "bus": "game", "dispatch": "screenOpen",
+          "payload": { "screen": { "const": null } } } ] }
+  ]
+}

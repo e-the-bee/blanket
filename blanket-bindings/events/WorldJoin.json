@@ -1,0 +1,7 @@
+{
+  "schema": 1,
+  "event": "WORLD_JOIN",
+  "recipes": [
+    { "when": {}, "via": "CLIENT_TICK_START" }
+  ]
+}
