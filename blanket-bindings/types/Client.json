@@ -45,11 +45,13 @@
     ],
     "closeScreen": [
       { "when": { "mc": "..1.13.2" }, "lower": { "adapter": "legacy:com.blanket.adapters.Screens#close" } },
+      { "when": { "mc": "1.20.1" }, "lower": { "adapter": "modern:com.blanket.adapters.ScreenState#close" } },
       { "when": { "mc": "26.1.." }, "lower": { "adapter": "unobf:com.blanket.adapters.Screens#close" } },
       { "when": {}, "lower": { "adapter": "modern:com.blanket.adapters.Screens#close" } }
     ],
     "isScreenOpen": [
       { "when": { "mc": "..1.13.2" }, "lower": { "adapter": "legacy:com.blanket.adapters.Screens#isOpen" } },
+      { "when": { "mc": "1.20.1" }, "lower": { "adapter": "modern:com.blanket.adapters.ScreenState#isOpen" } },
       { "when": { "mc": "26.1.." }, "lower": { "adapter": "unobf:com.blanket.adapters.Screens#isOpen" } },
       { "when": {}, "lower": { "adapter": "modern:com.blanket.adapters.Screens#isOpen" } }
     ],

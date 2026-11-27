@@ -97,8 +97,8 @@ class BindingsClientTest implements Opcodes {
         for (String[] a : adapters) {
             String[] e = new String[6];
             for (int t = 0; t < 6; t++) {
-                // 1.20.1 opens screens through the @Stubs("1.20.1") host
-                String cls = a[0].equals("openScreen") && t == 5 ? "Screens1201" : a[1];
+                // 1.20.1 opens screens through the @Stubs("1.20.1") host and never reaches Screens (class-level closure)
+                String cls = t != 5 ? a[1] : a[0].equals("openScreen") ? "Screens1201" : a[1].equals("Screens") ? "ScreenState" : a[1];
                 e[t] = ad(t, cls, a[2], a[3]);
             }
             EXPECTED.put(a[0], e);
