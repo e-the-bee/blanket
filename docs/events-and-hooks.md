@@ -49,7 +49,8 @@ The bus is ~100 lines of Java 8 in `blanket-runtime`, replacing v1's vendored Or
 - Every injector has `require = 1` and the config sets `"injectors": { "defaultRequire": 1 }` (kept from
   v1's mixin config). A hook that cannot attach fails at game start with Mixin's error, which names the
   target method; the generated mixin class is named `<base>.blanket.generated.mixin.<Event>$<HookId>` so
-  the error also names the Blanket event.
+  the error also names the Blanket event. Both parts are cut to Java identifier characters (`tick.end` becomes `tick_end`), so
+the class of `CLIENT_TICK_END` on `tick.end` is `CLIENT_TICK_END$tick_end`; a repeat of the same pair gets a `_2` suffix.
 - Callbacks are `static` calls into the dispatcher. Mixins never hold state.
 - Injectors are `@Inject`. Recipes that can stop vanilla code (`INPUT`, §4.10) use
   `cancellable = true` and call `ci.cancel()` when the dispatcher returns "consumed". The one exception
@@ -249,6 +250,12 @@ phase).
 
 The explicit-class overloads are used everywhere so registration never depends on generic type
 inference from a lambda.
+
+Hooks with `bus: "mod"` (for example `RegisterKeyMappingsEvent`) go to a second generated class, `ModListeners`, because a
+mod bus refuses a class holding a game event; the game-bus hooks stay in `Listeners`. NeoForge registers `ModListeners` on the
+entry constructor's `IEventBus` parameter, Forge 1.20.1 on `FMLJavaModLoadingContext.get().getModEventBus()` (called from the
+no-argument constructor; `javap` on `javafmllanguage-1.20.1-47.4.28`). Legacy Forge has a single bus: a `mod` hook there is a
+build error naming the hook, and so is the `fml` bus on every emitter that does not write it.
 
 ## 6. Failure reporting
 
