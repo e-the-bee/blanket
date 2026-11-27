@@ -163,7 +163,7 @@ public final class Lookup {
     private void expandName(List<Object> out, String prefix, String ns, String version, String owner, String name) {
         String query = prefix + owner + "#" + name;
         if (!ns.equals("mojang")) {
-            out.add(failure(query, "query", "write " + name + " with a descriptor (name(args)ret or name:type) for the " + ns + " namespace",
+            out.add(failure(query, "query", "member reference needs a descriptor (name(args)ret or name:type) in the " + ns + " namespace: " + query,
                     List.of()));
             return;
         }

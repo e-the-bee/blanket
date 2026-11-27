@@ -34,12 +34,22 @@ public final class LookupMain {
             Lookup lookup = new Lookup(targets, MappingSources.files(args.downloads(), targets));
             List<String> named = args.all("target");
             List<Lookup.Result> results = lookup.lookup(args.require("ref"), named);
-            out.print(Lookup.table(results));
-            return exitCode(results, !named.isEmpty());
+            return report(results, !named.isEmpty(), out, err);
         } catch (RuntimeException e) {
             err.println("lookup: " + Lookup.describe(e));
             return 2;
         }
+    }
+
+    /** Prints the table; when the exit code is 1, also one line on {@code err} saying why the first row failed. */
+    static int report(List<Lookup.Result> results, boolean targetsNamed, PrintStream out, PrintStream err) {
+        out.print(Lookup.table(results));
+        int code = exitCode(results, targetsNamed);
+        if (code == 1) {
+            results.stream().flatMap(r -> r.rows().stream()).filter(row -> !row.ok()).findFirst()
+                    .ifPresent(row -> err.println("lookup: " + row.message()));
+        }
+        return code;
     }
 
     /** 1 when any row fails and the user named the targets, or when no row resolved; else 0. */

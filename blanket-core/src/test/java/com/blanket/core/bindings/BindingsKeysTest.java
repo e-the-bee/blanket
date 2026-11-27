@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-only
 package com.blanket.core.bindings;
 import com.blanket.core.plan.Lowered;
 import com.blanket.core.plan.Op;
