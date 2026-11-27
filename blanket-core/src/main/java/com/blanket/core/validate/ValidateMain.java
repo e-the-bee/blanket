@@ -9,9 +9,10 @@ import java.nio.file.Path;
 import java.util.Set;
 
 /**
- * {@code ./gradlew validateBindings}: runs C1, C2, C3, C7 and C8 on every supported target. Options:
+ * {@code ./gradlew validateBindings}: runs C1 to C8 on every supported target. Options:
  * {@code --bindings <dir>} (default the working directory), {@code --cache <dir>}, {@code --offline}. The API and glue
- * classes are read from this program's classpath.
+ * classes are read from this program's classpath, and C1 lists every class of the blanket-api jar on it. C4 and C6 read
+ * the adapter sets {@code remapAdapters} wrote to {@code build/adapters/}.
  */
 public final class ValidateMain {
     private ValidateMain() {}
@@ -27,7 +28,7 @@ public final class ValidateMain {
             Path dir = Path.of(args.get("bindings", "."));
             BindingSet bindings = BindingSet.load(dir);
             TargetData data = new DownloadedTargetData(args.downloads(), bindings.targets(), dir);
-            Report report = new Validator(bindings, data, ApiClasses.of(ValidateMain.class.getClassLoader())).run();
+            Report report = new Validator(bindings, data, ApiClasses.withApiJar(ValidateMain.class.getClassLoader())).run();
             out.print(report.format());
             return report.ok() ? 0 : 1;
         } catch (IOException | RuntimeException e) {

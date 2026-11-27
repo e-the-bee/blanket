@@ -209,8 +209,10 @@ Adapters are `public final` classes with `public static` methods, in `com.blanke
 - `com.blanket.runtime.*` (event bus, GL backend glue);
 - JDK classes available in Java 8.
 
-Compilation: `javac --release 8` for every set (Java 8 is the lowest baseline any set covers; javac
-reads newer stub class files regardless of `--release`). A class that needs symbols from a different
+Compilation: `javac --release 8` for every set (Java 8 is the lowest baseline any set covers). Measured
+(R-EXP-18, D-062): JDK 21 javac refuses stub class files of major 69, so stub jars on its classpath are
+copied with the major version capped at 65, and `--release 8` has no `java.lang.Record`, so a one-class
+shim is added for the 26.x input-event records. A class that needs symbols from a different
 version than its set's `stubs` carries `@Stubs("<version>")` and is compiled in its own javac
 invocation against that stub jar (binding example 5).
 
@@ -247,6 +249,8 @@ because a silently non-overriding method would never be called.
    decision 3 as well: only what they use is resolved.
 3. The closure is remapped to runtime names, relocated under `<base>/blanket/adapters/`, and added to
    the output.
+   Adapter member references are resolved on the declaring class recorded in `adapter-refs.json`, and
+   override declarations are renamed to the overridden game method (D-061).
 
 ### 5.5 Generics, lambdas and frames inside adapters
 
@@ -267,6 +271,10 @@ target without loading classes. It reads class files lazily by entry name, `SKIP
 
 It caches only what it reads. Member lookup walks superclasses and interfaces, which is how a
 binding's `Entity#getX` is verified for a `LocalPlayer` receiver.
+
+The index answers in runtime names: it reads jar-named class files and maps them through the plan's
+resolved class pairs plus one class-rows-only mapping read, so frames and member lookup see the real
+hierarchy (R-EXP-17: 1.21.1 `geb` → `gdy` → `cmx`; 1.8.9 `bew` → `bet` → `wn`).
 
 Frames: every rewritten method gets `COMPUTE_FRAMES` with a `ClassWriter` whose `getCommonSuperClass`
 walks the index (never `Class.forName`, which would need the game on the generator's classpath and

@@ -104,6 +104,16 @@ final class AdapterClosure {
      * @param members the plan's members (API member key to lowering), from the collecting pass
      */
     static AdapterClosure collect(Path bindingsDir, TargetSpec t, GameClasses game, String anchor, Map<String, Lowered> members, Names names) {
+        AdapterClosure c = gather(bindingsDir, t, game, anchor, members, names);
+        if (!c.errors.isEmpty()) throw Planner.fail(c.errors);
+        return c;
+    }
+
+    /**
+     * As {@link #collect}, with every problem left in {@link #errors()} instead of thrown; the game references of the
+     * sets that loaded are collected all the same. The bindings validator uses it (C4, C6).
+     */
+    static AdapterClosure gather(Path bindingsDir, TargetSpec t, GameClasses game, String anchor, Map<String, Lowered> members, Names names) {
         if (!names.dry()) throw new IllegalStateException("adapter references are collected before the names are resolved");
         AdapterClosure c = new AdapterClosure(t, game, anchor, members);
         Map<String, List<String>> roots = new TreeMap<>();   // set -> root classes, in member order
@@ -118,12 +128,23 @@ final class AdapterClosure {
             Loaded s = c.load(bindingsDir, e.getKey(), labelOf.get(e.getValue().get(0)));
             if (s != null) c.close(s, e.getValue(), labelOf);
         }
-        if (!c.errors.isEmpty()) throw Planner.fail(c.errors);
         for (Loaded s : c.sets.values()) {
             for (Map.Entry<String, String> e : s.classRefs.entrySet()) names.optional(anchor, e.getValue(), "adapter " + s.set);
             for (Member m : s.memberRefs.values()) names.optional(anchor, m.text(), m.label());
         }
         return c;
+    }
+
+    /** The problems found so far ({@link #gather}, {@link #remapAll}, {@link #checkOverrides}). */
+    List<Diagnostic> errors() {
+        return errors;
+    }
+
+    /** The adapter classes loaded into the closure, every set together. */
+    Set<String> reached() {
+        Set<String> out = new java.util.TreeSet<>();
+        for (Loaded s : sets.values()) out.addAll(s.classes.keySet());
+        return out;
     }
 
     /** True when the plan names no adapter. */
@@ -140,6 +161,13 @@ final class AdapterClosure {
      * @param types the plan's alias API type to runtime class map
      */
     Map<String, byte[]> remap(Map<String, String> types, Names names, TargetHierarchy hierarchy) {
+        Map<String, byte[]> out = remapAll(types, names, hierarchy);
+        if (!errors.isEmpty()) throw Planner.fail(errors);
+        return out;
+    }
+
+    /** As {@link #remap}, leaving every problem in {@link #errors()} instead of throwing. */
+    Map<String, byte[]> remapAll(Map<String, String> types, Names names, TargetHierarchy hierarchy) {
         Map<String, byte[]> out = new TreeMap<>();
         for (Loaded s : sets.values()) {
             Map<String, String> classMap = classMap(s, names, hierarchy);
@@ -167,7 +195,98 @@ final class AdapterClosure {
             }
         }
         checkShapes(types, out);
-        if (!errors.isEmpty()) throw Planner.fail(errors);
+        return out;
+    }
+
+    // ---------------------------------------------------------------------------------------- overrides (C6)
+
+    /**
+     * C6 (testing-strategy.md section 2): every {@code overrides} entry of a loaded set's {@code adapter-refs.json}
+     * whose host class is in the closure resolves on this target, the runtime method exists in the jars, and the
+     * overridden class is a supertype of the host in runtime names, so the host's method really overrides. Replaces
+     * the resolution failures {@link #remapAll} reported for those references with these diagnostics.
+     *
+     * @param remapped the closure from {@link #remapAll}
+     */
+    void checkOverrides(Names names, TargetHierarchy hierarchy, Map<String, byte[]> remapped) {
+        List<Diagnostic> found = new ArrayList<>();
+        Set<String> texts = new HashSet<>();
+        for (Loaded s : sets.values()) {
+            for (Map.Entry<String, String> e : s.refs.overrides().entrySet()) {
+                String key = e.getKey();
+                int hash = key.indexOf('#'), paren = key.indexOf('(', hash);
+                String host = key.substring(0, hash);
+                if (!s.classes.containsKey(host) || paren < 0) continue;
+                String name = key.substring(hash + 1, paren), desc = key.substring(paren);
+                String overridden = e.getValue();
+                if (!game.isGame(overridden)) continue;   // a JDK or library method: no mapping, nothing target-specific
+                String text = s.refs.namespace() + ":" + overridden + "#" + name + desc;
+                String label = "adapter " + s.set + ":" + simple(host);
+                String method = simple(host) + "." + name + desc;
+                String fix = "make " + method + " override a method " + t.mc() + " has (javap the stub jar and `./gradlew lookup --ref \""
+                        + text + "\"`), or give " + t.mc() + " its own host class, then " + REBUILD;
+                texts.add(text);
+                Resolver.Resolved r = names.optional(anchor, text, label);
+                String runtimeOwner, runtimeMethod;
+                if (r != null) {
+                    Resolver.Resolved j = names.jarNamed(anchor, text);
+                    runtimeOwner = r.owner();
+                    runtimeMethod = r.owner() + "." + r.name() + r.desc();
+                    if (j == null || !hierarchy.jarDeclares(j.owner(), j.name() + j.desc(), false, true)) {
+                        found.add(new Diagnostic(ErrorCode.UNRESOLVED, t.id(), label, text, "jar",
+                                "C6 overrides: " + method + " overrides " + runtimeMethod + " (runtime names), which the jars of " + t.id() + " do not have", fix));
+                        continue;
+                    }
+                } else if (unmappedPresent(hierarchy, overridden, name, desc)) {
+                    runtimeOwner = overridden;   // no mapping row, present under its own name (as memberMap accepts it)
+                    runtimeMethod = overridden + "." + name + desc;
+                } else {
+                    Diagnostic why = names.failure(anchor, text);
+                    found.add(new Diagnostic(ErrorCode.UNRESOLVED, t.id(), label, text, why != null ? why.namespaceStep() : null,
+                            "C6 overrides: " + method + " overrides " + overridden + "." + name + desc + ", which does not resolve on " + t.id()
+                                    + (why != null ? ": " + why.detail() : ""), fix));
+                    continue;
+                }
+                Set<String> supers = supertypes(host, remapped, hierarchy);
+                if (!supers.contains(runtimeOwner)) {
+                    found.add(new Diagnostic(ErrorCode.UNRESOLVED, t.id(), label, text, "hierarchy",
+                            "C6 overrides: " + method + " is meant to override " + runtimeMethod + " (runtime names), but "
+                                    + runtimeOwner + " is not a supertype of " + host + " on " + t.id() + " (supertypes: " + supers + ")", fix));
+                }
+            }
+        }
+        errors.removeIf(d -> texts.contains(d.reference()));
+        errors.addAll(found);
+    }
+
+    /** Whether a game method without a mapping row is in the jars under its own (shipping) names. */
+    private static boolean unmappedPresent(TargetHierarchy h, String owner, String name, String desc) {
+        String jarOwner = h.toJar(owner);
+        String jarDesc = Desc.mapClasses(desc, c -> h.toJar(c) instanceof String j ? j : c);
+        return jarOwner != null && h.jarDeclares(jarOwner, name + jarDesc, false, true);
+    }
+
+    /** Every supertype of an adapter class in runtime names: adapter classes from the remapped closure, the rest from the hierarchy. */
+    private static Set<String> supertypes(String cls, Map<String, byte[]> remapped, TargetHierarchy hierarchy) {
+        Set<String> out = new java.util.LinkedHashSet<>();
+        Deque<String> work = new ArrayDeque<>();
+        work.add(cls);
+        while (!work.isEmpty()) {
+            String c = work.poll();
+            List<String> next = new ArrayList<>();
+            byte[] bytes = remapped.get(c);
+            if (bytes != null) {
+                ClassReader r = new ClassReader(bytes);
+                if (r.getSuperName() != null) next.add(r.getSuperName());
+                next.addAll(List.of(r.getInterfaces()));
+            } else {
+                hierarchy.get(c).ifPresent(f -> {
+                    if (f.superName() != null) next.add(f.superName());
+                    next.addAll(f.interfaces());
+                });
+            }
+            for (String n : next) if (out.add(n)) work.add(n);
+        }
         return out;
     }
 

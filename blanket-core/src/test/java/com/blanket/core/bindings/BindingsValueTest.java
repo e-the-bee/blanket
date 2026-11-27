@@ -31,8 +31,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 /**
  * B-VALUE: a fixture mod uses every member of BlockPos, Vec3, Box and Direction; on the real bindings and real game
  * data (skipped offline) each member's lowering kind, owner and name are the ones {@code lookup} printed for the six
- * core targets. Members with no direct lowering on 1.8.9 (Vec3.scale, Box.inflate, Box.center) are explicit
- * {@code unsupported} until an adapter exists.
+ * core targets. Vec3.scale, Box.inflate and Box.center have no direct lowering on 1.8.9; there they lower to a static
+ * call of the legacy {@code Boxes} adapter.
  */
 class BindingsValueTest implements Opcodes {
     private static final Path BINDINGS = Path.of("..", "blanket-bindings");
@@ -82,6 +82,14 @@ class BindingsValueTest implements Opcodes {
         EXPECTED.put(USES.get(USES.size() - 1).key(), e);
     }
 
+    /** On the two 1.8.9 targets the member lowers to a static call of the legacy adapter, receiver first. */
+    private static void adapter(String apiOwner, String name, String apiDesc, String adapterName, String rtDesc) {
+        String[] e = EXPECTED.get(A + apiOwner + "." + name + apiDesc);
+        for (int t = 0; t < 2; t++) {
+            e[t] = "INVOKESTATIC com/blanket/adapters/legacy/Boxes." + adapterName + " " + rtDesc;
+        }
+    }
+
     static {
         String bp = api("BlockPos"), v3 = api("Vec3"), ab = api("Box"), dir = api("Direction");
         // BlockPos
@@ -120,6 +128,9 @@ class BindingsValueTest implements Opcodes {
         member(INVOKEVIRTUAL, "Box", "maxZ", "()D", "GETFIELD", AABB, new String[] {"field_587", "f", "field_1324", "maxZ", "maxZ", "f_82293_"}, "D");
         member(INVOKEVIRTUAL, "Box", "inflate", "(D)" + ab, "INVOKEVIRTUAL", AABB, new String[] {null, null, "method_1014", "inflate", "inflate", "m_82400_"}, "(D){AB}");
         member(INVOKEVIRTUAL, "Box", "center", "()" + v3, "INVOKEVIRTUAL", AABB, new String[] {null, null, "method_1005", "getCenter", "getCenter", "m_82399_"}, "(){V3}");
+        adapter("Vec3", "scale", "(D)" + v3, "scale", "(" + v3 + "D)" + v3);
+        adapter("Box", "inflate", "(D)" + ab, "inflate", "(" + ab + "D)" + ab);
+        adapter("Box", "center", "()" + v3, "center", "(" + ab + ")" + v3);
         // Direction
         member(INVOKEVIRTUAL, "Direction", "opposite", "()" + dir, "INVOKEVIRTUAL", DIR, new String[] {"method_10534", "d", "method_10153", "getOpposite", "getOpposite", "m_122424_"}, "(){DIR}");
         String[][] constants = {
@@ -176,6 +187,7 @@ class BindingsValueTest implements Opcodes {
     private static String show(Lowered l) {
         if (l instanceof Lowered.Construct c) return "NEW " + c.owner() + ".<init>" + c.ctorDesc();
         if (l instanceof Lowered.Unsupported) return "UNSUPPORTED";
+        if (l instanceof Lowered.Adapter a) return "INVOKESTATIC " + a.owner() + "." + a.name() + " " + a.desc();
         List<Op> ops = ((Lowered.Inline) l).ops();
         assertEquals(1, ops.size(), "one direct instruction: " + ops);
         Op o = ops.get(0);
