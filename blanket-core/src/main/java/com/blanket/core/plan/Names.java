@@ -34,13 +34,15 @@ final class Names implements AutoCloseable {
     /** Where a member is declared: whether it is static, and whether the owner it is called on is an interface. */
     record Access(boolean isStatic, boolean ownerInterface) {}
 
-    private record Need(String anchor, Ref ref, String label) {}
+    /** One collected reference. An optional one that fails is kept aside ({@link #failure}) instead of failing the plan. */
+    private record Need(String anchor, Ref ref, String label, boolean optional) {}
 
     private final TargetSpec t;
     private final GameClasses game;
     private final Map<String, Need> needs = new LinkedHashMap<>();
     private final Map<String, Resolver.Resolved> named = new HashMap<>();
     private final Map<String, Resolver.Resolved> jar = new HashMap<>();
+    private final Map<String, Diagnostic> optionalFailures = new HashMap<>();
     private ClassIndex index;
 
     Names(TargetSpec t, GameClasses game) {
@@ -61,7 +63,7 @@ final class Names implements AutoCloseable {
     Resolver.Resolved named(String anchor, String text, String label) {
         Ref ref = parse(text, label);
         if (dry()) {
-            needs.putIfAbsent(key(anchor, text), new Need(anchor, ref, label));
+            needs.merge(key(anchor, text), new Need(anchor, ref, label, false), (old, now) -> old.optional() ? now : old);
             return new Resolver.Resolved(text, ref.owner(), ref.name(), ref.desc(), ref.field());
         }
         Resolver.Resolved r = named.get(key(anchor, text));
@@ -69,11 +71,59 @@ final class Names implements AutoCloseable {
         return r;
     }
 
+    /**
+     * As {@link #named}, for a reference whose failure the caller handles itself: after {@link #resolve} the runtime
+     * names, or null when it did not resolve ({@link #failure} says why). A reference also collected by
+     * {@link #named} is required.
+     */
+    Resolver.Resolved optional(String anchor, String text, String label) {
+        Ref ref = parse(text, label);
+        if (dry()) {
+            needs.putIfAbsent(key(anchor, text), new Need(anchor, ref, label, true));
+            return new Resolver.Resolved(text, ref.owner(), ref.name(), ref.desc(), ref.field());
+        }
+        return named.get(key(anchor, text));
+    }
+
+    /** The client-jar names of a resolved reference (loader references: their literal names), or null. */
+    Resolver.Resolved jarNamed(String anchor, String text) {
+        Need n = needs.get(key(anchor, text));
+        if (n == null || dry()) throw new IllegalStateException("reference not collected or not resolved: " + text);
+        return (n.ref().ns().equals("loader") ? named : jar).get(key(anchor, text));
+    }
+
+    /** Why an {@link #optional} reference did not resolve, or null when it did. */
+    Diagnostic failure(String anchor, String text) {
+        return optionalFailures.get(key(anchor, text));
+    }
+
+    /**
+     * Runtime class name to client-jar class name for every class the resolved references name (owners and descriptor
+     * classes), the start of {@link TargetHierarchy}'s translation. Loader references and same-named classes are left out.
+     */
+    Map<String, String> runtimeToJar() {
+        Map<String, String> out = new HashMap<>();
+        for (Map.Entry<String, Resolver.Resolved> e : jar.entrySet()) {
+            Resolver.Resolved r = named.get(e.getKey()), j = e.getValue();
+            if (r == null) continue;
+            pair(out, r.owner(), j.owner());
+            if (r.desc() == null || j.desc() == null) continue;
+            List<String> rc = com.blanket.core.mapping.Desc.classesIn(r.desc()), jc = com.blanket.core.mapping.Desc.classesIn(j.desc());
+            if (rc.size() != jc.size()) continue;
+            for (int i = 0; i < rc.size(); i++) pair(out, rc.get(i), jc.get(i));
+        }
+        return out;
+    }
+
+    private static void pair(Map<String, String> out, String runtime, String jarName) {
+        if (!runtime.equals(jarName)) out.putIfAbsent(runtime, jarName);
+    }
+
     /** Access flags of a member reference, read from the jar it lives in (client jar, libraries, loader jar, JDK). */
     Access access(String anchor, String text, String label) {
         Ref ref = parse(text, label);
         if (dry()) {
-            needs.putIfAbsent(key(anchor, text), new Need(anchor, ref, label));
+            needs.merge(key(anchor, text), new Need(anchor, ref, label, false), (old, now) -> old.optional() ? now : old);
             return new Access(false, false);
         }
         boolean loader = ref.ns().equals("loader");
@@ -128,7 +178,7 @@ final class Names implements AutoCloseable {
         for (Need n : needs.values()) {
             String route = Routes.problem(t, n.ref(), game);
             if (route != null) {
-                errors.add(unresolved(n, Routes.STEP, route));
+                report(n, unresolved(n, Routes.STEP, route), null, errors);
             } else {
                 byAnchor.computeIfAbsent(n.anchor(), k -> new ArrayList<>()).add(n);
             }
@@ -172,14 +222,24 @@ final class Names implements AutoCloseable {
         try {
             out = resolver.resolve(refs, problems);
         } catch (IllegalStateException unreadable) {
-            for (Need n : list) errors.add(unresolved(n, "mapping file", unreadable.getMessage()));
+            for (Need n : list) report(n, unresolved(n, "mapping file", unreadable.getMessage()), into, errors);
             return;
         }
         for (Map.Entry<String, Resolver.Resolved> e : out.entrySet()) into.put(key(anchor, e.getKey()), e.getValue());
         for (Resolver.Problem p : problems) {
             Need n = byText.get(p.ref());
-            if (n != null) errors.add(unresolved(n, p.step(), p.message()));
+            if (n != null) report(n, unresolved(n, p.step(), p.message()), into, errors);
         }
+    }
+
+    /** A failed reference fails the plan; an optional one is set aside and dropped from {@code into}. */
+    private void report(Need n, Diagnostic d, Map<String, Resolver.Resolved> into, List<Diagnostic> errors) {
+        if (!n.optional()) {
+            errors.add(d);
+            return;
+        }
+        optionalFailures.putIfAbsent(key(n.anchor(), n.ref().text()), d);
+        if (into != null) into.remove(key(n.anchor(), n.ref().text()));
     }
 
     private Diagnostic unresolved(Need n, String step, String message) {
