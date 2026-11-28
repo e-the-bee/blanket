@@ -20,7 +20,8 @@ import java.util.function.Function;
  * C3 shape (binding-format.md section 4.3): the stack effect of a direct lowering, receiver then arguments then result,
  * must equal the API member's after type remapping, with two allowances: the API receiver may be a subclass of the
  * lowering's owner, and the lowering's result may be a subclass of the API result. No widening and no boxing.
- * Everything is compared in the names of the target's client jar, where class hierarchies can be read.
+ * Everything is compared in the names of the target's client jar, where class hierarchies can be read; only the lookup of
+ * a {@code loader:} member uses the descriptor of the loader jar (its runtime names).
  */
 final class Shapes {
     /** Glue types (D-054, D-056): their Object parameters are cast by the generator. */
@@ -75,10 +76,22 @@ final class Shapes {
     /** As above; {@code skipped} gets the reason when the lowering could not be checked (the caller reports a warning). */
     String check(ApiClasses.Method api, String owner, Lowering lowering, Function<String, Resolver.Resolved> resolved,
                  java.util.function.Consumer<String> skipped) {
+        return check(api, owner, lowering, resolved, text -> null, skipped);
+    }
+
+    /**
+     * As above, for references whose class is indexed in other names than the client jar's: a {@code loader:} member is
+     * found in the loader jar with the descriptor the loader jar was compiled with (the target's runtime names), while the
+     * stack effect is compared in jar names like everything else.
+     *
+     * @param indexed reference text to its resolution in the names its class is indexed in, null when that is {@code resolved}
+     */
+    String check(ApiClasses.Method api, String owner, Lowering lowering, Function<String, Resolver.Resolved> resolved,
+                 Function<String, Resolver.Resolved> indexed, java.util.function.Consumer<String> skipped) {
         Effect want = apiEffect(api, owner);
         Effect got;
         try {
-            got = lowered(lowering, resolved);
+            got = lowered(lowering, resolved, indexed);
         } catch (ChainError e) {
             return "API member " + want.show() + ", " + e.getMessage();
         } catch (Skip e) {
@@ -130,51 +143,54 @@ final class Shapes {
     // ---------------------------------------------------------------------------------------- lowered effects
 
     /** The effect of a direct lowering, or null when it is not direct, uses a step this check does not model, or has an unresolved part. */
-    private Effect lowered(Lowering l, Function<String, Resolver.Resolved> resolved) {
+    private Effect lowered(Lowering l, Function<String, Resolver.Resolved> resolved, Function<String, Resolver.Resolved> indexed) {
         switch (l.kind()) {
             case INVOKE:
             case GET:
             case PUT:
             case NEW:
-                return single(l, resolved, "the lowering");
+                return single(l, resolved, indexed, "the lowering");
             case CHAIN:
-                return chain(l, resolved);
+                return chain(l, resolved, indexed);
             default:
                 return null;
         }
     }
 
-    private Effect single(Lowering l, Function<String, Resolver.Resolved> resolved, String what) {
+    private Effect single(Lowering l, Function<String, Resolver.Resolved> resolved, Function<String, Resolver.Resolved> indexed, String what) {
         if (l.ref() == null) throw new Skip(what + " has no reference");
         Resolver.Resolved r = resolved.apply(l.ref());
         if (r == null) throw new Skip(what + " (" + l.ref() + ") did not resolve");
-        ClassIndex.Info info = index.get(r.owner()).orElse(null);
-        if (info == null) throw new Skip(what + ": class " + r.owner() + " is not in the index");
+        // the member is looked up under the names of its own jar; the effect below is written in jar names
+        Resolver.Resolved at = indexed.apply(l.ref());
+        if (at == null) at = r;
+        ClassIndex.Info info = index.get(at.owner()).orElse(null);
+        if (info == null) throw new Skip(what + ": class " + at.owner() + " is not in the index");
         String self = "L" + r.owner() + ";";
         List<String> params = new ArrayList<>();
         switch (l.kind()) {
             case INVOKE: {
-                Integer access = info.methods().get(r.name() + r.desc());
-                if (access == null) throw new Skip(what + ": method " + r.owner() + "." + r.name() + r.desc() + " is not in the index");
+                Integer access = info.methods().get(at.name() + at.desc());
+                if (access == null) throw new Skip(what + ": method " + at.owner() + "." + at.name() + at.desc() + " is not in the index");
                 if ((access & Opcodes.ACC_STATIC) == 0) params.add(self);
                 for (Type a : Type.getArgumentTypes(r.desc())) params.add(a.getDescriptor());
                 return new Effect(params, Type.getReturnType(r.desc()).getDescriptor());
             }
             case GET: {
-                Integer access = info.fields().get(r.name() + ":" + r.desc());
-                if (access == null) throw new Skip(what + ": field " + r.owner() + "." + r.name() + ":" + r.desc() + " is not in the index");
+                Integer access = info.fields().get(at.name() + ":" + at.desc());
+                if (access == null) throw new Skip(what + ": field " + at.owner() + "." + at.name() + ":" + at.desc() + " is not in the index");
                 if ((access & Opcodes.ACC_STATIC) == 0) params.add(self);
                 return new Effect(params, r.desc());
             }
             case PUT: {
-                Integer access = info.fields().get(r.name() + ":" + r.desc());
-                if (access == null) throw new Skip(what + ": field " + r.owner() + "." + r.name() + ":" + r.desc() + " is not in the index");
+                Integer access = info.fields().get(at.name() + ":" + at.desc());
+                if (access == null) throw new Skip(what + ": field " + at.owner() + "." + at.name() + ":" + at.desc() + " is not in the index");
                 if ((access & Opcodes.ACC_STATIC) == 0) params.add(self);
                 params.add(r.desc());
                 return new Effect(params, "V");
             }
             case NEW: {
-                if (!info.methods().containsKey(r.name() + r.desc())) throw new Skip(what + ": constructor " + r.owner() + "." + r.name() + r.desc() + " is not in the index");
+                if (!info.methods().containsKey(at.name() + at.desc())) throw new Skip(what + ": constructor " + at.owner() + "." + at.name() + at.desc() + " is not in the index");
                 for (Type a : Type.getArgumentTypes(r.desc())) params.add(a.getDescriptor());
                 return new Effect(params, self);
             }
@@ -187,7 +203,7 @@ final class Shapes {
      * A chain takes the receiver and arguments of its first step; every later step works on the previous result, so that
      * result must fit the step's owner. A chain with a step kind this check does not model is skipped.
      */
-    private Effect chain(Lowering chain, Function<String, Resolver.Resolved> resolved) {
+    private Effect chain(Lowering chain, Function<String, Resolver.Resolved> resolved, Function<String, Resolver.Resolved> indexed) {
         List<Lowering> steps = chain.steps();
         Effect first;
         String current;
@@ -198,7 +214,7 @@ final class Shapes {
             current = "L" + r.owner() + ";";
             first = new Effect(List.of(ANY_REFERENCE), current);
         } else {
-            first = single(s0, resolved, "chain step 1");
+            first = single(s0, resolved, indexed, "chain step 1");
             current = first.result();
         }
         List<Lowering> pushed = new ArrayList<>();
@@ -217,7 +233,7 @@ final class Shapes {
                     break;
                 case INVOKE:
                 case GET: {
-                    Effect e = single(s, resolved, "chain step " + (i + 1));
+                    Effect e = single(s, resolved, indexed, "chain step " + (i + 1));
                     if (e.params().isEmpty()) {
                         throw new ChainError("chain step " + (i + 1) + " (" + s.ref() + ") must work on the previous result, but it is static");
                     }
