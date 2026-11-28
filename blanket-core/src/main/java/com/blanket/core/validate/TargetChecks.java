@@ -70,7 +70,7 @@ final class TargetChecks {
         jars.addAll(data.libraryJars(t, libraryOwners(jarNames)));
         try (ClassIndex index = ClassIndex.open(jars, true)) {
             references(named, jarNames, index);
-            shapes(jarNames, index);
+            shapes(named, jarNames, index);
             callSites(hookRules, jarNames, jars);
         }
     }
@@ -295,7 +295,7 @@ final class TargetChecks {
 
     // ---------------------------------------------------------------------------------------- C3
 
-    private void shapes(Resolution jarNames, ClassIndex index) {
+    private void shapes(Resolution named, Resolution jarNames, ClassIndex index) {
         Map<String, String> alias = new HashMap<>();
         for (TypeBinding tb : bindings.types().values()) {
             int ri = Rules.first(tb.representation(), TypeBinding.Representation::when, t);
@@ -319,7 +319,8 @@ final class TargetChecks {
                 if (i < 0 || unmet(rules.get(i))) continue;
                 Lowering l = rules.get(i).lower();
                 String label = Rules.simple(tb.api()) + "." + key;
-                String problem = shapes.check(m, Rules.internal(tb.api()), l, text -> jarNames.resolved(anchor, text), reason -> {
+                String problem = shapes.check(m, Rules.internal(tb.api()), l, text -> jarNames.resolved(anchor, text),
+                        text -> text.startsWith("loader:") ? named.resolved(anchor, text) : null, reason -> {
                     boolean c2Failed = errors.stream().anyMatch(d -> d.target().equals(t.id()) && label.equals(d.member()));
                     if (!c2Failed) warnings.add(t.id() + " " + label + ": SHAPE not checked: " + reason);
                 });

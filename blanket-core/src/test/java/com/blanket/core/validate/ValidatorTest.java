@@ -33,6 +33,9 @@ class ValidatorTest {
 
     FixtureGame.Data data;
 
+    /** Whether {@code net/example/} is a game package: a {@code loader:} descriptor names game classes by Mojang names only then. */
+    boolean fixtureIsGame;
+
     @BeforeEach
     void game() throws IOException {
         data = new FixtureGame.Data(FixtureGame.clientJar(tmp, true, true));
@@ -98,7 +101,8 @@ class ValidatorTest {
     Report run(Map<String, String> files, String... supported) throws IOException {
         Path dir = Files.createTempDirectory(tmp, "bindings");
         Map<String, String> all = new LinkedHashMap<>(files);
-        all.put("targets.json", targets(supported.length == 0 ? new String[] {"neoforge:1.21.1"} : supported));
+        String targetsJson = targets(supported.length == 0 ? new String[] {"neoforge:1.21.1"} : supported);
+        all.put("targets.json", fixtureIsGame ? targetsJson.replace("\"gamePackages\": [", "\"gamePackages\": [\"net/example/\", ") : targetsJson);
         for (Map.Entry<String, String> e : all.entrySet()) {
             Path p = dir.resolve(e.getKey());
             Files.createDirectories(p.getParent());
@@ -318,6 +322,55 @@ class ValidatorTest {
                     { "get": "net.example.Client#player:Lnet/example/Player;" },
                     { "invoke": "net.example.Player#armor()I" } ] }"""));
         assertTrue(run(f).ok());
+    }
+
+    private static final String KEYS = "com.blanket.core.validate.fixture.FxKeys";
+
+    /** A glue file whose {@code register(FxPlayer)} lowers to the loader method {@code KeyEvent#<method>}. */
+    private static String keys(String method) {
+        return """
+                { "schema": 1, "api": "%s", "members": {
+                    "register": [ { "when": {}, "lower": { "invoke": "loader:com.loader.KeyEvent#%s" } } ] } }""".formatted(KEYS, method);
+    }
+
+    @Test
+    void c3LoaderMethodIsFoundWithItsOwnDescriptorAndItsShapeIsChecked() throws IOException {
+        // the loader jar knows Player by its runtime name (Lnet/example/Player;), the client jar by `e`: the shape check
+        // must neither skip the lowering ("not in the index") nor fail it
+        data.loaderJar = FixtureGame.loaderJar(tmp);
+        fixtureIsGame = true;
+        Map<String, String> f = baseline();
+        f.put("glue/FxKeys.json", keys("register(Lnet/example/Player;)V"));
+        Report r = run(f);
+        assertTrue(r.ok(), r.format());
+        assertTrue(r.warnings().isEmpty(), r.format());
+    }
+
+    @Test
+    void c3LoaderMethodThatDoesNotTakeTheApiParameterIsAShapeError() throws IOException {
+        data.loaderJar = FixtureGame.loaderJar(tmp);
+        fixtureIsGame = true;
+        Map<String, String> f = baseline();
+        f.put("glue/FxKeys.json", keys("registerOther(Lnet/example/Client;)V"));   // in the loader jar, but takes a Client
+        Diagnostic d = only(run(f));
+        assertEquals(ErrorCode.SHAPE, d.code());
+        assertEquals("FxKeys.register", d.member());
+        assertTrue(d.detail().startsWith("C3 shape") && d.detail().contains("(Le;)V") && d.detail().contains("(La;)V"), d.detail());
+    }
+
+    @Test
+    void c3LoaderMethodWithADescriptorTheLoaderJarLacksIsAnUnresolvedError() throws IOException {
+        data.loaderJar = FixtureGame.loaderJar(tmp);
+        fixtureIsGame = true;
+        Map<String, String> f = baseline();
+        f.put("glue/FxKeys.json", keys("register(Lnet/example/Client;)V"));   // no such descriptor in the loader jar
+        Report r = run(f);
+        Diagnostic d = only(r);
+        assertEquals(ErrorCode.UNRESOLVED, d.code());
+        assertEquals("FxKeys.register", d.member());
+        assertEquals("jar", d.namespaceStep());
+        assertTrue(d.detail().contains("com/loader/KeyEvent.register(Lnet/example/Client;)V"), d.detail());
+        assertTrue(r.warnings().isEmpty(), r.format());
     }
 
     // ---------------------------------------------------------------------------------------- C7 hooks

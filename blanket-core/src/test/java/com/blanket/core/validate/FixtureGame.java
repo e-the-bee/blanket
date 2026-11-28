@@ -38,14 +38,29 @@ final class FixtureGame implements Opcodes {
         return jar;
     }
 
-    /** A loader jar holding {@code net/example/RealEvent}. */
+    /**
+     * A loader jar holding {@code net/example/RealEvent} and {@code com/loader/KeyEvent}. The latter is compiled against
+     * the game's runtime (Mojang) names like a real loader: static {@code register(Lnet/example/Player;)V} and
+     * {@code registerOther(Lnet/example/Client;)V}.
+     */
     static Path loaderJar(Path dir) throws IOException {
         Path jar = dir.resolve("loader.jar");
-        ClassWriter w = new ClassWriter(0);
-        w.visit(V17, ACC_PUBLIC, "net/example/RealEvent", null, "java/lang/Object", null);
-        w.visitEnd();
+        ClassWriter real = new ClassWriter(0);
+        real.visit(V17, ACC_PUBLIC, "net/example/RealEvent", null, "java/lang/Object", null);
+        real.visitEnd();
+        ClassWriter keys = new ClassWriter(0);
+        keys.visit(V17, ACC_PUBLIC, "com/loader/KeyEvent", null, "java/lang/Object", null);
+        for (String[] m : new String[][] {{"register", "(Lnet/example/Player;)V"}, {"registerOther", "(Lnet/example/Client;)V"}}) {
+            MethodVisitor v = keys.visitMethod(ACC_PUBLIC | ACC_STATIC, m[0], m[1], null, null);
+            v.visitCode();
+            v.visitInsn(RETURN);
+            v.visitMaxs(0, 0);
+            v.visitEnd();
+        }
+        keys.visitEnd();
         try (ZipOutputStream z = new ZipOutputStream(Files.newOutputStream(jar))) {
-            add(z, "net/example/RealEvent", w);
+            add(z, "net/example/RealEvent", real);
+            add(z, "com/loader/KeyEvent", keys);
         }
         return jar;
     }
