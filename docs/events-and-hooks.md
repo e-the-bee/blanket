@@ -249,11 +249,12 @@ phase).
 | Loader-era | Generated form |
 |---|---|
 | Forge 1.8.9–1.12.2 | a class with public `@SubscribeEvent` methods, registered with `MinecraftForge.EVENT_BUS.register(new Listener())`; the bus has no `addListener` there (verified R-EVT-01) |
-| NeoForge (all) | `NeoForge.EVENT_BUS.addListener(EventPriority.NORMAL, false, Event.class, consumer)` (explicit-class overload; verified R-EVT-06), consumer is a generated static method reference |
+| NeoForge (all), Forge 1.13.2–1.21.5 | a class with public `@SubscribeEvent` instance methods, one per hook, each taking the event class, registered with `IEventBus.register(new Listeners())` on `NeoForge.EVENT_BUS` / `MinecraftForge.EVENT_BUS` (D-068; ran on neoforge:1.21.1 and forge:1.20.1 in the M0-M3 gates) |
 | Forge 1.21.6+ (EventBus 7, in 1.0 from M7) | `Event.BUS.addListener(consumer)` (verified R-EVT-06) |
 
-The explicit-class overloads are used everywhere so registration never depends on generic type
-inference from a lambda.
+Each subscriber method names its event class in its own descriptor, so registration never depends on generic type
+inference from a lambda. (The design first chose NeoForge's explicit-class `addListener(EventPriority, boolean, Class,
+Consumer)` overload, R-EVT-06; D-068 keeps the `register` form the gates ran.)
 
 Hooks with `bus: "mod"` (for example `RegisterKeyMappingsEvent`) go to a second generated class, `ModListeners`, because a
 mod bus refuses a class holding a game event; the game-bus hooks stay in `Listeners`. NeoForge registers `ModListeners` on the

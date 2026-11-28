@@ -33,6 +33,9 @@ public class HudBox implements ClientMod {
             anchored = false;
             log("join");
         });
+        Events.WORLD_LEAVE.register(e -> log("leave"));
+        // Joining shows the game's connecting/loading screens and then none, so the gate logs show SCREEN_OPEN firing.
+        Events.SCREEN_OPEN.register(e -> log("screen " + e.kind().name() + " mod=" + e.isModScreen()));
         Events.CLIENT_TICK_END.register(e -> {
             ticksEnd++;
             Player p = Client.get().player();

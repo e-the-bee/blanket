@@ -81,7 +81,8 @@ save, the earlier plan, differs per version.)
 **Gate per target:** game reaches the world (a title screen or a blocking warning screen is a failure,
 D-050), the result file exists, ≥100 `CLIENT_TICK_END` and exactly matching tick counts from start/end,
 `WORLD_JOIN` fired once, both pixel probes and the key check pass, no Mixin error, no Blanket listener
-exception.
+exception. A screen left open after the join fails the run: `HUD_RENDER` does not fire under an open screen
+(D-018), so no HUD frame reaches the testkit and its probe round fails (D-068).
 
 Assumptions to retire in M0 (spike S-14): offline launch for single-player works on the core six;
 llvmpipe provides GL 2.1 compatibility (1.8.9) and 3.3 core (26.1.2) contexts fast enough for 100 ticks
